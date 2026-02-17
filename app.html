@@ -1322,7 +1322,19 @@ function renderProfileBuilder(app) {
   } else {
     stepTitle = 'Tell workers about your company';
     stepDesc = 'This helps workers know who they\'re working for';
+    const bizAvatarUrl = state.profile.avatar_url;
+    const bizPhotos = state.workPhotos || [];
     stepContent = `
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px">
+        <div id="avatar-preview" style="width:80px;height:80px;border-radius:40px;background:linear-gradient(135deg,var(--forest-mid),var(--green));display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;cursor:pointer" onclick="document.getElementById('avatar-input').click()">
+          ${bizAvatarUrl ? `<img src="${bizAvatarUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="color:#fff;font-size:28px;font-weight:700">${getInitials(state.profile.company_name || state.profile.name)}</span>`}
+        </div>
+        <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+        <button style="background:none;border:none;color:var(--green);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit" onclick="document.getElementById('avatar-input').click()">
+          ${bizAvatarUrl ? 'Change Logo' : 'Add Company Logo'}
+        </button>
+        <div id="avatar-status" style="font-size:12px;color:var(--gray-500);margin-top:4px"></div>
+      </div>
       <div class="form-group">
         <label class="form-label">Company Name</label>
         <input class="form-input" id="biz-name" type="text" value="${state.profile.company_name || state.profile.name || ''}">
@@ -1338,6 +1350,26 @@ function renderProfileBuilder(app) {
       <div class="form-group">
         <label class="form-label">Phone Number (optional)</label>
         <input class="form-input" id="biz-phone" type="tel" placeholder="(508) 555-1234" value="${state.profile.phone || ''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Company Photos (optional)</label>
+        <div class="form-hint" style="margin-bottom:8px">Show off your crew, trucks, or completed jobs — up to 6 photos</div>
+        <div class="photo-grid" id="photo-grid">
+          ${bizPhotos.map(p => `
+            <div class="photo-item">
+              <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+              <button class="photo-delete" onclick="deleteWorkPhoto(${p.id})">&times;</button>
+            </div>
+          `).join('')}
+          ${bizPhotos.length < 6 ? `
+            <div class="photo-item photo-add" onclick="document.getElementById('work-photo-input').click()">
+              <div style="font-size:32px;color:var(--gray-400)">+</div>
+              <div style="font-size:12px;color:var(--gray-500);margin-top:4px">Add Photo</div>
+            </div>
+          ` : ''}
+        </div>
+        <input type="file" id="work-photo-input" accept="image/*" style="display:none" onchange="uploadWorkPhoto(this)">
+        <div id="photo-status" style="font-size:13px;color:var(--gray-500);text-align:center;margin-top:8px"></div>
       </div>
     `;
   }
@@ -1360,12 +1392,32 @@ function renderProfileBuilder(app) {
       </div>
       <div class="profile-builder-footer">
         ${(isWorker && step > 1) ? '<button class="btn btn-outline" style="flex:1" onclick="prevProfileStep()">Back</button>' : ''}
-        <button class="btn btn-primary" style="flex:2" onclick="nextProfileStep()">
+        <button class="btn btn-primary" id="next-step-btn" style="flex:2" onclick="handleNextStep(this)">
           ${step >= totalSteps ? 'Finish Setup' : 'Next'}
         </button>
       </div>
     </div>
   `;
+}
+
+// Prevent double-tap and handle step advancement
+async function handleNextStep(btn) {
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try {
+    await nextProfileStep();
+  } catch (e) {
+    console.error('Step error:', e);
+    // Force advance anyway
+    state.profileStep++;
+    render();
+  }
+  // Re-enable in case render didn't happen
+  setTimeout(() => {
+    const b = document.getElementById('next-step-btn');
+    if (b) { b.disabled = false; b.textContent = 'Next'; }
+  }, 500);
 }
 
 function renderSkillPicker() {
@@ -1868,6 +1920,16 @@ function renderMyProfile() {
       </div>
       ` : `
       <div class="profile-section">
+        <div class="profile-section-title">About</div>
+        <p style="font-size:14px;color:var(--gray-700);line-height:1.5">${p.company_description || '<span style="color:var(--gray-500)">No description yet — add one in Edit Profile</span>'}</p>
+      </div>
+      <div class="profile-section" id="my-photos-section">
+        <div class="profile-section-title">Company Photos</div>
+        <div id="my-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          <div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">Loading...</div>
+        </div>
+      </div>
+      <div class="profile-section">
         <div class="profile-section-title">Subscription</div>
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--light-green);border-radius:var(--radius-sm)">
           <div>
@@ -1908,7 +1970,7 @@ function switchTab(tab) {
   render();
   
   // Load work photos for my profile
-  if (tab === 'profile' && state.profile?.user_type === 'worker') {
+  if (tab === 'profile' && state.profile) {
     loadMyPhotos();
   }
 }
@@ -1925,13 +1987,13 @@ async function loadMyPhotos() {
           </div>
         `).join('');
       } else {
-        grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No work photos yet — add them in Edit Profile</div>';
+        grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet — add them in Edit Profile</div>';
       }
     }
   } catch (e) {
     console.error('Error loading photos:', e);
     const grid = document.getElementById('my-photos-grid');
-    if (grid) grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No work photos yet</div>';
+    if (grid) grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet</div>';
   }
 }
 
@@ -2324,76 +2386,83 @@ async function nextProfileStep() {
   const isWorker = state.profile?.user_type === 'worker';
   const totalSteps = isWorker ? 5 : 1;
   
-  if (isWorker && state.profileStep === 1) {
-    // Save basic info
-    const name = $('#edit-name')?.value?.trim() || state.profile.name;
-    const location = $('#edit-location')?.value?.trim();
-    const bio = $('#edit-bio')?.value?.trim();
-    await db.from('profiles').update({ 
-      name: name,
-      location_text: location, 
-      bio: bio 
-    }).eq('id', state.user.id);
-    state.profile.name = name;
-    state.profile.location_text = location;
-    state.profile.bio = bio;
-    
-  } else if (isWorker && state.profileStep === 2) {
-    // Save skills
-    if (state.selectedSkills.size === 0) {
-      showToast('Select at least one skill!');
-      return;
+  try {
+    if (isWorker && state.profileStep === 1) {
+      const nameEl = document.getElementById('edit-name');
+      const locEl = document.getElementById('edit-location');
+      const bioEl = document.getElementById('edit-bio');
+      const name = (nameEl ? nameEl.value.trim() : '') || state.profile.name;
+      const location = locEl ? locEl.value.trim() : (state.profile.location_text || '');
+      const bio = bioEl ? bioEl.value.trim() : (state.profile.bio || '');
+      const { error } = await db.from('profiles').update({ 
+        name: name,
+        location_text: location, 
+        bio: bio 
+      }).eq('id', state.user.id);
+      if (error) console.error('Step 1 save error:', error);
+      state.profile.name = name;
+      state.profile.location_text = location;
+      state.profile.bio = bio;
+      
+    } else if (isWorker && state.profileStep === 2) {
+      if (state.selectedSkills.size === 0) {
+        showToast('Select at least one skill!');
+        return;
+      }
+      const skills = Array.from(state.selectedSkills).map(skillId => ({
+        worker_id: state.user.id,
+        skill_id: skillId,
+      }));
+      await db.from('worker_skills').delete().eq('worker_id', state.user.id);
+      const { error } = await db.from('worker_skills').insert(skills);
+      if (error) console.error('Step 2 save error:', error);
+      
+    } else if (isWorker && state.profileStep === 3) {
+      const minEl = document.getElementById('pay-min');
+      const maxEl = document.getElementById('pay-max');
+      const min = parseInt(minEl ? minEl.value : 20) * 100;
+      const max = parseInt(maxEl ? maxEl.value : 35) * 100;
+      const { error } = await db.from('profiles').update({ pay_min: min, pay_max: max }).eq('id', state.user.id);
+      if (error) console.error('Step 3 save error:', error);
+      state.profile.pay_min = min;
+      state.profile.pay_max = max;
+      
+    } else if (isWorker && state.profileStep === 4) {
+      const { error } = await db.from('profiles').update({ availability: state.profile.availability }).eq('id', state.user.id);
+      if (error) console.error('Step 4 save error:', error);
+      try {
+        const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
+        state.workPhotos = photos || [];
+      } catch (e) { state.workPhotos = []; }
+      
+    } else if (isWorker && state.profileStep === 5) {
+      // Photos uploaded individually, nothing to save
     }
     
-    const skills = Array.from(state.selectedSkills).map(skillId => ({
-      worker_id: state.user.id,
-      skill_id: skillId,
-    }));
-    
-    await db.from('worker_skills').delete().eq('worker_id', state.user.id);
-    await db.from('worker_skills').insert(skills);
-    
-  } else if (isWorker && state.profileStep === 3) {
-    // Save pay
-    const min = parseInt($('#pay-min')?.value || 20) * 100;
-    const max = parseInt($('#pay-max')?.value || 35) * 100;
-    await db.from('profiles').update({ pay_min: min, pay_max: max }).eq('id', state.user.id);
-    state.profile.pay_min = min;
-    state.profile.pay_max = max;
-    
-  } else if (isWorker && state.profileStep === 4) {
-    // Save availability
-    await db.from('profiles').update({ availability: state.profile.availability }).eq('id', state.user.id);
-    
-    // Pre-load work photos for step 5
-    const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
-    state.workPhotos = photos || [];
-    
-  } else if (isWorker && state.profileStep === 5) {
-    // Work photos step — nothing to save, photos are uploaded individually
-  }
-  
-  if (!isWorker) {
-    // Save business details
-    const companyName = $('#biz-name')?.value?.trim();
-    const location = $('#biz-location')?.value?.trim();
-    const desc = $('#biz-desc')?.value?.trim();
-    const phone = $('#biz-phone')?.value?.trim();
-    await db.from('profiles').update({
-      company_name: companyName,
-      location_text: location,
-      company_description: desc,
-      phone: phone,
-    }).eq('id', state.user.id);
-    state.profile.company_name = companyName;
-    state.profile.location_text = location;
-    state.profile.company_description = desc;
-    state.profile.phone = phone;
+    if (!isWorker) {
+      const companyName = (document.getElementById('biz-name')?.value?.trim()) || state.profile.company_name;
+      const location = (document.getElementById('biz-location')?.value?.trim()) || state.profile.location_text;
+      const desc = (document.getElementById('biz-desc')?.value?.trim()) || state.profile.company_description;
+      const phone = (document.getElementById('biz-phone')?.value?.trim()) || state.profile.phone;
+      const { error } = await db.from('profiles').update({
+        company_name: companyName,
+        location_text: location,
+        company_description: desc,
+        phone: phone,
+      }).eq('id', state.user.id);
+      if (error) console.error('Biz save error:', error);
+      state.profile.company_name = companyName;
+      state.profile.location_text = location;
+      state.profile.company_description = desc;
+      state.profile.phone = phone;
+    }
+  } catch (e) {
+    console.error('Profile step error:', e);
+    // Still advance even if save failed
   }
   
   if (state.profileStep >= totalSteps) {
-    // Done! Go to main app
-    await loadData();
+    try { await loadData(); } catch (e) { console.error('loadData error:', e); }
     state.activeTab = isWorker ? 'feed' : 'search';
     state.currentScreen = 'main';
     showToast('Profile set up! You\'re ready to go.');
@@ -2530,14 +2599,20 @@ async function deleteWorkPhoto(photoId) {
 }
 
 async function editProfile() {
-  // Load current skills into selectedSkills
-  const { data: mySkills } = await db.from('worker_skills').select('skill_id').eq('worker_id', state.user.id);
-  state.selectedSkills = new Set((mySkills || []).map(s => s.skill_id));
-  // Load work photos
-  const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
-  state.workPhotos = photos || [];
-  // Reload profile to get latest data
   await loadProfile();
+  
+  if (state.profile?.user_type === 'worker') {
+    // Load current skills into selectedSkills
+    const { data: mySkills } = await db.from('worker_skills').select('skill_id').eq('worker_id', state.user.id);
+    state.selectedSkills = new Set((mySkills || []).map(s => s.skill_id));
+  }
+  
+  // Load work/company photos for both types
+  try {
+    const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
+    state.workPhotos = photos || [];
+  } catch (e) { state.workPhotos = []; }
+  
   state.profileStep = 1;
   state.currentScreen = 'profile-builder';
   render();
