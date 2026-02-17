@@ -1153,7 +1153,7 @@ function renderLogin(app) {
 function renderProfileBuilder(app) {
   const isWorker = state.profile?.user_type === 'worker';
   const step = state.profileStep;
-  const totalSteps = isWorker ? 3 : 1;
+  const totalSteps = isWorker ? 4 : 1;
   
   let stepContent = '';
   let stepTitle = '';
@@ -1161,14 +1161,32 @@ function renderProfileBuilder(app) {
   
   if (isWorker) {
     if (step === 1) {
+      stepTitle = 'Basic Info';
+      stepDesc = 'Update your name and location';
+      stepContent = `
+        <div class="form-group">
+          <label class="form-label">Your Name</label>
+          <input class="form-input" id="edit-name" type="text" value="${state.profile.name || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Location</label>
+          <input class="form-input" id="edit-location" type="text" placeholder="Medway, MA" value="${state.profile.location_text || ''}">
+          <div class="form-hint">City and state — this is how companies find workers near them</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Short Bio (optional)</label>
+          <textarea class="form-input" id="edit-bio" rows="3" placeholder="Tell companies about your experience...">${state.profile.bio || ''}</textarea>
+        </div>
+      `;
+    } else if (step === 2) {
       stepTitle = 'What can you do?';
       stepDesc = 'Tap all the skills that apply — this is how companies find you';
       stepContent = renderSkillPicker();
-    } else if (step === 2) {
+    } else if (step === 3) {
       stepTitle = 'Set your rate';
       stepDesc = 'What\'s your hourly pay range?';
       stepContent = `
-        <div class="pay-display" id="pay-display">$20 - $35/hr</div>
+        <div class="pay-display" id="pay-display">$${state.profile.pay_min ? state.profile.pay_min/100 : 20} - $${state.profile.pay_max ? state.profile.pay_max/100 : 35}/hr</div>
         <div class="pay-range-row">
           <input type="number" id="pay-min" placeholder="20" value="${state.profile.pay_min ? state.profile.pay_min/100 : '20'}" oninput="updatePayDisplay()">
           <span>to</span>
@@ -1176,7 +1194,7 @@ function renderProfileBuilder(app) {
           <span>/hr</span>
         </div>
       `;
-    } else if (step === 3) {
+    } else if (step === 4) {
       stepTitle = 'When are you available?';
       stepDesc = 'Let companies know when you can work';
       const avail = state.profile.availability || 'available_now';
@@ -1204,6 +1222,14 @@ function renderProfileBuilder(app) {
     stepTitle = 'Tell workers about your company';
     stepDesc = 'This helps workers know who they\'re working for';
     stepContent = `
+      <div class="form-group">
+        <label class="form-label">Company Name</label>
+        <input class="form-input" id="biz-name" type="text" value="${state.profile.company_name || state.profile.name || ''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input class="form-input" id="biz-location" type="text" placeholder="Medway, MA" value="${state.profile.location_text || ''}">
+      </div>
       <div class="form-group">
         <label class="form-label">Company Description</label>
         <textarea class="form-input" id="biz-desc" rows="3" placeholder="What does your company do? What kind of work?">${state.profile.company_description || ''}</textarea>
@@ -1610,13 +1636,26 @@ function renderStorm() {
 // ============================================
 function renderMyProfile() {
   const p = state.profile;
-  if (!p) return '';
+  if (!p) return '<div class="loading-screen"><div class="spinner"></div></div>';
   const isWorker = p.user_type === 'worker';
   
-  const workerSkills = isWorker ? (state.workers.find(w => w.id === p.id)?.worker_skills || []).map(ws => {
-    const skill = state.skills.find(s => s.id === ws.skill_id);
-    return skill ? skill.name : '';
-  }).filter(Boolean) : [];
+  // Get skills from state.workers if available, otherwise use selectedSkills
+  let workerSkills = [];
+  if (isWorker) {
+    const meInWorkers = state.workers.find(w => w.id === p.id);
+    if (meInWorkers && meInWorkers.worker_skills) {
+      workerSkills = meInWorkers.worker_skills.map(ws => {
+        const skill = state.skills.find(s => s.id === ws.skill_id);
+        return skill ? skill.name : '';
+      }).filter(Boolean);
+    } else {
+      // Fallback: use selectedSkills from signup
+      workerSkills = Array.from(state.selectedSkills).map(id => {
+        const skill = state.skills.find(s => s.id === id);
+        return skill ? skill.name : '';
+      }).filter(Boolean);
+    }
+  }
   
   return `
     <div class="profile-view-header">
@@ -1625,17 +1664,10 @@ function renderMyProfile() {
         <div>
           <div style="font-size:20px;font-weight:700">${isWorker ? p.name : (p.company_name || p.name)}</div>
           <div style="font-size:13px;opacity:0.8;margin-top:2px">${p.location_text || 'Location not set'} · ${isWorker ? 'Worker' : 'Business'}</div>
-          ${!isWorker ? `
           <div class="rating-row" style="margin-top:4px">
             <span class="star">★</span>
-            <span style="font-weight:600">${p.biz_rating_avg || 'New'}</span>
+            <span style="font-weight:600">${isWorker ? (p.rating_avg || 'New') : (p.biz_rating_avg || 'New')}</span>
           </div>
-          ` : `
-          <div class="rating-row" style="margin-top:4px">
-            <span class="star">★</span>
-            <span style="font-weight:600">${p.rating_avg || 'New'}</span>
-          </div>
-          `}
         </div>
       </div>
     </div>
@@ -1647,7 +1679,7 @@ function renderMyProfile() {
       </div>
       <div class="profile-section">
         <div class="profile-section-title">Skills</div>
-        <div class="badge-wrap">${workerSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('') || '<span style="color:var(--gray-500);font-size:13px">No skills added</span>'}</div>
+        <div class="badge-wrap">${workerSkills.length ? workerSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('') : '<span style="color:var(--gray-500);font-size:13px">No skills added yet</span>'}</div>
       </div>
       ` : `
       <div class="profile-section">
@@ -1662,7 +1694,8 @@ function renderMyProfile() {
       </div>
       `}
       <div style="padding:0 16px 16px">
-        <button class="btn btn-outline" onclick="goTo('profile-builder');state.profileStep=1;">Edit Profile</button>
+        <button class="btn btn-primary" style="margin-bottom:8px" onclick="editProfile()">Edit Profile</button>
+        <button class="btn btn-outline" onclick="handleLogout()">Log Out</button>
       </div>
     </div>
   `;
@@ -1897,9 +1930,23 @@ async function handleLogout() {
 // ============================================
 async function nextProfileStep() {
   const isWorker = state.profile?.user_type === 'worker';
-  const totalSteps = isWorker ? 3 : 1;
+  const totalSteps = isWorker ? 4 : 1;
   
   if (isWorker && state.profileStep === 1) {
+    // Save basic info
+    const name = $('#edit-name')?.value?.trim() || state.profile.name;
+    const location = $('#edit-location')?.value?.trim();
+    const bio = $('#edit-bio')?.value?.trim();
+    await db.from('profiles').update({ 
+      name: name,
+      location_text: location, 
+      bio: bio 
+    }).eq('id', state.user.id);
+    state.profile.name = name;
+    state.profile.location_text = location;
+    state.profile.bio = bio;
+    
+  } else if (isWorker && state.profileStep === 2) {
     // Save skills
     if (state.selectedSkills.size === 0) {
       showToast('Select at least one skill!');
@@ -1911,11 +1958,10 @@ async function nextProfileStep() {
       skill_id: skillId,
     }));
     
-    // Delete existing and re-insert
     await db.from('worker_skills').delete().eq('worker_id', state.user.id);
     await db.from('worker_skills').insert(skills);
     
-  } else if (isWorker && state.profileStep === 2) {
+  } else if (isWorker && state.profileStep === 3) {
     // Save pay
     const min = parseInt($('#pay-min')?.value || 20) * 100;
     const max = parseInt($('#pay-max')?.value || 35) * 100;
@@ -1923,19 +1969,25 @@ async function nextProfileStep() {
     state.profile.pay_min = min;
     state.profile.pay_max = max;
     
-  } else if (isWorker && state.profileStep === 3) {
+  } else if (isWorker && state.profileStep === 4) {
     // Save availability
     await db.from('profiles').update({ availability: state.profile.availability }).eq('id', state.user.id);
   }
   
   if (!isWorker) {
     // Save business details
+    const companyName = $('#biz-name')?.value?.trim();
+    const location = $('#biz-location')?.value?.trim();
     const desc = $('#biz-desc')?.value?.trim();
     const phone = $('#biz-phone')?.value?.trim();
     await db.from('profiles').update({
+      company_name: companyName,
+      location_text: location,
       company_description: desc,
       phone: phone,
     }).eq('id', state.user.id);
+    state.profile.company_name = companyName;
+    state.profile.location_text = location;
     state.profile.company_description = desc;
     state.profile.phone = phone;
   }
@@ -1986,6 +2038,17 @@ async function postJob(title, pay, desc) {
   }
 }
 
+async function editProfile() {
+  // Load current skills into selectedSkills
+  const { data: mySkills } = await db.from('worker_skills').select('skill_id').eq('worker_id', state.user.id);
+  state.selectedSkills = new Set((mySkills || []).map(s => s.skill_id));
+  // Reload profile to get latest data
+  await loadProfile();
+  state.profileStep = 1;
+  state.currentScreen = 'profile-builder';
+  render();
+}
+
 // ============================================
 // DATA LOADING
 // ============================================
@@ -2005,7 +2068,6 @@ async function loadData() {
     .from('profiles')
     .select('*, worker_skills(*)')
     .eq('user_type', 'worker')
-    .neq('availability', 'not_available')
     .order('rating_avg', { ascending: false });
   state.workers = workers || [];
   
