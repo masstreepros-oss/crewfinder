@@ -72,7 +72,8 @@ body {
 
 @media (min-width: 431px) {
   body { background: #E0E0E0; display: flex; justify-content: center; padding: 20px 0; }
-  #app { border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; max-height: 92vh; }
+  #app { border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; height: 90vh; }
+  #app > * { overflow-y: auto; }
 }
 
 /* ============================================
@@ -376,12 +377,15 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .profile-builder-header {
   background: linear-gradient(135deg, var(--forest), var(--green));
   padding: 20px 20px 24px;
   color: #fff;
+  flex-shrink: 0;
 }
 
 .profile-builder-header h1 { font-size: 22px; font-weight: 800; }
@@ -408,6 +412,16 @@ body {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.profile-builder-footer {
+  padding: 12px 20px 24px;
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+  background: var(--white);
+  border-top: 1px solid var(--gray-200);
 }
 
 /* ============================================
@@ -1217,7 +1231,7 @@ function renderProfileBuilder(app) {
       <div class="profile-builder-body">
         ${stepContent}
       </div>
-      <div style="padding: 12px 20px 24px; display: flex; gap: 10px;">
+      <div class="profile-builder-footer">
         ${(isWorker && step > 1) ? '<button class="btn btn-outline" style="flex:1" onclick="prevProfileStep()">Back</button>' : ''}
         <button class="btn btn-primary" style="flex:2" onclick="nextProfileStep()">
           ${step >= totalSteps ? 'Finish Setup' : 'Next'}
@@ -2008,22 +2022,33 @@ async function loadData() {
 // INIT
 // ============================================
 async function init() {
-  // Check for existing session
-  const { data: { session } } = await db.auth.getSession();
-  
-  if (session?.user) {
-    state.user = session.user;
-    await loadProfile();
-    await loadSkills();
+  try {
+    // Check for existing session
+    const { data: { session } } = await db.auth.getSession();
     
-    if (state.profile) {
-      await loadData();
-      state.activeTab = state.profile.user_type === 'business' ? 'search' : 'feed';
-      state.currentScreen = 'main';
+    if (session?.user) {
+      state.user = session.user;
+      await loadSkills();
+      
+      const { data: profile } = await db.from('profiles').select('*').eq('id', state.user.id).single();
+      
+      if (profile) {
+        state.profile = profile;
+        await loadData();
+        state.activeTab = profile.user_type === 'business' ? 'search' : 'feed';
+        state.currentScreen = 'main';
+      } else {
+        // Profile doesn't exist — user got stuck during signup
+        await db.auth.signOut();
+        state.currentScreen = 'splash';
+      }
     } else {
       state.currentScreen = 'splash';
     }
-  } else {
+  } catch (e) {
+    console.error('Init error:', e);
+    // If anything fails, just show splash
+    try { await db.auth.signOut(); } catch (_) {}
     state.currentScreen = 'splash';
   }
   
