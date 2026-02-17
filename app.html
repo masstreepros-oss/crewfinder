@@ -1002,11 +1002,17 @@ let state = {
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
+let toastTimer = null;
 function showToast(msg) {
-  const t = $('#toast');
+  const t = document.getElementById('toast');
+  if (!t) return;
+  if (toastTimer) clearTimeout(toastTimer);
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+    toastTimer = null;
+  }, 2500);
 }
 
 function getInitials(name) {
@@ -2149,29 +2155,7 @@ async function respondToJob(jobId) {
       job_id: jobId,
       worker_id: state.user.id,
     });
-    
-    // Find the job and its business owner
-    const job = state.jobs.find(j => j.id === jobId);
-    if (job) {
-      const bizId = job.business_id;
-      const bizName = job.profiles?.company_name || job.profiles?.name || 'Company';
-      const bizLocation = job.location_text || '';
-      
-      // Auto-send an intro message
-      const ids = [state.user.id, bizId].sort();
-      const conversationId = ids.join('_');
-      
-      await db.from('messages').insert({
-        conversation_id: conversationId,
-        sender_id: state.user.id,
-        receiver_id: bizId,
-        content: `Hi! I'm interested in your "${job.title}" position. I'm ${state.profile.name} — ${formatPay(state.profile.pay_min, state.profile.pay_max)}, ${availLabel(state.profile.availability)}. Let me know if you'd like to chat!`,
-      });
-      
-      showToast("Interest sent with a message! Check your Messages tab.");
-    } else {
-      showToast("Response sent!");
-    }
+    showToast("Interest sent! The company can see your profile now.");
   } catch (e) {
     showToast("You've already responded to this job.");
   }
