@@ -574,15 +574,15 @@
       </svg>
       <span>CrewFinder</span>
     </div>
-    <p class="splash-sub">The talent marketplace for outdoor trades</p>
+    <p class="splash-sub">On-demand skilled labor for outdoor trades</p>
 
     <button class="splash-btn" onclick="startApp('business')">
-      <div class="splash-btn-title">I'm Hiring</div>
-      <div class="splash-btn-desc">Find skilled workers for your crew</div>
+      <div class="splash-btn-title">I Need a Worker</div>
+      <div class="splash-btn-desc">Find skilled help for tomorrow's job</div>
     </button>
     <button class="splash-btn" onclick="startApp('worker')">
-      <div class="splash-btn-title">I'm Looking for Work</div>
-      <div class="splash-btn-desc">Find jobs that match your skills</div>
+      <div class="splash-btn-title">I Need Work</div>
+      <div class="splash-btn-desc">Pick up jobs and fill your schedule</div>
     </button>
 
     <div class="splash-trades">
@@ -595,7 +595,7 @@
 
   <!-- Main App Shell (hidden initially) -->
   <div id="main-app" class="hidden" style="display:flex;flex-direction:column;height:100%;min-height:100vh;">
-    <div class="demo-banner">Interactive Demo &mdash; CrewFinder App Prototype</div>
+    <div class="demo-banner">Interactive Demo &mdash; CrewFinder: On-Demand Skilled Labor</div>
     <div class="header">
       <div class="header-logo">
         <svg width="24" height="24" viewBox="0 0 40 40" fill="none">
@@ -617,21 +617,21 @@
 <script>
 // Data
 const workers = [
-  { id:1, name:"Marcus Rivera", av:"MR", skills:["Climbing (Production)","Rigging","Chainsaw (Elevated)","Aerial Lift"], certs:["ISA Certified Arborist","OSHA 30"], exp:"8 years", trades:["Tree Service"], avail:"Full-time", pay:"$28-35/hr", dist:"12 mi", rating:4.9, reviews:23, loc:"Framingham, MA", bio:"Production climber with 8 years in residential and commercial tree removal. Experienced with complex rigging over structures.", status:"available" },
-  { id:2, name:"Jake Thompson", av:"JT", skills:["CDL-B","Chipper Operation","Stump Grinding","Crane Operation"], certs:["CDL Class B","NCCCO Crane Cert"], exp:"5 years", trades:["Tree Service"], avail:"Full-time", pay:"$24-30/hr", dist:"8 mi", rating:4.7, reviews:15, loc:"Milford, MA", bio:"CDL driver and equipment operator. Run bucket trucks, cranes, and chippers. Clean driving record.", status:"available" },
-  { id:3, name:"Carlos Mendez", av:"CM", skills:["Climbing (Production)","Rigging","Cabling & Bracing","PHC/Spraying"], certs:["ISA Certified Arborist","Pesticide Applicator","OSHA 10"], exp:"12 years", trades:["Tree Service"], avail:"Full-time", pay:"$32-40/hr", dist:"22 mi", rating:5.0, reviews:41, loc:"Worcester, MA", bio:"Senior arborist with deep expertise in plant health care and complex removals. Bilingual English/Spanish.", status:"available" },
-  { id:4, name:"Tyler Brooks", av:"TB", skills:["Mowing (Commercial)","Landscape Design","Paver Installation","Retaining Walls"], certs:["ICPI Certified","OSHA 10"], exp:"6 years", trades:["Landscaping","Hardscaping"], avail:"Full-time", pay:"$22-28/hr", dist:"5 mi", rating:4.8, reviews:19, loc:"Medway, MA", bio:"Versatile landscape and hardscape professional. Specialize in patio design and segmental retaining walls.", status:"available" },
-  { id:5, name:"Danny Kim", av:"DK", skills:["Irrigation Design","Installation (Commercial)","Smart Controllers","Backflow Testing"], certs:["EPA WaterSense","Backflow Certified"], exp:"4 years", trades:["Irrigation"], avail:"Full-time", pay:"$24-30/hr", dist:"15 mi", rating:4.6, reviews:11, loc:"Franklin, MA", bio:"Irrigation specialist with commercial and residential experience. Hunter and Rain Bird certified.", status:"available" },
-  { id:6, name:"Mike O'Brien", av:"MO", skills:["Climbing (Recreational)","Ground Work","Chainsaw (Ground)","Chipper Operation"], certs:["OSHA 10"], exp:"2 years", trades:["Tree Service"], avail:"Full-time", pay:"$18-22/hr", dist:"10 mi", rating:4.4, reviews:7, loc:"Bellingham, MA", bio:"Eager ground worker looking to advance into climbing. Strong work ethic, reliable, and always on time.", status:"available" },
-  { id:7, name:"Andre Williams", av:"AW", skills:["CDL-A","Crane Operation","Aerial Lift","Rigging"], certs:["CDL Class A","NCCCO Crane Cert","OSHA 30"], exp:"10 years", trades:["Tree Service"], avail:"Storm Response", pay:"$35-45/hr", dist:"30 mi", rating:4.9, reviews:34, loc:"Providence, RI", bio:"Available for storm response and large-scale removals. 10 years running cranes and managing heavy equipment.", status:"storm" },
-  { id:8, name:"Sam Patel", av:"SP", skills:["Sod Installation","Grading & Excavation","Drainage Systems","Mulching"], certs:["Skid Steer Certified"], exp:"3 years", trades:["Landscaping","Hardscaping"], avail:"Seasonal", pay:"$20-25/hr", dist:"18 mi", rating:4.5, reviews:9, loc:"Attleboro, MA", bio:"Experienced with grading, drainage, and site prep. Skilled excavator and skid steer operator.", status:"available" },
+  { id:1, name:"Marcus Rivera", av:"MR", skills:["Climbing (Production)","Rigging","Chainsaw (Elevated)","Aerial Lift"], certs:["ISA Certified Arborist","OSHA 30"], exp:"8 years", trades:["Tree Service"], avail:"Available Now", pay:"$28-35/hr", dist:"12 mi", rating:4.9, reviews:23, loc:"Framingham, MA", bio:"Production climber with 8 years in residential and commercial tree removal. Experienced with complex rigging over structures. Available for on-demand and short-term work.", status:"available" },
+  { id:2, name:"Jake Thompson", av:"JT", skills:["CDL-B","Chipper Operation","Stump Grinding","Crane Operation"], certs:["CDL Class B","NCCCO Crane Cert"], exp:"5 years", trades:["Tree Service"], avail:"Available Now", pay:"$24-30/hr", dist:"8 mi", rating:4.7, reviews:15, loc:"Milford, MA", bio:"CDL driver and equipment operator. Run bucket trucks, cranes, and chippers. Clean driving record. Can pick up work on short notice.", status:"available" },
+  { id:3, name:"Carlos Mendez", av:"CM", skills:["Climbing (Production)","Rigging","Cabling & Bracing","PHC/Spraying"], certs:["ISA Certified Arborist","Pesticide Applicator","OSHA 10"], exp:"12 years", trades:["Tree Service"], avail:"Available This Week", pay:"$32-40/hr", dist:"22 mi", rating:5.0, reviews:41, loc:"Worcester, MA", bio:"Senior arborist with deep expertise in plant health care and complex removals. Bilingual English/Spanish. Open to short-term and on-demand jobs.", status:"available" },
+  { id:4, name:"Tyler Brooks", av:"TB", skills:["Mowing (Commercial)","Landscape Design","Paver Installation","Retaining Walls"], certs:["ICPI Certified","OSHA 10"], exp:"6 years", trades:["Landscaping","Hardscaping"], avail:"Available Now", pay:"$22-28/hr", dist:"5 mi", rating:4.8, reviews:19, loc:"Medway, MA", bio:"Versatile landscape and hardscape professional. Specialize in patio design and segmental retaining walls. Looking to fill open days.", status:"available" },
+  { id:5, name:"Danny Kim", av:"DK", skills:["Irrigation Design","Installation (Commercial)","Smart Controllers","Backflow Testing"], certs:["EPA WaterSense","Backflow Certified"], exp:"4 years", trades:["Irrigation"], avail:"Available This Week", pay:"$24-30/hr", dist:"15 mi", rating:4.6, reviews:11, loc:"Franklin, MA", bio:"Irrigation specialist with commercial and residential experience. Hunter and Rain Bird certified. Available for on-demand calls.", status:"available" },
+  { id:6, name:"Mike O'Brien", av:"MO", skills:["Climbing (Recreational)","Ground Work","Chainsaw (Ground)","Chipper Operation"], certs:["OSHA 10"], exp:"2 years", trades:["Tree Service"], avail:"Available Now", pay:"$18-22/hr", dist:"10 mi", rating:4.4, reviews:7, loc:"Bellingham, MA", bio:"Eager ground worker looking to advance into climbing. Strong work ethic, reliable, always on time. Happy to pick up last-minute jobs.", status:"available" },
+  { id:7, name:"Andre Williams", av:"AW", skills:["CDL-A","Crane Operation","Aerial Lift","Rigging"], certs:["CDL Class A","NCCCO Crane Cert","OSHA 30"], exp:"10 years", trades:["Tree Service"], avail:"Storm Response", pay:"$35-45/hr", dist:"30 mi", rating:4.9, reviews:34, loc:"Providence, RI", bio:"Available for storm response and large-scale removals. 10 years running cranes and managing heavy equipment. On call for last-minute jobs.", status:"storm" },
+  { id:8, name:"Sam Patel", av:"SP", skills:["Sod Installation","Grading & Excavation","Drainage Systems","Mulching"], certs:["Skid Steer Certified"], exp:"3 years", trades:["Landscaping","Hardscaping"], avail:"Available This Week", pay:"$20-25/hr", dist:"18 mi", rating:4.5, reviews:9, loc:"Attleboro, MA", bio:"Experienced with grading, drainage, and site prep. Skilled excavator and skid steer operator. Open to picking up work to fill my schedule.", status:"available" },
 ];
 
 const jobs = [
-  { id:1, company:"Mass Tree Pros", loc:"Medway, MA", title:"Experienced Climber", pay:"$28-35/hr", type:"Full-time", skills:["Climbing (Production)","Rigging","Chainsaw (Elevated)"], posted:"2 hours ago", urgent:true },
-  { id:2, company:"Green Valley Landscaping", loc:"Milford, MA", title:"Landscape Crew Leader", pay:"$24-30/hr", type:"Full-time", skills:["Mowing (Commercial)","Landscape Design","Planting"], posted:"1 day ago", urgent:false },
-  { id:3, company:"Northeast Arbor Care", loc:"Framingham, MA", title:"CDL Driver / Equipment Op", pay:"$26-32/hr", type:"Full-time", skills:["CDL-B","Chipper Operation","Aerial Lift"], posted:"3 hours ago", urgent:true },
-  { id:4, company:"Precision Irrigation", loc:"Franklin, MA", title:"Irrigation Technician", pay:"$22-28/hr", type:"Seasonal", skills:["Irrigation Design","Installation","Winterization"], posted:"2 days ago", urgent:false },
+  { id:1, company:"Mass Tree Pros", loc:"Medway, MA", title:"Climber Needed Tomorrow", pay:"$28-35/hr", type:"On-Demand", skills:["Climbing (Production)","Rigging","Chainsaw (Elevated)"], posted:"2 hours ago", urgent:true },
+  { id:2, company:"Green Valley Landscaping", loc:"Milford, MA", title:"Crew Help This Week", pay:"$24-30/hr", type:"Short-Term", skills:["Mowing (Commercial)","Landscape Design","Planting"], posted:"1 day ago", urgent:false },
+  { id:3, company:"Northeast Arbor Care", loc:"Framingham, MA", title:"CDL Driver Needed ASAP", pay:"$26-32/hr", type:"On-Demand", skills:["CDL-B","Chipper Operation","Aerial Lift"], posted:"3 hours ago", urgent:true },
+  { id:4, company:"Precision Irrigation", loc:"Franklin, MA", title:"Irrigation Tech - Spring Season", pay:"$22-28/hr", type:"Seasonal", skills:["Irrigation Design","Installation","Winterization"], posted:"2 days ago", urgent:false },
 ];
 
 let userType = null;
@@ -829,10 +829,10 @@ function renderContent() {
         ${jobCard(jobs[0])}
         <div class="card" style="cursor:default">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span class="card-name">Ground Worker</span>
+            <span class="card-name">Ground Worker - This Week</span>
             <span class="badge active">Active</span>
           </div>
-          <div class="job-meta">$18-22/hr · Full-time · Posted 3 days ago</div>
+          <div class="job-meta">$18-22/hr · On-Demand · Posted 3 days ago</div>
           <div class="job-stats">
             <span class="job-stat">12 views</span>
             <span class="job-stat">4 interested</span>
@@ -849,9 +849,9 @@ function renderContent() {
       <div style="padding:16px">
         <div class="page-title">Messages</div>
         ${[
-          { name:"Marcus Rivera", preview:"I'm interested in the climber position. I have 8 years experience and...", time:"2m ago", unread:true },
-          { name:"Jake Thompson", preview:"Yes, I have a clean CDL-B record. When would you want me to start?", time:"1h ago", unread:true },
-          { name:"Mike O'Brien", preview:"Thanks for reaching out! I'd love to come in for a working interview.", time:"3h ago", unread:false },
+          { name:"Marcus Rivera", preview:"I'm available tomorrow and Thursday. 8 years climbing experience, rigging included...", time:"2m ago", unread:true },
+          { name:"Jake Thompson", preview:"I can be there first thing tomorrow with my CDL-B. Clean record, ready to go.", time:"1h ago", unread:true },
+          { name:"Mike O'Brien", preview:"I've got an open day Wednesday — happy to come out for a working interview.", time:"3h ago", unread:false },
         ].map(m => `
           <div class="msg-card ${m.unread ? 'unread' : 'read'}">
             <div class="msg-top"><span class="msg-name">${m.name}</span><span class="msg-time">${m.time}</span></div>
@@ -947,8 +947,8 @@ function renderContent() {
   else if (userType === 'worker' && activeTab === 'feed') {
     c.innerHTML = `
       <div style="padding:16px">
-        <div class="page-title">Jobs Near You</div>
-        <div class="page-sub">Based on your skills and location</div>
+        <div class="page-title">Available Jobs Near You</div>
+        <div class="page-sub">Pick up work that fits your schedule</div>
         ${jobs.map(j => jobCard(j)).join('')}
       </div>
     `;
@@ -960,8 +960,8 @@ function renderContent() {
       <div style="padding:16px">
         <div class="page-title">Companies Interested in You</div>
         ${[
-          { company:"Mass Tree Pros", role:"Experienced Climber", match:"95%", msg:"Your climbing and rigging skills are exactly what we need" },
-          { company:"Northeast Arbor Care", role:"CDL Driver", match:"82%", msg:"We'd love to discuss our equipment operator position" },
+          { company:"Mass Tree Pros", role:"Climber Needed Tomorrow", match:"95%", msg:"Your climbing and rigging skills are exactly what we need for a removal this week" },
+          { company:"Northeast Arbor Care", role:"CDL Driver - Short Notice", match:"82%", msg:"We've got a last-minute job Thursday and could use your help" },
         ].map(m => `
           <div class="match-card">
             <div class="match-top">
@@ -986,8 +986,8 @@ function renderContent() {
       <div style="padding:16px">
         <div class="page-title">Messages</div>
         ${[
-          { company:"Mass Tree Pros", preview:"Hey, we loved your profile. Would you be available for a working interview this Thursday?", time:"15m ago", unread:true },
-          { company:"Northeast Arbor Care", preview:"We're looking for someone with your exact skill set. Are you open to chatting?", time:"2h ago", unread:false },
+          { company:"Mass Tree Pros", preview:"Hey, we need a climber for a 2-day removal starting Thursday. $32/hr. You available?", time:"15m ago", unread:true },
+          { company:"Northeast Arbor Care", preview:"Got a last-minute job tomorrow in Framingham. Your skill set is a perfect fit.", time:"2h ago", unread:false },
         ].map(m => `
           <div class="msg-card ${m.unread ? 'unread' : 'read'}">
             <div class="msg-top"><span class="msg-name">${m.company}</span><span class="msg-time">${m.time}</span></div>
