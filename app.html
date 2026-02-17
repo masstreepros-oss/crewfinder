@@ -865,6 +865,53 @@ body {
 }
 
 /* ============================================
+   PHOTO GRID
+   ============================================ */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.photo-item {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.photo-add {
+  border: 2px dashed var(--gray-300);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--white);
+}
+
+.photo-add:active { background: var(--gray-100); }
+
+.photo-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ============================================
    TOAST NOTIFICATION
    ============================================ */
 .toast {
@@ -944,6 +991,9 @@ let state = {
   viewingWorker: null,
   viewingJob: null,
   chattingWith: null,
+  chatMessages: [],
+  chatSubscription: null,
+  workPhotos: [],
 };
 
 // ============================================
@@ -1153,7 +1203,7 @@ function renderLogin(app) {
 function renderProfileBuilder(app) {
   const isWorker = state.profile?.user_type === 'worker';
   const step = state.profileStep;
-  const totalSteps = isWorker ? 4 : 1;
+  const totalSteps = isWorker ? 5 : 1;
   
   let stepContent = '';
   let stepTitle = '';
@@ -1162,8 +1212,19 @@ function renderProfileBuilder(app) {
   if (isWorker) {
     if (step === 1) {
       stepTitle = 'Basic Info';
-      stepDesc = 'Update your name and location';
+      stepDesc = 'Your name, photo, and location';
+      const avatarUrl = state.profile.avatar_url;
       stepContent = `
+        <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px">
+          <div id="avatar-preview" style="width:80px;height:80px;border-radius:40px;background:linear-gradient(135deg,var(--forest-mid),var(--green));display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;cursor:pointer" onclick="document.getElementById('avatar-input').click()">
+            ${avatarUrl ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="color:#fff;font-size:28px;font-weight:700">${getInitials(state.profile.name)}</span>`}
+          </div>
+          <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+          <button style="background:none;border:none;color:var(--green);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit" onclick="document.getElementById('avatar-input').click()">
+            ${avatarUrl ? 'Change Photo' : 'Add Profile Photo'}
+          </button>
+          <div id="avatar-status" style="font-size:12px;color:var(--gray-500);margin-top:4px"></div>
+        </div>
         <div class="form-group">
           <label class="form-label">Your Name</label>
           <input class="form-input" id="edit-name" type="text" value="${state.profile.name || ''}">
@@ -1174,8 +1235,9 @@ function renderProfileBuilder(app) {
           <div class="form-hint">City and state — this is how companies find workers near them</div>
         </div>
         <div class="form-group">
-          <label class="form-label">Short Bio (optional)</label>
-          <textarea class="form-input" id="edit-bio" rows="3" placeholder="Tell companies about your experience...">${state.profile.bio || ''}</textarea>
+          <label class="form-label">About Me</label>
+          <textarea class="form-input" id="edit-bio" rows="4" placeholder="Tell companies about yourself — your experience, what you're good at, what kind of work you're looking for...">${state.profile.bio || ''}</textarea>
+          <div class="form-hint">Keep it real. Companies want to know who they're hiring.</div>
         </div>
       `;
     } else if (step === 2) {
@@ -1216,6 +1278,29 @@ function renderProfileBuilder(app) {
             </button>
           `).join('')}
         </div>
+      `;
+    } else if (step === 5) {
+      stepTitle = 'Show your work';
+      stepDesc = 'Upload up to 6 photos of jobs you\'ve done';
+      const photos = state.workPhotos || [];
+      stepContent = `
+        <div class="photo-grid" id="photo-grid">
+          ${photos.map(p => `
+            <div class="photo-item">
+              <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+              <button class="photo-delete" onclick="deleteWorkPhoto(${p.id})">&times;</button>
+            </div>
+          `).join('')}
+          ${photos.length < 6 ? `
+            <div class="photo-item photo-add" onclick="document.getElementById('work-photo-input').click()">
+              <div style="font-size:32px;color:var(--gray-400)">+</div>
+              <div style="font-size:12px;color:var(--gray-500);margin-top:4px">Add Photo</div>
+            </div>
+          ` : ''}
+        </div>
+        <input type="file" id="work-photo-input" accept="image/*" style="display:none" onchange="uploadWorkPhoto(this)">
+        <div id="photo-status" style="font-size:13px;color:var(--gray-500);text-align:center;margin-top:12px"></div>
+        <div class="form-hint" style="text-align:center;margin-top:8px">Show off removals, hardscape jobs, or anything you're proud of. This is optional — you can always add photos later.</div>
       `;
     }
   } else {
@@ -1335,14 +1420,14 @@ function renderBottomNav(isBiz) {
     ? [
         { id: 'search', label: 'Search', icon: 'search' },
         { id: 'jobs', label: 'My Jobs', icon: 'jobs' },
-        { id: 'messages', label: 'Messages', icon: 'messages' },
+        { id: 'messages', label: 'Messages', icon: 'messages', badge: state.conversations.some(c => c.unread) },
         { id: 'storm', label: 'Storm', icon: 'storm' },
         { id: 'profile', label: 'Profile', icon: 'profile' },
       ]
     : [
         { id: 'feed', label: 'Jobs', icon: 'feed' },
         { id: 'matches', label: 'Matches', icon: 'heart' },
-        { id: 'messages', label: 'Messages', icon: 'messages' },
+        { id: 'messages', label: 'Messages', icon: 'messages', badge: state.conversations.some(c => c.unread) },
         { id: 'profile', label: 'Profile', icon: 'profile' },
       ];
   
@@ -1352,6 +1437,7 @@ function renderBottomNav(isBiz) {
         <button class="nav-item ${state.activeTab === t.id ? 'active' : ''}" onclick="switchTab('${t.id}')">
           ${icon(t.icon)}
           <span>${t.label}</span>
+          ${t.badge ? '<div class="nav-badge"></div>' : ''}
         </button>
       `).join('')}
     </div>
@@ -1403,10 +1489,17 @@ function renderWorkerCard(w) {
     return skill ? skill.name : '';
   }).filter(Boolean);
   
+  const avatarContent = w.avatar_url 
+    ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    : getInitials(w.name);
+  const avatarStyle = w.avatar_url 
+    ? 'overflow:hidden' 
+    : '';
+  
   return `
     <div class="worker-card" onclick="viewWorker('${w.id}')">
       <div class="worker-card-row">
-        <div class="avatar ${w.availability === 'storm_response' ? 'blue' : ''}">${getInitials(w.name)}</div>
+        <div class="avatar ${w.availability === 'storm_response' ? 'blue' : ''}" style="${avatarStyle}">${avatarContent}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <span class="worker-name">${w.name}</span>
@@ -1435,11 +1528,15 @@ function renderWorkerProfile(w) {
     return skill ? skill.name : '';
   }).filter(Boolean);
   
+  const avatarContent = w.avatar_url 
+    ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    : `<span style="color:#fff;font-size:20px;font-weight:700">${getInitials(w.name)}</span>`;
+  
   return `
     <div class="profile-view-header">
       <button class="auth-back" onclick="state.viewingWorker=null;render()">&larr; Back</button>
       <div style="display:flex;gap:14px;align-items:center">
-        <div class="avatar" style="width:60px;height:60px;border-radius:30px;font-size:20px;background:rgba(255,255,255,0.2)">${getInitials(w.name)}</div>
+        <div style="width:60px;height:60px;border-radius:30px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarContent}</div>
         <div>
           <div style="font-size:20px;font-weight:700">${w.name}</div>
           <div style="font-size:13px;opacity:0.8;margin-top:2px">${w.location_text || 'Location not set'}</div>
@@ -1466,12 +1563,19 @@ function renderWorkerProfile(w) {
         <div class="profile-section-title">Skills</div>
         <div class="badge-wrap">${workerSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('') || '<span style="color:var(--gray-500);font-size:13px">No skills added yet</span>'}</div>
       </div>
+      <div class="profile-section" id="worker-photos-section">
+        <div class="profile-section-title">Work Photos</div>
+        <div id="worker-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          <div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px;grid-column:1/-1">Loading photos...</div>
+        </div>
+      </div>
       <div style="padding:0 16px 16px">
         <button class="btn btn-primary" style="margin-bottom:8px" onclick="startChat('${w.id}')">Send Message</button>
         <button class="btn btn-secondary" onclick="saveWorker('${w.id}')">Save to Crew List</button>
       </div>
     </div>
   `;
+  // Note: work photos will be loaded async after render
 }
 
 // ============================================
@@ -1552,26 +1656,70 @@ function renderMyJobs() {
 // MESSAGES
 // ============================================
 function renderMessages() {
+  // If we're in a chat, show the chat view
+  if (state.chattingWith) return renderChat();
+  
+  // Otherwise show conversations list
   return `
     <div class="page-padding">
       <div class="page-title">Messages</div>
     </div>
-    <div>
+    <div id="conversations-list">
       ${state.conversations.length ? state.conversations.map(c => `
-        <div class="msg-item ${c.unread ? 'unread' : ''}">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span class="msg-name">${c.name}</span>
-            <span class="msg-time">${c.time}</span>
+        <div class="msg-item ${c.unread ? 'unread' : ''}" onclick="openChat('${c.userId}', '${c.name.replace(/'/g, "\\'")}')">
+          <div style="display:flex;gap:10px;align-items:center">
+            <div class="avatar" style="width:40px;height:40px;border-radius:20px;font-size:13px">${getInitials(c.name)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="msg-name">${c.name}</span>
+                <span class="msg-time">${c.time}</span>
+              </div>
+              <div class="msg-preview">${c.preview}</div>
+            </div>
+            ${c.unread ? '<div style="width:10px;height:10px;border-radius:5px;background:var(--green);flex-shrink:0"></div>' : ''}
           </div>
-          <div class="msg-preview">${c.preview}</div>
         </div>
       `).join('') : `
         <div class="empty-state">
           <div class="empty-state-icon">&#128172;</div>
           <h3>No messages yet</h3>
-          <p>${state.profile?.user_type === 'business' ? 'Message a worker to start a conversation.' : 'When a company reaches out, it\'ll show up here.'}</p>
+          <p>${state.profile?.user_type === 'business' ? 'Find a worker and tap "Send Message" to start a conversation.' : 'When a company reaches out, it\'ll show up here.'}</p>
         </div>
       `}
+    </div>
+  `;
+}
+
+function renderChat() {
+  const c = state.chattingWith;
+  return `
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--gray-200);background:var(--white);display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <button style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px" onclick="closeChat()">←</button>
+        <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(c.name)}</div>
+        <div>
+          <div style="font-weight:700;font-size:14px">${c.name}</div>
+          <div style="font-size:11px;color:var(--gray-500)">${c.location || 'CrewFinder'}</div>
+        </div>
+      </div>
+      <div class="chat-messages" id="chat-messages">
+        ${state.chatMessages.length ? state.chatMessages.map(m => `
+          <div class="chat-bubble ${m.sender_id === state.user.id ? 'sent' : 'received'}">
+            ${m.content}
+          </div>
+          <div style="font-size:10px;color:var(--gray-400);${m.sender_id === state.user.id ? 'text-align:right' : ''};margin-top:-4px;margin-bottom:4px">${timeAgo(m.created_at)}</div>
+        `).join('') : `
+          <div style="text-align:center;padding:40px 20px;color:var(--gray-400);font-size:13px">
+            Start the conversation — say hello!
+          </div>
+        `}
+      </div>
+      <div class="chat-input-bar">
+        <input id="chat-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMessage()">
+        <button class="chat-send-btn" onclick="sendMessage()">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
     </div>
   `;
 }
@@ -1657,10 +1805,14 @@ function renderMyProfile() {
     }
   }
   
+  const avatarContent = p.avatar_url 
+    ? `<img src="${p.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    : `<span style="color:#fff;font-size:20px;font-weight:700">${getInitials(p.name)}</span>`;
+  
   return `
     <div class="profile-view-header">
       <div style="display:flex;gap:14px;align-items:center">
-        <div class="avatar" style="width:60px;height:60px;border-radius:30px;font-size:20px;background:rgba(255,255,255,0.2)">${getInitials(p.name)}</div>
+        <div style="width:60px;height:60px;border-radius:30px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarContent}</div>
         <div>
           <div style="font-size:20px;font-weight:700">${isWorker ? p.name : (p.company_name || p.name)}</div>
           <div style="font-size:13px;opacity:0.8;margin-top:2px">${p.location_text || 'Location not set'} · ${isWorker ? 'Worker' : 'Business'}</div>
@@ -1680,6 +1832,12 @@ function renderMyProfile() {
       <div class="profile-section">
         <div class="profile-section-title">Skills</div>
         <div class="badge-wrap">${workerSkills.length ? workerSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('') : '<span style="color:var(--gray-500);font-size:13px">No skills added yet</span>'}</div>
+      </div>
+      <div class="profile-section" id="my-photos-section">
+        <div class="profile-section-title">Work Photos</div>
+        <div id="my-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          <div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">Loading...</div>
+        </div>
       </div>
       ` : `
       <div class="profile-section">
@@ -1719,7 +1877,29 @@ function switchTab(tab) {
   state.activeTab = tab;
   state.viewingWorker = null;
   state.viewingJob = null;
+  state.chattingWith = null;
   render();
+  
+  // Load work photos for my profile
+  if (tab === 'profile' && state.profile?.user_type === 'worker') {
+    loadMyPhotos();
+  }
+}
+
+async function loadMyPhotos() {
+  const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
+  const grid = document.getElementById('my-photos-grid');
+  if (grid) {
+    if (photos && photos.length > 0) {
+      grid.innerHTML = photos.map(p => `
+        <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
+          <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">
+        </div>
+      `).join('');
+    } else {
+      grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No work photos yet — add them in Edit Profile</div>';
+    }
+  }
 }
 
 function setTradeFilter(trade) {
@@ -1757,6 +1937,21 @@ function updatePayDisplay() {
 async function viewWorker(id) {
   state.viewingWorker = state.workers.find(w => w.id === id);
   render();
+  
+  // Load work photos async
+  const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', id).order('created_at');
+  const grid = document.getElementById('worker-photos-grid');
+  if (grid) {
+    if (photos && photos.length > 0) {
+      grid.innerHTML = photos.map(p => `
+        <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
+          <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open('${p.photo_url}','_blank')">
+        </div>
+      `).join('');
+    } else {
+      grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No work photos yet</div>';
+    }
+  }
 }
 
 function showPostJob() {
@@ -1769,7 +1964,171 @@ function showPostJob() {
 }
 
 async function startChat(userId) {
-  showToast('Messaging coming soon! For now, connect directly.');
+  // Look up the user's name
+  const target = state.workers.find(w => w.id === userId);
+  const name = target?.name || target?.company_name || 'User';
+  const location = target?.location_text || '';
+  openChat(userId, name, location);
+}
+
+async function openChat(userId, name, location) {
+  // Build conversation ID (sorted pair so it's always the same)
+  const ids = [state.user.id, userId].sort();
+  const conversationId = ids.join('_');
+  
+  state.chattingWith = { userId, name, location: location || '', conversationId };
+  state.chatMessages = [];
+  
+  render();
+  
+  // Load existing messages
+  const { data: messages } = await db
+    .from('messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true });
+  
+  state.chatMessages = messages || [];
+  render();
+  scrollChatToBottom();
+  
+  // Mark messages as read
+  await db
+    .from('messages')
+    .update({ is_read: true })
+    .eq('conversation_id', conversationId)
+    .eq('receiver_id', state.user.id)
+    .eq('is_read', false);
+  
+  // Subscribe to new messages in real-time
+  if (state.chatSubscription) {
+    state.chatSubscription.unsubscribe();
+  }
+  
+  state.chatSubscription = db
+    .channel('chat_' + conversationId)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      filter: 'conversation_id=eq.' + conversationId,
+    }, (payload) => {
+      // Only add if we don't already have it
+      if (!state.chatMessages.find(m => m.id === payload.new.id)) {
+        state.chatMessages.push(payload.new);
+        render();
+        scrollChatToBottom();
+        // Mark as read if we're the receiver
+        if (payload.new.receiver_id === state.user.id) {
+          db.from('messages').update({ is_read: true }).eq('id', payload.new.id);
+        }
+      }
+    })
+    .subscribe();
+}
+
+function closeChat() {
+  if (state.chatSubscription) {
+    state.chatSubscription.unsubscribe();
+    state.chatSubscription = null;
+  }
+  state.chattingWith = null;
+  state.chatMessages = [];
+  // Reload conversations
+  loadConversations();
+  render();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const content = input?.value?.trim();
+  if (!content || !state.chattingWith) return;
+  
+  input.value = '';
+  
+  const msg = {
+    conversation_id: state.chattingWith.conversationId,
+    sender_id: state.user.id,
+    receiver_id: state.chattingWith.userId,
+    content: content,
+  };
+  
+  // Optimistic add
+  const optimistic = { ...msg, id: Date.now(), created_at: new Date().toISOString(), is_read: false };
+  state.chatMessages.push(optimistic);
+  render();
+  scrollChatToBottom();
+  
+  // Focus input again
+  setTimeout(() => document.getElementById('chat-input')?.focus(), 50);
+  
+  // Actually send
+  const { error } = await db.from('messages').insert(msg);
+  if (error) {
+    showToast('Failed to send message');
+    state.chatMessages.pop();
+    render();
+  }
+}
+
+function scrollChatToBottom() {
+  setTimeout(() => {
+    const el = document.getElementById('chat-messages');
+    if (el) el.scrollTop = el.scrollHeight;
+  }, 50);
+}
+
+async function loadConversations() {
+  // Get all messages where user is sender or receiver
+  const { data: messages } = await db
+    .from('messages')
+    .select('*')
+    .or(`sender_id.eq.${state.user.id},receiver_id.eq.${state.user.id}`)
+    .order('created_at', { ascending: false });
+  
+  if (!messages || !messages.length) {
+    state.conversations = [];
+    return;
+  }
+  
+  // Group by conversation
+  const convos = {};
+  messages.forEach(m => {
+    if (!convos[m.conversation_id]) {
+      convos[m.conversation_id] = {
+        conversationId: m.conversation_id,
+        lastMessage: m,
+        unreadCount: 0,
+        otherUserId: m.sender_id === state.user.id ? m.receiver_id : m.sender_id,
+      };
+    }
+    if (!m.is_read && m.receiver_id === state.user.id) {
+      convos[m.conversation_id].unreadCount++;
+    }
+  });
+  
+  // Look up names for each conversation
+  const otherIds = [...new Set(Object.values(convos).map(c => c.otherUserId))];
+  const { data: profiles } = await db
+    .from('profiles')
+    .select('id, name, company_name, user_type, location_text')
+    .in('id', otherIds);
+  
+  const profileMap = {};
+  (profiles || []).forEach(p => { profileMap[p.id] = p; });
+  
+  state.conversations = Object.values(convos).map(c => {
+    const other = profileMap[c.otherUserId] || {};
+    const displayName = other.user_type === 'business' ? (other.company_name || other.name) : other.name;
+    return {
+      userId: c.otherUserId,
+      name: displayName || 'Unknown',
+      location: other.location_text || '',
+      preview: c.lastMessage.content,
+      time: timeAgo(c.lastMessage.created_at),
+      unread: c.unreadCount > 0,
+    };
+  });
 }
 
 async function saveWorker(userId) {
@@ -1790,7 +2149,29 @@ async function respondToJob(jobId) {
       job_id: jobId,
       worker_id: state.user.id,
     });
-    showToast("Response sent! The company can now see you're interested.");
+    
+    // Find the job and its business owner
+    const job = state.jobs.find(j => j.id === jobId);
+    if (job) {
+      const bizId = job.business_id;
+      const bizName = job.profiles?.company_name || job.profiles?.name || 'Company';
+      const bizLocation = job.location_text || '';
+      
+      // Auto-send an intro message
+      const ids = [state.user.id, bizId].sort();
+      const conversationId = ids.join('_');
+      
+      await db.from('messages').insert({
+        conversation_id: conversationId,
+        sender_id: state.user.id,
+        receiver_id: bizId,
+        content: `Hi! I'm interested in your "${job.title}" position. I'm ${state.profile.name} — ${formatPay(state.profile.pay_min, state.profile.pay_max)}, ${availLabel(state.profile.availability)}. Let me know if you'd like to chat!`,
+      });
+      
+      showToast("Interest sent with a message! Check your Messages tab.");
+    } else {
+      showToast("Response sent!");
+    }
   } catch (e) {
     showToast("You've already responded to this job.");
   }
@@ -1930,7 +2311,7 @@ async function handleLogout() {
 // ============================================
 async function nextProfileStep() {
   const isWorker = state.profile?.user_type === 'worker';
-  const totalSteps = isWorker ? 4 : 1;
+  const totalSteps = isWorker ? 5 : 1;
   
   if (isWorker && state.profileStep === 1) {
     // Save basic info
@@ -1972,6 +2353,13 @@ async function nextProfileStep() {
   } else if (isWorker && state.profileStep === 4) {
     // Save availability
     await db.from('profiles').update({ availability: state.profile.availability }).eq('id', state.user.id);
+    
+    // Pre-load work photos for step 5
+    const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
+    state.workPhotos = photos || [];
+    
+  } else if (isWorker && state.profileStep === 5) {
+    // Work photos step — nothing to save, photos are uploaded individually
   }
   
   if (!isWorker) {
@@ -2038,10 +2426,105 @@ async function postJob(title, pay, desc) {
   }
 }
 
+// ============================================
+// PHOTO UPLOADS
+// ============================================
+async function uploadAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const status = document.getElementById('avatar-status');
+  if (status) status.textContent = 'Uploading...';
+  
+  try {
+    const ext = file.name.split('.').pop();
+    const path = `${state.user.id}/avatar.${ext}`;
+    
+    const { error: uploadError } = await db.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true });
+    
+    if (uploadError) throw uploadError;
+    
+    const { data: { publicUrl } } = db.storage.from('avatars').getPublicUrl(path);
+    
+    // Add cache buster
+    const url = publicUrl + '?t=' + Date.now();
+    
+    await db.from('profiles').update({ avatar_url: url }).eq('id', state.user.id);
+    state.profile.avatar_url = url;
+    
+    if (status) status.textContent = 'Photo updated!';
+    
+    // Update preview
+    const preview = document.getElementById('avatar-preview');
+    if (preview) preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
+    
+  } catch (e) {
+    console.error('Avatar upload error:', e);
+    if (status) status.textContent = 'Upload failed — try again';
+    showToast('Photo upload failed: ' + (e.message || 'Unknown error'));
+  }
+}
+
+async function uploadWorkPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const status = document.getElementById('photo-status');
+  if (status) status.textContent = 'Uploading...';
+  
+  try {
+    const ext = file.name.split('.').pop();
+    const path = `${state.user.id}/${Date.now()}.${ext}`;
+    
+    const { error: uploadError } = await db.storage
+      .from('work-photos')
+      .upload(path, file);
+    
+    if (uploadError) throw uploadError;
+    
+    const { data: { publicUrl } } = db.storage.from('work-photos').getPublicUrl(path);
+    
+    // Save to work_photos table
+    const { data: photo, error: dbError } = await db.from('work_photos').insert({
+      worker_id: state.user.id,
+      photo_url: publicUrl,
+    }).select().single();
+    
+    if (dbError) throw dbError;
+    
+    if (!state.workPhotos) state.workPhotos = [];
+    state.workPhotos.push(photo);
+    
+    if (status) status.textContent = 'Photo added!';
+    render();
+    
+  } catch (e) {
+    console.error('Work photo upload error:', e);
+    if (status) status.textContent = 'Upload failed — try again';
+    showToast('Photo upload failed: ' + (e.message || 'Unknown error'));
+  }
+}
+
+async function deleteWorkPhoto(photoId) {
+  const photo = (state.workPhotos || []).find(p => p.id === photoId);
+  if (!photo) return;
+  
+  await db.from('work_photos').delete().eq('id', photoId);
+  state.workPhotos = (state.workPhotos || []).filter(p => p.id !== photoId);
+  
+  showToast('Photo removed');
+  render();
+}
+
 async function editProfile() {
   // Load current skills into selectedSkills
   const { data: mySkills } = await db.from('worker_skills').select('skill_id').eq('worker_id', state.user.id);
   state.selectedSkills = new Set((mySkills || []).map(s => s.skill_id));
+  // Load work photos
+  const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
+  state.workPhotos = photos || [];
   // Reload profile to get latest data
   await loadProfile();
   state.profileStep = 1;
@@ -2078,6 +2561,9 @@ async function loadData() {
     .eq('is_active', true)
     .order('created_at', { ascending: false });
   state.jobs = jobs || [];
+  
+  // Load conversations
+  await loadConversations();
 }
 
 // ============================================
@@ -2085,7 +2571,6 @@ async function loadData() {
 // ============================================
 async function init() {
   try {
-    // Check for existing session
     const { data: { session } } = await db.auth.getSession();
     
     if (session?.user) {
@@ -2099,8 +2584,23 @@ async function init() {
         await loadData();
         state.activeTab = profile.user_type === 'business' ? 'search' : 'feed';
         state.currentScreen = 'main';
+        
+        // Subscribe to incoming messages globally
+        db.channel('global_messages_' + state.user.id)
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: 'receiver_id=eq.' + state.user.id,
+          }, (payload) => {
+            // Refresh conversations if we're not in the chat with this person
+            if (!state.chattingWith || state.chattingWith.conversationId !== payload.new.conversation_id) {
+              loadConversations().then(() => render());
+              showToast('New message received!');
+            }
+          })
+          .subscribe();
       } else {
-        // Profile doesn't exist — user got stuck during signup
         await db.auth.signOut();
         state.currentScreen = 'splash';
       }
@@ -2109,7 +2609,6 @@ async function init() {
     }
   } catch (e) {
     console.error('Init error:', e);
-    // If anything fails, just show splash
     try { await db.auth.signOut(); } catch (_) {}
     state.currentScreen = 'splash';
   }
