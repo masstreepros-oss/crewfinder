@@ -918,7 +918,7 @@ body {
   position: fixed;
   bottom: 80px;
   left: 50%;
-  transform: translateX(-50%) translateY(100px);
+  transform: translateX(-50%);
   background: var(--dark);
   color: var(--white);
   padding: 12px 24px;
@@ -926,12 +926,17 @@ body {
   font-size: 14px;
   font-weight: 500;
   z-index: 9999;
-  transition: transform 0.3s ease;
   max-width: 90%;
   text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
 }
 
-.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.show {
+  opacity: 1;
+  pointer-events: auto;
+}
 
 /* ============================================
    PAGE-LEVEL STYLES
@@ -962,7 +967,7 @@ body {
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" style="opacity:0;pointer-events:none"></div>
 
 <script>
 // ============================================
@@ -1006,11 +1011,16 @@ let toastTimer = null;
 function showToast(msg) {
   const t = document.getElementById('toast');
   if (!t) return;
-  if (toastTimer) clearTimeout(toastTimer);
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
   t.textContent = msg;
-  t.classList.add('show');
+  t.style.opacity = '1';
+  t.style.pointerEvents = 'auto';
   toastTimer = setTimeout(() => {
-    t.classList.remove('show');
+    t.style.opacity = '0';
+    t.style.pointerEvents = 'none';
     toastTimer = null;
   }, 2500);
 }
@@ -1790,7 +1800,18 @@ function renderStorm() {
 // ============================================
 function renderMyProfile() {
   const p = state.profile;
-  if (!p) return '<div class="loading-screen"><div class="spinner"></div></div>';
+  if (!p) {
+    // Try to reload profile
+    loadProfile().then(() => { if (state.profile) render(); });
+    return `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#128100;</div>
+        <h3>Loading profile...</h3>
+        <p>If this doesn't load, try logging out and back in.</p>
+        <button class="btn btn-outline" style="width:auto;margin:16px auto 0" onclick="handleLogout()">Log Out</button>
+      </div>
+    `;
+  }
   const isWorker = p.user_type === 'worker';
   
   // Get skills from state.workers if available, otherwise use selectedSkills
@@ -1893,18 +1914,24 @@ function switchTab(tab) {
 }
 
 async function loadMyPhotos() {
-  const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
-  const grid = document.getElementById('my-photos-grid');
-  if (grid) {
-    if (photos && photos.length > 0) {
-      grid.innerHTML = photos.map(p => `
-        <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
-          <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">
-        </div>
-      `).join('');
-    } else {
-      grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No work photos yet — add them in Edit Profile</div>';
+  try {
+    const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
+    const grid = document.getElementById('my-photos-grid');
+    if (grid) {
+      if (photos && photos.length > 0) {
+        grid.innerHTML = photos.map(p => `
+          <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
+            <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">
+          </div>
+        `).join('');
+      } else {
+        grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No work photos yet — add them in Edit Profile</div>';
+      }
     }
+  } catch (e) {
+    console.error('Error loading photos:', e);
+    const grid = document.getElementById('my-photos-grid');
+    if (grid) grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No work photos yet</div>';
   }
 }
 
@@ -2530,24 +2557,30 @@ async function loadProfile() {
 }
 
 async function loadData() {
-  // Load workers (with their skills)
-  const { data: workers } = await db
-    .from('profiles')
-    .select('*, worker_skills(*)')
-    .eq('user_type', 'worker')
-    .order('rating_avg', { ascending: false });
-  state.workers = workers || [];
+  try {
+    // Load workers (with their skills)
+    const { data: workers } = await db
+      .from('profiles')
+      .select('*, worker_skills(*)')
+      .eq('user_type', 'worker')
+      .order('rating_avg', { ascending: false });
+    state.workers = workers || [];
+  } catch (e) { console.error('Error loading workers:', e); state.workers = []; }
   
-  // Load jobs (with business info and skills)
-  const { data: jobs } = await db
-    .from('jobs')
-    .select('*, profiles!business_id(name, company_name), job_skills(*)')
-    .eq('is_active', true)
-    .order('created_at', { ascending: false });
-  state.jobs = jobs || [];
+  try {
+    // Load jobs (with business info and skills)
+    const { data: jobs } = await db
+      .from('jobs')
+      .select('*, profiles!business_id(name, company_name), job_skills(*)')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+    state.jobs = jobs || [];
+  } catch (e) { console.error('Error loading jobs:', e); state.jobs = []; }
   
-  // Load conversations
-  await loadConversations();
+  try {
+    // Load conversations
+    await loadConversations();
+  } catch (e) { console.error('Error loading conversations:', e); state.conversations = []; }
 }
 
 // ============================================
