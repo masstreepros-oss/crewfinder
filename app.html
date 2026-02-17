@@ -1455,6 +1455,7 @@ function renderMain(app) {
     switch (state.activeTab) {
       case 'search': content = renderWorkerSearch(); break;
       case 'jobs': content = renderMyJobs(); break;
+      case 'post-job': content = renderPostJob(); break;
       case 'messages': content = renderMessages(); break;
       case 'storm': content = renderStorm(); break;
       case 'profile': content = renderMyProfile(); break;
@@ -2050,12 +2051,169 @@ async function viewWorker(id) {
 }
 
 function showPostJob() {
-  // Simple job posting - we'll enhance this later
-  const title = prompt('Job title (e.g. "Climber Needed Tomorrow"):');
-  if (!title) return;
-  const pay = prompt('Pay range (e.g. "$30-35"):');
-  const desc = prompt('Quick description:');
-  postJob(title, pay, desc);
+  state.activeTab = 'post-job';
+  state.postJobData = {
+    title: '',
+    description: '',
+    pay_min: '',
+    pay_max: '',
+    job_type: 'on_demand',
+    location_text: state.profile?.location_text || '',
+    is_urgent: false,
+    selectedSkills: new Set(),
+  };
+  render();
+}
+
+function renderPostJob() {
+  const d = state.postJobData;
+  const trades = {};
+  state.skills.forEach(s => {
+    if (!trades[s.trade]) trades[s.trade] = [];
+    trades[s.trade].push(s);
+  });
+  
+  return `
+    <div style="padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span class="page-title" style="margin:0">Post a Job</span>
+        <button style="background:none;border:none;color:var(--gray-500);font-size:14px;cursor:pointer;font-family:inherit" onclick="switchTab('jobs')">Cancel</button>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Job Title</label>
+        <input class="form-input" id="job-title" type="text" placeholder="e.g. Climber Needed Tomorrow" value="${d.title}">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">What type of work?</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${[
+            { val: 'on_demand', label: 'On-Demand' },
+            { val: 'short_term', label: 'Short-Term' },
+            { val: 'seasonal', label: 'Seasonal' },
+            { val: 'storm_response', label: 'Storm Response' },
+          ].map(t => `
+            <button class="filter-chip ${d.job_type === t.val ? 'active' : ''}" onclick="state.postJobData.job_type='${t.val}';render()">${t.label}</button>
+          `).join('')}
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Pay Range ($/hr)</label>
+        <div class="pay-range-row">
+          <input type="number" id="job-pay-min" placeholder="25" value="${d.pay_min}">
+          <span>to</span>
+          <input type="number" id="job-pay-max" placeholder="40" value="${d.pay_max}">
+          <span>/hr</span>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input class="form-input" id="job-location" type="text" placeholder="Medway, MA" value="${d.location_text}">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-input" id="job-desc" rows="3" placeholder="What's the job? What should workers expect?">${d.description}</textarea>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Skills Needed</label>
+        <div class="form-hint" style="margin-bottom:8px">Tap the skills required for this job — workers with matching skills will see it first</div>
+        ${Object.entries(trades).map(([trade, skills]) => `
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:6px">${trade}</div>
+            <div class="skill-grid">
+              ${skills.map(s => `
+                <button class="skill-chip ${d.selectedSkills.has(s.id) ? 'selected' : ''}" onclick="toggleJobSkill(${s.id})">${s.name}</button>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <div class="form-group">
+        <button class="avail-option ${d.is_urgent ? 'selected' : ''}" onclick="state.postJobData.is_urgent=!state.postJobData.is_urgent;render()" style="margin-bottom:0">
+          <div class="avail-radio"></div>
+          <div>
+            <div class="avail-label">Mark as Urgent</div>
+            <div class="avail-desc">Highlights the job so workers know you need help fast</div>
+          </div>
+        </button>
+      </div>
+      
+      <button class="btn btn-primary" id="post-job-btn" onclick="handlePostJob(this)" style="margin-top:8px">Post Job</button>
+    </div>
+  `;
+}
+
+function toggleJobSkill(skillId) {
+  if (state.postJobData.selectedSkills.has(skillId)) {
+    state.postJobData.selectedSkills.delete(skillId);
+  } else {
+    state.postJobData.selectedSkills.add(skillId);
+  }
+  // Toggle just the chip without full re-render
+  const chips = document.querySelectorAll('.skill-chip');
+  chips.forEach(chip => {
+    const match = chip.getAttribute('onclick')?.match(/toggleJobSkill\((\d+)\)/);
+    if (match) {
+      const id = parseInt(match[1]);
+      chip.classList.toggle('selected', state.postJobData.selectedSkills.has(id));
+    }
+  });
+}
+
+async function handlePostJob(btn) {
+  const title = document.getElementById('job-title')?.value?.trim();
+  if (!title) { showToast('Add a job title'); return; }
+  
+  const payMin = parseInt(document.getElementById('job-pay-min')?.value || 0) * 100;
+  const payMax = parseInt(document.getElementById('job-pay-max')?.value || 0) * 100;
+  const location = document.getElementById('job-location')?.value?.trim();
+  const desc = document.getElementById('job-desc')?.value?.trim();
+  const d = state.postJobData;
+  
+  btn.disabled = true;
+  btn.textContent = 'Posting...';
+  
+  try {
+    const { data: job, error } = await db.from('jobs').insert({
+      business_id: state.user.id,
+      title: title,
+      description: desc,
+      pay_min: payMin || 2500,
+      pay_max: payMax || payMin || 3500,
+      job_type: d.job_type,
+      location_text: location || state.profile?.location_text,
+      is_urgent: d.is_urgent,
+      is_active: true,
+    }).select().single();
+    
+    if (error) throw error;
+    
+    // Add job skills
+    if (job && d.selectedSkills.size > 0) {
+      const jobSkills = Array.from(d.selectedSkills).map(skillId => ({
+        job_id: job.id,
+        skill_id: skillId,
+      }));
+      await db.from('job_skills').insert(jobSkills);
+    }
+    
+    showToast('Job posted! Workers can see it now.');
+    await loadData();
+    state.activeTab = 'jobs';
+    render();
+    
+  } catch (e) {
+    console.error('Post job error:', e);
+    showToast('Error posting: ' + (e.message || 'Try again'));
+    btn.disabled = false;
+    btn.textContent = 'Post Job';
+  }
 }
 
 async function startChat(userId) {
@@ -2483,29 +2641,6 @@ function prevProfileStep() {
 // ============================================
 // JOB POSTING
 // ============================================
-async function postJob(title, pay, desc) {
-  const payParts = pay?.match(/(\d+)/g) || [25, 35];
-  const { error } = await db.from('jobs').insert({
-    business_id: state.user.id,
-    title,
-    description: desc,
-    pay_min: parseInt(payParts[0] || 25) * 100,
-    pay_max: parseInt(payParts[1] || payParts[0] || 35) * 100,
-    job_type: 'on_demand',
-    location_text: state.profile?.location_text,
-    is_urgent: true,
-    is_active: true,
-  });
-  
-  if (error) {
-    showToast('Error posting job: ' + error.message);
-  } else {
-    showToast('Job posted! Workers will be able to see it.');
-    await loadData();
-    render();
-  }
-}
-
 // ============================================
 // PHOTO UPLOADS
 // ============================================
