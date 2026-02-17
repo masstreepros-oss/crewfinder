@@ -2001,7 +2001,7 @@ async function loadProfile() {
 
 async function loadData() {
   // Load workers (with their skills)
-  const { data: workers } = await supabase
+  const { data: workers } = await db
     .from('profiles')
     .select('*, worker_skills(*)')
     .eq('user_type', 'worker')
@@ -2010,7 +2010,7 @@ async function loadData() {
   state.workers = workers || [];
   
   // Load jobs (with business info and skills)
-  const { data: jobs } = await supabase
+  const { data: jobs } = await db
     .from('jobs')
     .select('*, profiles!business_id(name, company_name), job_skills(*)')
     .eq('is_active', true)
