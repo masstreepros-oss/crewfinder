@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1A3C2A">
 <title>CrewFinder — On-Demand Skilled Labor for Outdoor Trades</title>
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="manifest" href="/manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -15,7 +19,6 @@
   html { scroll-behavior: smooth; }
   body { font-family: 'Outfit', -apple-system, sans-serif; color: var(--dark); background: var(--white); line-height: 1.6; overflow-x: hidden; }
 
-  /* HERO */
   .hero {
     background: linear-gradient(170deg, #050D09 0%, var(--forest) 30%, var(--forest-mid) 70%, var(--green) 100%);
     min-height: 100vh; display: flex; flex-direction: column; position: relative; overflow: hidden;
@@ -41,16 +44,24 @@
   .hero-sub { font-size:clamp(16px,2.2vw,20px); color:rgba(255,255,255,0.7); max-width:600px; margin-bottom:40px; line-height:1.6; animation:fadeInUp 0.8s ease 0.2s both; }
   @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
 
-  .hero-form { display:flex; gap:10px; width:100%; max-width:500px; animation:fadeInUp 0.8s ease 0.3s both; }
-  .hero-form input { flex:1; padding:16px 20px; border-radius:12px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); color:#fff; font-size:16px; font-family:inherit; outline:none; backdrop-filter:blur(10px); transition:all 0.3s; }
-  .hero-form input::placeholder { color:rgba(255,255,255,0.4); }
-  .hero-form input:focus { border-color:var(--lime); background:rgba(255,255,255,0.12); }
-  .hero-form button { padding:16px 28px; background:var(--lime); color:var(--forest); border:none; border-radius:12px; font-weight:700; font-size:16px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all 0.3s; }
-  .hero-form button:hover { background:#6EC86E; transform:translateY(-1px); box-shadow:0 8px 24px rgba(92,184,92,0.3); }
+  .hero-buttons { display:flex; flex-direction:column; gap:12px; width:100%; max-width:400px; animation:fadeInUp 0.8s ease 0.3s both; }
+  .btn-launch {
+    display:block; padding:18px 32px; background:var(--lime); color:var(--forest); border:none; border-radius:14px;
+    font-weight:800; font-size:18px; cursor:pointer; font-family:inherit; text-align:center; text-decoration:none;
+    transition:all 0.3s; box-shadow:0 4px 20px rgba(92,184,92,0.3);
+  }
+  .btn-launch:hover { background:#6EC86E; transform:translateY(-2px); box-shadow:0 8px 32px rgba(92,184,92,0.4); }
+  .btn-secondary {
+    display:flex; gap:12px; align-items:center; justify-content:center;
+    padding:14px 24px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2);
+    border-radius:14px; color:#fff; font-weight:600; font-size:15px; cursor:pointer; font-family:inherit;
+    text-decoration:none; transition:all 0.3s;
+  }
+  .btn-secondary:hover { background:rgba(255,255,255,0.15); }
 
-  .hero-tagline { margin-top:24px; animation:fadeInUp 0.8s ease 0.4s both; font-size:14px; color:rgba(255,255,255,0.45); }
+  .hero-tagline { margin-top:28px; animation:fadeInUp 0.8s ease 0.4s both; font-size:14px; color:rgba(255,255,255,0.45); }
   .hero-tagline strong { color:rgba(255,255,255,0.7); }
-  .hero-trades { display:flex; gap:24px; margin-top:36px; animation:fadeInUp 0.8s ease 0.5s both; }
+  .hero-trades { display:flex; gap:24px; margin-top:36px; animation:fadeInUp 0.8s ease 0.5s both; flex-wrap:wrap; justify-content:center; }
   .hero-trades span { color:rgba(255,255,255,0.3); font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:1px; }
 
   /* SECTIONS */
@@ -82,41 +93,22 @@
   .value-card h3 { font-size:16px; font-weight:700; color:var(--forest); margin-bottom:6px; }
   .value-card p { font-size:13px; color:var(--gray-500); line-height:1.5; }
 
-  /* SKILLS */
-  .skills-section { padding:80px 24px; max-width:1000px; margin:0 auto; }
-  .skill-tags { display:flex; flex-wrap:wrap; gap:8px; margin-top:32px; }
-  .skill-tag { padding:8px 16px; border-radius:24px; font-size:13px; font-weight:600; border:1px solid; cursor:default; }
-  .skill-tag.tree { background:#E8F5E9; color:#2D7A3A; border-color:#C8E6C9; }
-  .skill-tag.land { background:#FFF3E0; color:#E65100; border-color:#FFE0B2; }
-  .skill-tag.hard { background:#E3F2FD; color:#1565C0; border-color:#BBDEFB; }
-  .skill-tag.irr { background:#F3E5F5; color:#6A1B9A; border-color:#E1BEE7; }
-  .skill-tag.cert { background:#FFF8E1; color:#F57F17; border-color:#FFF9C4; }
-
-  /* STORM */
-  .storm-section { background:linear-gradient(135deg, #0D47A1, #1976D2); padding:80px 24px; color:#fff; text-align:center; }
-  .storm-section h2 { font-size:clamp(28px,4vw,42px); font-weight:800; letter-spacing:-1px; margin-bottom:16px; }
-  .storm-section p { font-size:17px; opacity:0.85; max-width:600px; margin:0 auto 32px; line-height:1.6; }
-  .storm-features { display:flex; justify-content:center; gap:40px; flex-wrap:wrap; }
-  .storm-feat { display:flex; align-items:center; gap:8px; font-weight:600; font-size:15px; }
-
   /* CTA */
-  .final-cta { background:var(--forest); padding:80px 24px; text-align:center; }
-  .final-cta h2 { font-size:clamp(28px,4vw,42px); font-weight:800; color:#fff; letter-spacing:-1px; margin-bottom:12px; }
-  .final-cta p { font-size:17px; color:rgba(255,255,255,0.6); max-width:540px; margin:0 auto 36px; }
-  .final-cta .hero-form { margin:0 auto; }
+  .final-cta {
+    padding:80px 24px; text-align:center; max-width:600px; margin:0 auto;
+  }
+  .final-cta h2 { font-size:clamp(28px,4vw,40px); font-weight:800; color:var(--forest); letter-spacing:-1px; margin-bottom:16px; }
+  .final-cta p { font-size:17px; color:var(--gray-500); margin-bottom:32px; line-height:1.6; }
+  .final-cta .btn-launch { display:inline-block; width:auto; }
 
   /* FOOTER */
-  .footer { background:#050D09; padding:40px 24px; text-align:center; color:rgba(255,255,255,0.3); font-size:13px; }
+  .footer { background:var(--forest); color:rgba(255,255,255,0.35); text-align:center; padding:32px 24px; font-size:13px; }
   .footer a { color:rgba(255,255,255,0.5); text-decoration:none; }
-  .footer a:hover { color:var(--lime); }
 
   @media (max-width:600px) {
     .nav { padding:16px 20px; }
     .nav-links { gap:6px; }
     .nav-cta { padding:8px 14px; font-size:12px; }
-    .hero-form { flex-direction:column; }
-    .hero-trades { gap:16px; }
-    .storm-features { flex-direction:column; align-items:center; gap:16px; }
   }
 </style>
 </head>
@@ -125,43 +117,48 @@
 <section class="hero">
   <nav class="nav">
     <a href="/" class="nav-logo">
-      <svg width="32" height="32" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="10" fill="rgba(255,255,255,0.1)"/><path d="M20 8L12 16h5v8h6v-8h5L20 8z" fill="#5CB85C"/><path d="M14 28h12M16 32h8" stroke="#5CB85C" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg width="28" height="28" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="rgba(255,255,255,0.1)"/><path d="M20 8L12 16h5v8h6v-8h5L20 8z" fill="#5CB85C"/><path d="M14 28h12M16 32h8" stroke="#5CB85C" stroke-width="2" stroke-linecap="round"/></svg>
       <span>CrewFinder</span>
     </a>
     <div class="nav-links">
-      <a href="/demo.html" class="nav-cta green">Try the Demo</a>
-      <a href="#join" class="nav-cta">Join Waitlist</a>
+      <a href="/waitlist.html" class="nav-cta">Waitlist</a>
+      <a href="/app.html" class="nav-cta green">Open App →</a>
     </div>
   </nav>
   <div class="hero-content">
-    <div class="hero-badge">Launching Spring 2026</div>
+    <div class="hero-badge">Now Live — Free Early Access</div>
     <h1>Need a climber<br><span>by tomorrow?</span></h1>
-    <p class="hero-sub">CrewFinder is the on-demand marketplace for outdoor trade workers. Find a skilled climber, CDL driver, or ground worker for tomorrow's job &mdash; or pick up last-minute work to fill your schedule. No resumes. Just profiles, ratings, and real skills.</p>
-    <form class="hero-form" id="join" onsubmit="event.preventDefault(); this.innerHTML='<div style=&quot;padding:16px;color:#5CB85C;font-weight:700;font-size:18px&quot;>You\'re on the list! We\'ll be in touch soon.</div>'; return false;">
-      <input type="email" placeholder="Enter your email" required>
-      <button type="submit">Join Waitlist</button>
-    </form>
-    <p class="hero-tagline"><strong>No resumes. No job boards. No guesswork.</strong> Just tap, find, and hire.</p>
-    <div class="hero-trades"><span>Tree Service</span><span>Landscaping</span><span>Hardscaping</span><span>Irrigation</span></div>
+    <p class="hero-sub">CrewFinder connects tree service companies with skilled workers for on-demand labor. Find a climber, CDL driver, or ground crew in minutes — or pick up last-minute work. No resumes. Just profiles, ratings, and real skills.</p>
+    <div class="hero-buttons">
+      <a href="/app.html" class="btn-launch">Open CrewFinder →</a>
+      <a href="/app.html" class="btn-secondary">
+        <span>🏢 I'm a Company — Find Workers</span>
+      </a>
+      <a href="/app.html" class="btn-secondary">
+        <span>👷 I'm a Worker — Find Work</span>
+      </a>
+    </div>
+    <p class="hero-tagline"><strong>Free to use.</strong> No resumes. No job boards. No guesswork.</p>
+    <div class="hero-trades"><span>Tree Service</span><span>Landscaping</span><span>Hardscaping</span><span>Irrigation</span><span>Snow Removal</span></div>
   </div>
 </section>
 
 <section class="how-section">
   <div class="section-label">How It Works</div>
   <h2 class="section-title">Two sides. One tap.</h2>
-  <p class="section-desc">Whether you need to fill a spot on tomorrow's crew or you've got an open day to pick up work &mdash; CrewFinder connects you in minutes, not weeks.</p>
+  <p class="section-desc">Whether you need to fill a spot on tomorrow's crew or you've got an open day to pick up work — CrewFinder connects you in minutes.</p>
   <div class="how-grid">
     <div>
       <div class="how-col-title biz">I Need a Worker</div>
-      <div class="how-step"><div class="how-step-num biz">1</div><div><h3>Post what you need</h3><p>"Need a climber with rigging experience for a 2-day removal in Medway. $30-35/hr." Takes 30 seconds.</p></div></div>
-      <div class="how-step"><div class="how-step-num biz">2</div><div><h3>Browse real profiles, not resumes</h3><p>See skill tags, ratings from other companies, certs, and availability at a glance. No paperwork. No guesswork.</p></div></div>
-      <div class="how-step"><div class="how-step-num biz">3</div><div><h3>Hire, rate, and rehire</h3><p>Message and hire on the spot. Rate the worker after the job. Save the good ones to your go-to crew list for next time.</p></div></div>
+      <div class="how-step"><div class="how-step-num biz">1</div><div><h3>Post what you need</h3><p>"Need a climber with rigging experience for a 2-day removal. $300/day." Takes 30 seconds.</p></div></div>
+      <div class="how-step"><div class="how-step-num biz">2</div><div><h3>Browse real profiles</h3><p>See skills, ratings, work photos, insurance docs, and availability. No paperwork. No guesswork.</p></div></div>
+      <div class="how-step"><div class="how-step-num biz">3</div><div><h3>Hire, rate, and rehire</h3><p>Message and hire on the spot. Rate after the job. Save good ones to your crew list — rebook in one tap.</p></div></div>
     </div>
     <div>
       <div class="how-col-title worker">I Need Work</div>
-      <div class="how-step"><div class="how-step-num worker">1</div><div><h3>Build your profile in 3 minutes</h3><p>No resume. Just check off your skills &mdash; climbing, CDL, rigging, irrigation, whatever you do &mdash; set your rate and when you're available.</p></div></div>
-      <div class="how-step"><div class="how-step-num worker">2</div><div><h3>Get pinged when there's work</h3><p>Got an open Thursday? Companies nearby who need a hand will find you. Get notified, see the pay, and respond instantly.</p></div></div>
-      <div class="how-step"><div class="how-step-num worker">3</div><div><h3>Work, get rated, build your rep</h3><p>Every job builds your profile. High ratings mean more offers and better pay. Your skills speak for themselves.</p></div></div>
+      <div class="how-step"><div class="how-step-num worker">1</div><div><h3>Build your profile</h3><p>Check off your skills, upload work photos and insurance, set your rate and availability.</p></div></div>
+      <div class="how-step"><div class="how-step-num worker">2</div><div><h3>Browse jobs near you</h3><p>See pay, company ratings, and job details. Message companies directly and express interest.</p></div></div>
+      <div class="how-step"><div class="how-step-num worker">3</div><div><h3>Work, get rated, build your rep</h3><p>Every job builds your profile. High ratings = more offers and better pay.</p></div></div>
     </div>
   </div>
 </section>
@@ -170,52 +167,30 @@
   <div class="value-inner">
     <div class="section-label">Why CrewFinder</div>
     <h2 class="section-title">Built different on purpose</h2>
-    <p class="section-desc">We're not Indeed. We're not Craigslist. We're the only platform built from the job site up &mdash; for the people who actually do the work.</p>
+    <p class="section-desc">We're not Indeed. We're not Craigslist. CrewFinder is the only platform built from the job site up — for the people who actually do the work.</p>
     <div class="value-grid">
-      <div class="value-card"><div class="value-icon" style="background:#E8F5E9">&#128204;</div><h3>Profiles, Not Resumes</h3><p>Check off your skills, upload your certs, set your rate. That's it. Companies see what you can do &mdash; not a paragraph nobody reads.</p></div>
-      <div class="value-card"><div class="value-icon" style="background:#FFF3E0">&#11088;</div><h3>Ratings That Matter</h3><p>Companies rate workers. Workers rate companies. Reputation is earned on the job site, not in an interview. Good work gets you more work.</p></div>
-      <div class="value-card"><div class="value-icon" style="background:#E3F2FD">&#9889;</div><h3>On-Demand Hiring</h3><p>Need someone tomorrow morning? Post it tonight. Workers with open availability get notified instantly and can accept on the spot.</p></div>
-      <div class="value-card"><div class="value-icon" style="background:#F3E5F5">&#128176;</div><h3>Real Pay, Upfront</h3><p>Every post shows the actual pay range. No bait-and-switch. Workers know what they're getting before they show up.</p></div>
-      <div class="value-card"><div class="value-icon" style="background:#FFF8E1">&#128197;</div><h3>Fill Your Schedule</h3><p>Slow week? Open day? Set yourself as available and let the work come to you. Pick up jobs that fit your schedule and your rate.</p></div>
-      <div class="value-card"><div class="value-icon" style="background:#FFEBEE">&#128257;</div><h3>Your Go-To Crew List</h3><p>Found a reliable climber? Save them. Next time you're short-handed, your proven people are one tap away.</p></div>
+      <div class="value-card"><div class="value-icon" style="background:#E8F5E9">📋</div><h3>Profiles, Not Resumes</h3><p>Skills, work photos, ratings, and insurance docs. Companies see what you can do — not a paragraph nobody reads.</p></div>
+      <div class="value-card"><div class="value-icon" style="background:#FFF3E0">⭐</div><h3>Two-Way Ratings</h3><p>Companies rate workers. Workers rate companies. Reputation is earned on the job site, not in an interview.</p></div>
+      <div class="value-card"><div class="value-icon" style="background:#E3F2FD">⚡</div><h3>On-Demand Hiring</h3><p>Need someone tomorrow? Post it tonight. Workers get notified and can accept on the spot.</p></div>
+      <div class="value-card"><div class="value-icon" style="background:#F3E5F5">💰</div><h3>Day Rates or Hourly</h3><p>Every post shows the actual pay. Flat day rates or hourly — you pick. No bait-and-switch.</p></div>
+      <div class="value-card"><div class="value-icon" style="background:#FFF8E1">👥</div><h3>Crew Roster</h3><p>Save your best workers. Add notes. Rebook in one tap. Build your go-to crew over time.</p></div>
+      <div class="value-card"><div class="value-icon" style="background:#FFEBEE">🛡️</div><h3>Insurance Verified</h3><p>Workers can upload liability insurance. Companies see who's insured at a glance — less risk, more trust.</p></div>
     </div>
-  </div>
-</section>
-
-<section class="skills-section">
-  <div class="section-label">We Speak Your Language</div>
-  <h2 class="section-title">Profiles built for the trades</h2>
-  <p class="section-desc">No other platform knows the difference between a production climber and a recreational climber. We built this from the job site, not a tech office.</p>
-  <div class="skill-tags">
-    <span class="skill-tag tree">Climbing (Production)</span><span class="skill-tag tree">Rigging</span><span class="skill-tag tree">Crane Operation</span><span class="skill-tag tree">Aerial Lift</span><span class="skill-tag tree">Chainsaw (Elevated)</span><span class="skill-tag tree">Chipper Operation</span><span class="skill-tag tree">Stump Grinding</span><span class="skill-tag tree">PHC / Spraying</span><span class="skill-tag tree">Cabling &amp; Bracing</span><span class="skill-tag land">Commercial Mowing</span><span class="skill-tag land">Landscape Design</span><span class="skill-tag land">Sod Installation</span><span class="skill-tag land">Turf Management</span><span class="skill-tag hard">Paver Installation</span><span class="skill-tag hard">Retaining Walls</span><span class="skill-tag hard">Grading &amp; Excavation</span><span class="skill-tag hard">Drainage Systems</span><span class="skill-tag irr">Irrigation Design</span><span class="skill-tag irr">Smart Controllers</span><span class="skill-tag irr">Backflow Testing</span><span class="skill-tag irr">Winterization</span><span class="skill-tag cert">CDL-A</span><span class="skill-tag cert">CDL-B</span><span class="skill-tag cert">ISA Certified Arborist</span><span class="skill-tag cert">NCCCO Crane</span><span class="skill-tag cert">OSHA 30</span><span class="skill-tag cert">Pesticide Applicator</span>
-  </div>
-</section>
-
-<section class="storm-section">
-  <div style="font-size:48px; margin-bottom:16px;">&#9889;</div>
-  <h2>Storm hits. You need a crew. Now.</h2>
-  <p>CrewFinder's storm blast instantly pings every available worker in your area. They see the job, the rate, and the location &mdash; and respond in hours. No more frantic Facebook posts or phone trees.</p>
-  <div class="storm-features">
-    <div class="storm-feat"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Push notifications in seconds</div>
-    <div class="storm-feat"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Radius-based targeting</div>
-    <div class="storm-feat"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Workers respond within hours</div>
   </div>
 </section>
 
 <section class="final-cta">
   <h2>Stop scrambling. Start finding.</h2>
-  <p>Whether you need a last-minute climber or you've got an open day to fill &mdash; CrewFinder puts the right people one tap away. Join the waitlist for early access.</p>
-  <form class="hero-form" onsubmit="event.preventDefault(); this.innerHTML='<div style=&quot;padding:16px;color:#5CB85C;font-weight:700;font-size:18px&quot;>You\'re on the list! We\'ll be in touch.</div>'; return false;">
-    <input type="email" placeholder="Enter your email" required>
-    <button type="submit">Join Waitlist</button>
-  </form>
+  <p>CrewFinder is live and free during early access. Sign up, build your profile, and start connecting with companies and workers in your area today.</p>
+  <a href="/app.html" class="btn-launch">Get Started Free →</a>
 </section>
 
 <footer class="footer">
-  <p style="margin-bottom:8px"><strong style="color:rgba(255,255,255,0.5)">CrewFinder</strong> &mdash; On-demand skilled labor for outdoor trades</p>
+  <p style="margin-bottom:8px"><strong style="color:rgba(255,255,255,0.5)">CrewFinder</strong> — On-demand skilled labor for outdoor trades</p>
   <p>Built by a tree service owner, for the trades. Based in Medway, MA.</p>
-  <p style="margin-top:12px"><a href="#">Privacy</a> &nbsp;&bull;&nbsp; <a href="#">Terms</a> &nbsp;&bull;&nbsp; <a href="mailto:hello@crewfinder.app">Contact</a></p>
+  <p style="margin-top:12px"><a href="/waitlist.html">Waitlist</a> &nbsp;&bull;&nbsp; <a href="/app.html">Open App</a> &nbsp;&bull;&nbsp; <a href="#">Privacy</a> &nbsp;&bull;&nbsp; <a href="#">Terms</a></p>
   <p style="margin-top:16px">&copy; 2026 CrewFinder. All rights reserved.</p>
 </footer>
+
 </body>
 </html>
