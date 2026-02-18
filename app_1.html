@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1A3C2A">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>CrewFinder</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -865,13 +866,60 @@ body {
 }
 
 /* ============================================
+   PHOTO GRID
+   ============================================ */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.photo-item {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.photo-add {
+  border: 2px dashed var(--gray-300);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--white);
+}
+
+.photo-add:active { background: var(--gray-100); }
+
+.photo-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ============================================
    TOAST NOTIFICATION
    ============================================ */
 .toast {
   position: fixed;
   bottom: 80px;
   left: 50%;
-  transform: translateX(-50%) translateY(100px);
+  transform: translateX(-50%);
   background: var(--dark);
   color: var(--white);
   padding: 12px 24px;
@@ -879,12 +927,62 @@ body {
   font-size: 14px;
   font-weight: 500;
   z-index: 9999;
-  transition: transform 0.3s ease;
   max-width: 90%;
   text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
 }
 
-.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ============================================
+   INSTALL BANNER
+   ============================================ */
+.install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  background: var(--white);
+  border-top: 1px solid var(--gray-200);
+  padding: 16px 20px max(16px, env(safe-area-inset-bottom));
+  z-index: 200;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+  display: none;
+}
+
+.install-banner.show { display: block; }
+
+.install-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.install-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--forest-mid), var(--green));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.install-banner-text { flex: 1; }
+.install-banner-text strong { font-size: 14px; display: block; }
+.install-banner-text span { font-size: 12px; color: var(--gray-500); }
+
+.install-banner-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+.install-banner .btn { font-size: 13px; padding: 10px; }
 
 /* ============================================
    PAGE-LEVEL STYLES
@@ -915,7 +1013,7 @@ body {
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" style="opacity:0;pointer-events:none"></div>
 
 <script>
 // ============================================
@@ -944,6 +1042,19 @@ let state = {
   viewingWorker: null,
   viewingJob: null,
   chattingWith: null,
+  chatMessages: [],
+  chatSubscription: null,
+  workPhotos: [],
+  showResetPassword: false,
+  businesses: [],
+  viewingCompany: null,
+  viewingCompanyReviews: [],
+  viewingJobDetail: null,
+  jobResponses: {},
+  myJobStatuses: [],
+  selectedRating: 0,
+  crewRoster: [],
+  browseTab: 'workers',
 };
 
 // ============================================
@@ -952,11 +1063,22 @@ let state = {
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
+let toastTimer = null;
 function showToast(msg) {
-  const t = $('#toast');
+  const t = document.getElementById('toast');
+  if (!t) return;
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
   t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  t.style.opacity = '1';
+  t.style.pointerEvents = 'auto';
+  toastTimer = setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.pointerEvents = 'none';
+    toastTimer = null;
+  }, 2500);
 }
 
 function getInitials(name) {
@@ -964,12 +1086,13 @@ function getInitials(name) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
-function formatPay(min, max) {
+function formatPay(min, max, payType) {
   const fmin = min ? '$' + (min / 100) : '';
   const fmax = max ? '$' + (max / 100) : '';
-  if (fmin && fmax) return `${fmin}-${fmax}/hr`;
-  if (fmin) return `${fmin}+/hr`;
-  if (fmax) return `Up to ${fmax}/hr`;
+  const suffix = payType === 'day_rate' ? '/day' : '/hr';
+  if (fmin && fmax) return `${fmin}-${fmax}${suffix}`;
+  if (fmin) return `${fmin}+${suffix}`;
+  if (fmax) return `Up to ${fmax}${suffix}`;
   return 'Negotiable';
 }
 
@@ -1093,6 +1216,11 @@ function renderSignup(app) {
           <label class="form-label">Company Name</label>
           <input class="form-input" id="signup-company" type="text" placeholder="Mass Tree Pros">
         </div>
+        <div class="form-group">
+          <label class="form-label">Claim Code <span style="font-weight:400;color:var(--gray-500)">(optional)</span></label>
+          <input class="form-input" id="signup-claim-code" type="text" placeholder="e.g. ABC123" style="text-transform:uppercase;letter-spacing:2px">
+          <div style="font-size:12px;color:var(--gray-500);margin-top:4px">Got a code from CrewFinder? Enter it to claim your pre-built profile.</div>
+        </div>
         ` : ''}
         <div class="form-group">
           <label class="form-label">Email</label>
@@ -1121,6 +1249,31 @@ function renderSignup(app) {
 // LOG IN
 // ============================================
 function renderLogin(app) {
+  if (state.showResetPassword) {
+    app.innerHTML = `
+      <div class="auth-screen">
+        <div class="auth-header">
+          <button class="auth-back" onclick="state.showResetPassword=false;render()">&larr; Back</button>
+          <h1>Reset Password</h1>
+          <p>We'll send you a link to reset your password</p>
+        </div>
+        <div class="auth-form">
+          <div class="form-error" id="reset-error"></div>
+          <div class="form-success" id="reset-success"></div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="form-input" id="reset-email" type="email" placeholder="you@email.com">
+          </div>
+          <button class="btn btn-primary" id="reset-btn" onclick="handleResetPassword()">Send Reset Link</button>
+        </div>
+        <div class="auth-footer">
+          Remember your password? <button onclick="state.showResetPassword=false;render()">Log in</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
   app.innerHTML = `
     <div class="auth-screen">
       <div class="auth-header">
@@ -1138,6 +1291,9 @@ function renderLogin(app) {
           <label class="form-label">Password</label>
           <input class="form-input" id="login-password" type="password" placeholder="Your password">
         </div>
+        <div style="text-align:right;margin-bottom:16px">
+          <button style="background:none;border:none;color:var(--green);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" onclick="state.showResetPassword=true;render()">Forgot password?</button>
+        </div>
         <button class="btn btn-primary" id="login-btn" onclick="handleLogin()">Log In</button>
       </div>
       <div class="auth-footer">
@@ -1153,7 +1309,7 @@ function renderLogin(app) {
 function renderProfileBuilder(app) {
   const isWorker = state.profile?.user_type === 'worker';
   const step = state.profileStep;
-  const totalSteps = isWorker ? 3 : 1;
+  const totalSteps = isWorker ? 6 : 1;
   
   let stepContent = '';
   let stepTitle = '';
@@ -1161,22 +1317,61 @@ function renderProfileBuilder(app) {
   
   if (isWorker) {
     if (step === 1) {
+      stepTitle = 'Basic Info';
+      stepDesc = 'Your name, photo, and location';
+      const avatarUrl = state.profile.avatar_url || '';
+      stepContent = `
+        <div class="card" style="display:flex;flex-direction:column;align-items:center;padding:20px;margin-bottom:16px">
+          <div id="avatar-preview" style="width:90px;height:90px;border-radius:45px;background:linear-gradient(135deg,var(--forest-mid),var(--green));display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;cursor:pointer;border:3px solid var(--gray-200)" onclick="document.getElementById('avatar-input').click()">
+            ${avatarUrl ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="color:#fff;font-size:30px;font-weight:700">${getInitials(state.profile.name)}</span>`}
+          </div>
+          <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+          <button class="btn btn-outline" style="width:auto;padding:8px 20px;font-size:13px" onclick="document.getElementById('avatar-input').click()">
+            ${avatarUrl ? '📷 Change Photo' : '📷 Add Profile Photo'}
+          </button>
+          <div id="avatar-status" style="font-size:12px;color:var(--gray-500);margin-top:6px"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Your Name</label>
+          <input class="form-input" id="edit-name" type="text" value="${state.profile.name || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Location</label>
+          <input class="form-input" id="edit-location" type="text" placeholder="Medway, MA" value="${state.profile.location_text || ''}">
+          <div class="form-hint">City and state — this is how companies find workers near them</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">About Me</label>
+          <textarea class="form-input" id="edit-bio" rows="4" placeholder="Tell companies about yourself — your experience, what you're good at, what kind of work you're looking for...">${state.profile.bio || ''}</textarea>
+          <div class="form-hint">Keep it real. Companies want to know who they're hiring.</div>
+        </div>
+      `;
+    } else if (step === 2) {
       stepTitle = 'What can you do?';
       stepDesc = 'Tap all the skills that apply — this is how companies find you';
       stepContent = renderSkillPicker();
-    } else if (step === 2) {
-      stepTitle = 'Set your rate';
-      stepDesc = 'What\'s your hourly pay range?';
-      stepContent = `
-        <div class="pay-display" id="pay-display">$20 - $35/hr</div>
-        <div class="pay-range-row">
-          <input type="number" id="pay-min" placeholder="20" value="${state.profile.pay_min ? state.profile.pay_min/100 : '20'}" oninput="updatePayDisplay()">
-          <span>to</span>
-          <input type="number" id="pay-max" placeholder="35" value="${state.profile.pay_max ? state.profile.pay_max/100 : '35'}" oninput="updatePayDisplay()">
-          <span>/hr</span>
-        </div>
-      `;
     } else if (step === 3) {
+      stepTitle = 'Set your rate';
+      stepDesc = 'What do you charge?';
+      const payType = state.profile.pay_type || 'hourly';
+      const suffix = payType === 'day_rate' ? '/day' : '/hr';
+      const minDefault = payType === 'day_rate' ? 250 : 20;
+      const maxDefault = payType === 'day_rate' ? 400 : 35;
+      stepContent = `
+        <div style="display:flex;gap:6px;margin-bottom:16px">
+          <button class="filter-chip ${payType === 'hourly' ? 'active' : ''}" onclick="state.profile.pay_type='hourly';render()">Hourly Rate</button>
+          <button class="filter-chip ${payType === 'day_rate' ? 'active' : ''}" onclick="state.profile.pay_type='day_rate';render()">Flat Day Rate</button>
+        </div>
+        <div class="pay-display" id="pay-display">$${state.profile.pay_min ? state.profile.pay_min/100 : minDefault} - $${state.profile.pay_max ? state.profile.pay_max/100 : maxDefault}${suffix}</div>
+        <div class="pay-range-row">
+          <input type="number" id="pay-min" placeholder="${minDefault}" value="${state.profile.pay_min ? state.profile.pay_min/100 : minDefault}" oninput="updatePayDisplay()">
+          <span>to</span>
+          <input type="number" id="pay-max" placeholder="${maxDefault}" value="${state.profile.pay_max ? state.profile.pay_max/100 : maxDefault}" oninput="updatePayDisplay()">
+          <span>${suffix}</span>
+        </div>
+        ${payType === 'day_rate' ? '<div class="form-hint" style="text-align:center;margin-top:10px">Hours negotiable with the company for each job</div>' : ''}
+      `;
+    } else if (step === 4) {
       stepTitle = 'When are you available?';
       stepDesc = 'Let companies know when you can work';
       const avail = state.profile.availability || 'available_now';
@@ -1199,11 +1394,85 @@ function renderProfileBuilder(app) {
           `).join('')}
         </div>
       `;
+    } else if (step === 5) {
+      stepTitle = 'Show your work';
+      stepDesc = 'Upload up to 6 photos of jobs you\'ve done';
+      const photos = state.workPhotos || [];
+      stepContent = `
+        <div class="photo-grid" id="photo-grid">
+          ${photos.map(p => `
+            <div class="photo-item">
+              <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+              <button class="photo-delete" onclick="deleteWorkPhoto(${p.id})">&times;</button>
+            </div>
+          `).join('')}
+          ${photos.length < 6 ? `
+            <div class="photo-item photo-add" onclick="document.getElementById('work-photo-input').click()">
+              <div style="font-size:32px;color:var(--gray-400)">+</div>
+              <div style="font-size:12px;color:var(--gray-500);margin-top:4px">Add Photo</div>
+            </div>
+          ` : ''}
+        </div>
+        <input type="file" id="work-photo-input" accept="image/*" style="display:none" onchange="uploadWorkPhoto(this)">
+        <div id="photo-status" style="font-size:13px;color:var(--gray-500);text-align:center;margin-top:12px"></div>
+        <div class="form-hint" style="text-align:center;margin-top:8px">Show off removals, hardscape jobs, or anything you're proud of. This is optional — you can always add photos later.</div>
+      `;
+    } else if (step === 6) {
+      stepTitle = 'Liability Insurance';
+      stepDesc = 'Optional — upload proof of insurance to stand out';
+      const hasDoc = state.profile.insurance_doc_url;
+      stepContent = `
+        <div class="card" style="text-align:center;padding:24px">
+          <div style="font-size:40px;margin-bottom:12px">${hasDoc ? '✅' : '🛡️'}</div>
+          <div style="font-weight:700;font-size:16px;margin-bottom:4px">${hasDoc ? 'Insurance Document Uploaded' : 'Do you carry liability insurance?'}</div>
+          <div style="font-size:13px;color:var(--gray-500);margin-bottom:16px;line-height:1.5">${hasDoc ? 'Companies can see you\'re insured — this gives you a big advantage.' : 'Workers with their own insurance are in high demand. Upload your COI (Certificate of Insurance) and companies will see a verified badge on your profile.'}</div>
+          ${hasDoc ? `
+            <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px">
+              <a href="${state.profile.insurance_doc_url}" target="_blank" style="color:var(--green);font-weight:600;font-size:13px">View Document</a>
+              <span style="color:var(--gray-300)">·</span>
+              <button style="background:none;border:none;color:var(--red);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit" onclick="removeInsurance()">Remove</button>
+            </div>
+          ` : ''}
+          <button class="btn ${hasDoc ? 'btn-outline' : 'btn-primary'}" onclick="document.getElementById('insurance-input').click()">
+            ${hasDoc ? 'Replace Document' : 'Upload Insurance Document'}
+          </button>
+          <input type="file" id="insurance-input" accept="image/*,.pdf" style="display:none" onchange="uploadInsurance(this)">
+          <div id="insurance-status" style="font-size:12px;color:var(--gray-500);margin-top:8px"></div>
+        </div>
+        ${state.profile.insurance_doc_url ? `
+        <div class="form-group" style="margin-top:16px">
+          <label class="form-label">Expiration Date (optional)</label>
+          <input class="form-input" id="insurance-expiry" type="text" placeholder="e.g. 12/2025 or Dec 2025" value="${state.profile.insurance_expiry || ''}">
+          <div class="form-hint">Helps companies know your coverage is current</div>
+        </div>
+        ` : ''}
+        <div class="form-hint" style="text-align:center;margin-top:12px">This is completely optional. You can skip this and add it later.</div>
+      `;
     }
   } else {
     stepTitle = 'Tell workers about your company';
     stepDesc = 'This helps workers know who they\'re working for';
+    const bizAvatarUrl = state.profile.avatar_url;
+    const bizPhotos = state.workPhotos || [];
     stepContent = `
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px">
+        <div id="avatar-preview" style="width:80px;height:80px;border-radius:40px;background:linear-gradient(135deg,var(--forest-mid),var(--green));display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;cursor:pointer" onclick="document.getElementById('avatar-input').click()">
+          ${bizAvatarUrl ? `<img src="${bizAvatarUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="color:#fff;font-size:28px;font-weight:700">${getInitials(state.profile.company_name || state.profile.name)}</span>`}
+        </div>
+        <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+        <button style="background:none;border:none;color:var(--green);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit" onclick="document.getElementById('avatar-input').click()">
+          ${bizAvatarUrl ? 'Change Logo' : 'Add Company Logo'}
+        </button>
+        <div id="avatar-status" style="font-size:12px;color:var(--gray-500);margin-top:4px"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Company Name</label>
+        <input class="form-input" id="biz-name" type="text" value="${state.profile.company_name || state.profile.name || ''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input class="form-input" id="biz-location" type="text" placeholder="Medway, MA" value="${state.profile.location_text || ''}">
+      </div>
       <div class="form-group">
         <label class="form-label">Company Description</label>
         <textarea class="form-input" id="biz-desc" rows="3" placeholder="What does your company do? What kind of work?">${state.profile.company_description || ''}</textarea>
@@ -1211,6 +1480,26 @@ function renderProfileBuilder(app) {
       <div class="form-group">
         <label class="form-label">Phone Number (optional)</label>
         <input class="form-input" id="biz-phone" type="tel" placeholder="(508) 555-1234" value="${state.profile.phone || ''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Company Photos (optional)</label>
+        <div class="form-hint" style="margin-bottom:8px">Show off your crew, trucks, or completed jobs — up to 6 photos</div>
+        <div class="photo-grid" id="photo-grid">
+          ${bizPhotos.map(p => `
+            <div class="photo-item">
+              <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+              <button class="photo-delete" onclick="deleteWorkPhoto(${p.id})">&times;</button>
+            </div>
+          `).join('')}
+          ${bizPhotos.length < 6 ? `
+            <div class="photo-item photo-add" onclick="document.getElementById('work-photo-input').click()">
+              <div style="font-size:32px;color:var(--gray-400)">+</div>
+              <div style="font-size:12px;color:var(--gray-500);margin-top:4px">Add Photo</div>
+            </div>
+          ` : ''}
+        </div>
+        <input type="file" id="work-photo-input" accept="image/*" style="display:none" onchange="uploadWorkPhoto(this)">
+        <div id="photo-status" style="font-size:13px;color:var(--gray-500);text-align:center;margin-top:8px"></div>
       </div>
     `;
   }
@@ -1233,12 +1522,32 @@ function renderProfileBuilder(app) {
       </div>
       <div class="profile-builder-footer">
         ${(isWorker && step > 1) ? '<button class="btn btn-outline" style="flex:1" onclick="prevProfileStep()">Back</button>' : ''}
-        <button class="btn btn-primary" style="flex:2" onclick="nextProfileStep()">
+        <button class="btn btn-primary" id="next-step-btn" style="flex:2" onclick="handleNextStep(this)">
           ${step >= totalSteps ? 'Finish Setup' : 'Next'}
         </button>
       </div>
     </div>
   `;
+}
+
+// Prevent double-tap and handle step advancement
+async function handleNextStep(btn) {
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try {
+    await nextProfileStep();
+  } catch (e) {
+    console.error('Step error:', e);
+    // Force advance anyway
+    state.profileStep++;
+    render();
+  }
+  // Re-enable in case render didn't happen
+  setTimeout(() => {
+    const b = document.getElementById('next-step-btn');
+    if (b) { b.disabled = false; b.textContent = 'Next'; }
+  }, 500);
 }
 
 function renderSkillPicker() {
@@ -1276,18 +1585,29 @@ function renderMain(app) {
     switch (state.activeTab) {
       case 'search': content = renderWorkerSearch(); break;
       case 'jobs': content = renderMyJobs(); break;
+      case 'post-job': content = renderPostJob(); break;
       case 'messages': content = renderMessages(); break;
-      case 'storm': content = renderStorm(); break;
+      case 'crew': content = renderCrewRoster(); break;
       case 'profile': content = renderMyProfile(); break;
     }
   } else {
     switch (state.activeTab) {
       case 'feed': content = renderJobFeed(); break;
-      case 'matches': content = renderMatches(); break;
+      case 'browse': content = renderBrowse(); break;
       case 'messages': content = renderMessages(); break;
       case 'profile': content = renderMyProfile(); break;
     }
   }
+  
+  const installBanner = !isStandalone() ? `
+    <div style="background:linear-gradient(135deg,var(--forest-mid),var(--green));padding:10px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="handleInstallClick()">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">📲</span>
+        <span style="color:#fff;font-size:13px;font-weight:600">Add CrewFinder to your home screen</span>
+      </div>
+      <span style="color:rgba(255,255,255,0.7);font-size:12px;font-weight:600">Install →</span>
+    </div>
+  ` : '';
   
   app.innerHTML = `
     <div class="app-header">
@@ -1296,9 +1616,11 @@ function renderMain(app) {
         <span>CrewFinder</span>
       </div>
       <div class="header-actions">
+        <button class="header-btn" id="notif-bell" onclick="requestPushPermission()" title="Enable notifications">🔔</button>
         <button class="header-btn" onclick="handleLogout()">Log Out</button>
       </div>
     </div>
+    ${installBanner}
     <div class="screen">${content}</div>
     ${renderBottomNav(isBiz)}
   `;
@@ -1309,14 +1631,14 @@ function renderBottomNav(isBiz) {
     ? [
         { id: 'search', label: 'Search', icon: 'search' },
         { id: 'jobs', label: 'My Jobs', icon: 'jobs' },
-        { id: 'messages', label: 'Messages', icon: 'messages' },
-        { id: 'storm', label: 'Storm', icon: 'storm' },
+        { id: 'messages', label: 'Messages', icon: 'messages', badge: state.conversations.some(c => c.unread) },
+        { id: 'crew', label: 'My Crew', icon: 'heart' },
         { id: 'profile', label: 'Profile', icon: 'profile' },
       ]
     : [
         { id: 'feed', label: 'Jobs', icon: 'feed' },
-        { id: 'matches', label: 'Matches', icon: 'heart' },
-        { id: 'messages', label: 'Messages', icon: 'messages' },
+        { id: 'browse', label: 'Browse', icon: 'search' },
+        { id: 'messages', label: 'Messages', icon: 'messages', badge: state.conversations.some(c => c.unread) },
         { id: 'profile', label: 'Profile', icon: 'profile' },
       ];
   
@@ -1326,6 +1648,7 @@ function renderBottomNav(isBiz) {
         <button class="nav-item ${state.activeTab === t.id ? 'active' : ''}" onclick="switchTab('${t.id}')">
           ${icon(t.icon)}
           <span>${t.label}</span>
+          ${t.badge ? '<div class="nav-badge"></div>' : ''}
         </button>
       `).join('')}
     </div>
@@ -1377,10 +1700,17 @@ function renderWorkerCard(w) {
     return skill ? skill.name : '';
   }).filter(Boolean);
   
+  const avatarContent = w.avatar_url 
+    ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    : getInitials(w.name);
+  const avatarStyle = w.avatar_url 
+    ? 'overflow:hidden' 
+    : '';
+  
   return `
     <div class="worker-card" onclick="viewWorker('${w.id}')">
       <div class="worker-card-row">
-        <div class="avatar ${w.availability === 'storm_response' ? 'blue' : ''}">${getInitials(w.name)}</div>
+        <div class="avatar ${w.availability === 'storm_response' ? 'blue' : ''}" style="${avatarStyle}">${avatarContent}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <span class="worker-name">${w.name}</span>
@@ -1391,9 +1721,10 @@ function renderWorkerCard(w) {
             <span class="rating-num">${w.rating_avg || 'New'}</span>
             ${w.rating_count ? `<span class="rating-count">(${w.rating_count} reviews)</span>` : '<span class="rating-count">No reviews yet</span>'}
           </div>
-          <div class="worker-pay">${formatPay(w.pay_min, w.pay_max)}</div>
+          <div class="worker-pay">${formatPay(w.pay_min, w.pay_max, w.pay_type)}${w.pay_type === 'day_rate' ? ' · Hours negotiable' : ''}</div>
           <div class="badge-wrap">
             <span class="badge badge-avail">${availLabel(w.availability)}</span>
+            ${w.has_insurance ? '<span class="badge badge-cert">🛡️ Insured</span>' : ''}
             ${workerSkills.slice(0, 3).map(s => `<span class="badge badge-skill">${s}</span>`).join('')}
             ${workerSkills.length > 3 ? `<span class="badge badge-skill">+${workerSkills.length - 3}</span>` : ''}
           </div>
@@ -1409,11 +1740,15 @@ function renderWorkerProfile(w) {
     return skill ? skill.name : '';
   }).filter(Boolean);
   
+  const avatarContent = w.avatar_url 
+    ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    : `<span style="color:#fff;font-size:20px;font-weight:700">${getInitials(w.name)}</span>`;
+  
   return `
     <div class="profile-view-header">
       <button class="auth-back" onclick="state.viewingWorker=null;render()">&larr; Back</button>
       <div style="display:flex;gap:14px;align-items:center">
-        <div class="avatar" style="width:60px;height:60px;border-radius:30px;font-size:20px;background:rgba(255,255,255,0.2)">${getInitials(w.name)}</div>
+        <div style="width:60px;height:60px;border-radius:30px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarContent}</div>
         <div>
           <div style="font-size:20px;font-weight:700">${w.name}</div>
           <div style="font-size:13px;opacity:0.8;margin-top:2px">${w.location_text || 'Location not set'}</div>
@@ -1427,7 +1762,7 @@ function renderWorkerProfile(w) {
     </div>
     <div style="padding-top:12px">
       <div class="profile-section">
-        <div style="display:flex;justify-content:space-between;padding:4px 0"><span class="profile-section-title" style="margin:0">Pay Range</span><span style="font-weight:700;color:var(--green);font-size:16px">${formatPay(w.pay_min, w.pay_max)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0"><span class="profile-section-title" style="margin:0">Pay Range</span><span style="font-weight:700;color:var(--green);font-size:16px">${formatPay(w.pay_min, w.pay_max, w.pay_type)}</span></div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;margin-top:4px"><span style="font-weight:600;color:var(--forest-mid)">Availability</span><span>${availLabel(w.availability)}</span></div>
       </div>
       ${w.bio ? `
@@ -1440,23 +1775,83 @@ function renderWorkerProfile(w) {
         <div class="profile-section-title">Skills</div>
         <div class="badge-wrap">${workerSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('') || '<span style="color:var(--gray-500);font-size:13px">No skills added yet</span>'}</div>
       </div>
+      ${w.has_insurance ? `
+      <div class="profile-section">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:24px">🛡️</span>
+          <div>
+            <div class="profile-section-title" style="margin:0">Liability Insurance</div>
+            <div style="font-size:13px;color:var(--green);font-weight:600">Verified — carries own insurance</div>
+            ${w.insurance_expiry ? `<div style="font-size:12px;color:var(--gray-500);margin-top:2px">Expires: ${w.insurance_expiry}</div>` : ''}
+          </div>
+        </div>
+        ${w.insurance_doc_url ? `<a href="${w.insurance_doc_url}" target="_blank" style="display:block;margin-top:10px;font-size:13px;color:var(--blue);font-weight:600;text-decoration:none">View Insurance Document →</a>` : ''}
+      </div>
+      ` : ''}
+      <div class="profile-section" id="worker-photos-section">
+        <div class="profile-section-title">Work Photos</div>
+        <div id="worker-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          <div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px;grid-column:1/-1">Loading photos...</div>
+        </div>
+      </div>
+      <div class="profile-section">
+        <div class="profile-section-title">Reviews</div>
+        <div id="worker-reviews">
+          <div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">Loading reviews...</div>
+        </div>
+      </div>
       <div style="padding:0 16px 16px">
         <button class="btn btn-primary" style="margin-bottom:8px" onclick="startChat('${w.id}')">Send Message</button>
-        <button class="btn btn-secondary" onclick="saveWorker('${w.id}')">Save to Crew List</button>
+        <button class="btn btn-secondary" style="margin-bottom:8px" onclick="saveWorker('${w.id}')">Save to Crew List</button>
+        <button class="btn btn-outline" onclick="showRateWorker('${w.id}')">Leave a Review</button>
       </div>
     </div>
   `;
+  // Note: work photos will be loaded async after render
 }
 
 // ============================================
 // JOB FEED (Worker view)
 // ============================================
 function renderJobFeed() {
+  const myActiveJobs = (state.myJobStatuses || []).filter(r => r.status === 'accepted');
+  const myCompletedJobs = (state.myJobStatuses || []).filter(r => r.status === 'completed');
+  const myAppliedIds = new Set((state.myJobStatuses || []).map(r => r.job_id));
+  
   return `
     <div class="page-padding">
+      ${myActiveJobs.length ? `
+        <div class="profile-section-title" style="color:var(--green)">🔨 Your Active Jobs</div>
+        ${myActiveJobs.map(r => {
+          const j = state.jobs.find(j => j.id === r.job_id);
+          if (!j) return '';
+          const biz = j.profiles || {};
+          return `
+            <div class="card" style="padding:14px;margin-bottom:8px;border-left:3px solid var(--green)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                  <div style="font-weight:700">${j.title}</div>
+                  <div style="font-size:13px;color:var(--gray-600)">${biz.company_name || biz.name || 'Company'} · ${j.location_text || ''}</div>
+                </div>
+                <span style="font-weight:700;color:var(--green);font-size:14px">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</span>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:8px">
+                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:8px" onclick="startChatWithBiz('${j.business_id}')">Message Company</button>
+                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="showRateCompany('${j.business_id}')">Leave Review</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+        <div style="height:16px"></div>
+      ` : ''}
+      
       <div class="page-title">Available Jobs Near You</div>
       <div class="page-sub">Pick up work that fits your schedule</div>
-      ${state.jobs.length ? state.jobs.filter(j => j.is_active).map(j => renderJobCard(j)).join('') : `
+      ${state.jobs.filter(j => j.is_active).length ? state.jobs.filter(j => j.is_active).map(j => {
+        const applied = myAppliedIds.has(j.id);
+        const myStatus = (state.myJobStatuses || []).find(r => r.job_id === j.id);
+        return renderJobCard(j, applied, myStatus);
+      }).join('') : `
         <div class="empty-state">
           <div class="empty-state-icon">&#128188;</div>
           <h3>No jobs posted yet</h3>
@@ -1467,12 +1862,25 @@ function renderJobFeed() {
   `;
 }
 
-function renderJobCard(j) {
+function renderJobCard(j, applied, myStatus) {
   const biz = j.profiles || {};
   const jobSkills = (j.job_skills || []).map(js => {
     const skill = state.skills.find(s => s.id === js.skill_id);
     return skill ? skill.name : '';
   }).filter(Boolean);
+  
+  let actionBtn = '';
+  if (myStatus?.status === 'accepted') {
+    actionBtn = '<span class="badge" style="background:var(--green);color:#fff;font-size:12px;padding:6px 12px">✅ Hired</span>';
+  } else if (myStatus?.status === 'completed') {
+    actionBtn = '<span class="badge" style="background:var(--gray-500);color:#fff;font-size:12px;padding:6px 12px">🏁 Done</span>';
+  } else if (myStatus?.status === 'declined') {
+    actionBtn = '<span class="badge" style="background:var(--gray-400);color:#fff;font-size:12px;padding:6px 12px">Not selected</span>';
+  } else if (applied) {
+    actionBtn = '<span class="badge" style="background:var(--amber);color:#fff;font-size:12px;padding:6px 12px">Applied ✓</span>';
+  } else {
+    actionBtn = `<button class="btn btn-primary" style="width:auto;padding:8px 20px;font-size:13px" onclick="event.stopPropagation();respondToJob(${j.id})">I'm Interested</button>`;
+  }
   
   return `
     <div class="job-card ${j.is_urgent ? 'urgent' : ''}">
@@ -1482,18 +1890,22 @@ function renderJobCard(j) {
             <span class="job-title">${j.title}</span>
             ${j.is_urgent ? '<span class="badge badge-urgent">Urgent</span>' : ''}
           </div>
-          <div class="job-meta">${biz.company_name || biz.name || 'Company'} · ${j.location_text || ''}</div>
+          <div class="job-meta"><span style="color:var(--green);font-weight:600;cursor:pointer" onclick="event.stopPropagation();viewCompany('${j.business_id}')">${biz.company_name || biz.name || 'Company'}</span> · ${j.location_text || ''}</div>
         </div>
-        <span class="job-pay">${formatPay(j.pay_min, j.pay_max)}</span>
+        <span class="job-pay">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</span>
       </div>
       <div class="badge-wrap" style="margin-top:8px">
         <span class="badge badge-trade">${j.job_type === 'on_demand' ? 'On-Demand' : j.job_type === 'short_term' ? 'Short-Term' : j.job_type === 'seasonal' ? 'Seasonal' : 'Storm Response'}</span>
+        ${j.pay_type === 'day_rate' ? '<span class="badge badge-cert">Day Rate · Hours Negotiable</span>' : ''}
         ${jobSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('')}
       </div>
       ${j.description ? `<p style="font-size:13px;color:var(--gray-600);margin-top:8px;line-height:1.4">${j.description}</p>` : ''}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
         <span class="job-posted">Posted ${timeAgo(j.created_at)}</span>
-        <button class="btn btn-primary" style="width:auto;padding:8px 20px;font-size:13px" onclick="respondToJob(${j.id})">I'm Interested</button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="event.stopPropagation();startChatWithBiz('${j.business_id}')">Message</button>
+          ${actionBtn}
+        </div>
       </div>
     </div>
   `;
@@ -1503,6 +1915,10 @@ function renderJobCard(j) {
 // MY JOBS (Business view)
 // ============================================
 function renderMyJobs() {
+  if (state.viewingJobDetail) {
+    return renderJobDetail(state.viewingJobDetail);
+  }
+  
   const myJobs = state.jobs.filter(j => j.business_id === state.user.id);
   
   return `
@@ -1511,7 +1927,34 @@ function renderMyJobs() {
         <span class="page-title" style="margin:0">My Job Posts</span>
         <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px" onclick="showPostJob()">+ Post Job</button>
       </div>
-      ${myJobs.length ? myJobs.map(j => renderJobCard(j)).join('') : `
+      ${myJobs.length ? myJobs.map(j => {
+        const responses = (state.jobResponses || {})[j.id] || [];
+        const accepted = responses.filter(r => r.status === 'accepted');
+        const interested = responses.filter(r => r.status === 'interested');
+        const completed = responses.filter(r => r.status === 'completed');
+        const statusLabel = !j.is_active ? 'Completed' : accepted.length ? 'In Progress' : 'Open';
+        const statusColor = !j.is_active ? 'var(--gray-500)' : accepted.length ? 'var(--green)' : 'var(--amber)';
+        
+        return `
+          <div class="job-card" onclick="viewJobDetail(${j.id})" style="cursor:pointer">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span class="job-title">${j.title}</span>
+                  <span class="badge" style="background:${statusColor};color:#fff;font-size:10px">${statusLabel}</span>
+                </div>
+                <div class="job-meta">${formatPay(j.pay_min, j.pay_max, j.pay_type)} · ${j.location_text || ''}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:8px;font-size:13px;color:var(--gray-600)">
+              ${interested.length ? `<span>📥 ${interested.length} interested</span>` : ''}
+              ${accepted.length ? `<span>✅ ${accepted.length} hired</span>` : ''}
+              ${completed.length ? `<span>🏁 ${completed.length} completed</span>` : ''}
+            </div>
+            <div style="font-size:12px;color:var(--gray-400);margin-top:6px">Posted ${timeAgo(j.created_at)} · Tap to manage</div>
+          </div>
+        `;
+      }).join('') : `
         <div class="empty-state">
           <div class="empty-state-icon">&#128203;</div>
           <h3>No jobs posted yet</h3>
@@ -1522,30 +1965,260 @@ function renderMyJobs() {
   `;
 }
 
+function renderJobDetail(job) {
+  const responses = (state.jobResponses || {})[job.id] || [];
+  const interested = responses.filter(r => r.status === 'interested');
+  const accepted = responses.filter(r => r.status === 'accepted');
+  const completed = responses.filter(r => r.status === 'completed');
+  const declined = responses.filter(r => r.status === 'declined');
+  
+  return `
+    <div class="page-padding">
+      <button class="auth-back" onclick="state.viewingJobDetail=null;render()" style="margin-bottom:12px">&larr; Back to My Jobs</button>
+      
+      <div style="margin-bottom:16px">
+        <div style="font-size:20px;font-weight:700">${job.title}</div>
+        <div style="font-size:14px;color:var(--gray-600);margin-top:4px">${formatPay(job.pay_min, job.pay_max, job.pay_type)} · ${job.location_text || ''}</div>
+        ${job.description ? `<p style="font-size:13px;color:var(--gray-600);margin-top:8px;line-height:1.4">${job.description}</p>` : ''}
+      </div>
+      
+      ${accepted.length ? `
+      <div style="margin-bottom:20px">
+        <div class="profile-section-title">Hired Workers (${accepted.length})</div>
+        ${accepted.map(r => {
+          const w = state.workers.find(w => w.id === r.worker_id) || r.worker_profile || {};
+          return `
+            <div class="card" style="padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(w.name)}</div>
+                <div>
+                  <div style="font-weight:600">${w.name || 'Worker'}</div>
+                  <div style="font-size:12px;color:var(--gray-500)">${w.location_text || ''}</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-primary" style="width:auto;padding:6px 12px;font-size:12px" onclick="completeWorker(${job.id}, '${r.worker_id}')">Complete</button>
+                <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="startChat('${r.worker_id}')">Message</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ` : ''}
+      
+      ${interested.length ? `
+      <div style="margin-bottom:20px">
+        <div class="profile-section-title">Interested Workers (${interested.length})</div>
+        ${interested.map(r => {
+          const w = state.workers.find(w => w.id === r.worker_id) || r.worker_profile || {};
+          const workerSkills = (w.worker_skills || []).map(ws => {
+            const skill = state.skills.find(s => s.id === ws.skill_id);
+            return skill ? skill.name : '';
+          }).filter(Boolean);
+          return `
+            <div class="card" style="padding:12px;margin-bottom:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="viewWorker('${w.id}')">
+                  <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(w.name)}</div>
+                  <div>
+                    <div style="font-weight:600">${w.name || 'Worker'}</div>
+                    <div style="font-size:12px;color:var(--gray-500)">${w.location_text || ''} · ${formatPay(w.pay_min, w.pay_max, w.pay_type)}</div>
+                    ${w.has_insurance ? '<div style="font-size:11px;color:var(--green);font-weight:600">🛡️ Insured</div>' : ''}
+                  </div>
+                </div>
+              </div>
+              ${workerSkills.length ? `<div class="badge-wrap" style="margin-top:6px">${workerSkills.slice(0, 4).map(s => `<span class="badge badge-skill">${s}</span>`).join('')}</div>` : ''}
+              <div style="display:flex;gap:6px;margin-top:8px">
+                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:8px" onclick="acceptWorker(${job.id}, '${r.worker_id}')">Hire</button>
+                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="declineWorker(${job.id}, '${r.worker_id}')">Decline</button>
+                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="startChat('${r.worker_id}')">Message</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ` : ''}
+      
+      ${completed.length ? `
+      <div style="margin-bottom:20px">
+        <div class="profile-section-title">Completed (${completed.length})</div>
+        ${completed.map(r => {
+          const w = state.workers.find(w => w.id === r.worker_id) || r.worker_profile || {};
+          return `
+            <div class="card" style="padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;opacity:0.7">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(w.name)}</div>
+                <div>
+                  <div style="font-weight:600">${w.name || 'Worker'}</div>
+                  <div style="font-size:12px;color:var(--green)">✅ Completed</div>
+                </div>
+              </div>
+              <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="showRateWorker('${r.worker_id}')">Review</button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ` : ''}
+      
+      ${!interested.length && !accepted.length && !completed.length ? `
+        <div class="empty-state" style="padding:20px 0">
+          <div class="empty-state-icon">⏳</div>
+          <h3>No applicants yet</h3>
+          <p>Workers will show up here when they express interest in this job.</p>
+        </div>
+      ` : ''}
+      
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-200)">
+        ${job.is_active ? `
+          <button class="btn btn-outline" style="color:var(--red);border-color:var(--red)" onclick="closeJob(${job.id})">Close Job Posting</button>
+        ` : `
+          <div style="text-align:center;color:var(--gray-500);font-size:13px">This job posting is closed</div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+async function viewJobDetail(jobId) {
+  const job = state.jobs.find(j => j.id === jobId);
+  if (!job) return;
+  state.viewingJobDetail = job;
+  
+  // Load responses for this job with worker profiles
+  try {
+    const { data: responses } = await db.from('job_responses')
+      .select('*, worker_profile:profiles!worker_id(*)')
+      .eq('job_id', jobId);
+    
+    if (!state.jobResponses) state.jobResponses = {};
+    state.jobResponses[jobId] = (responses || []).map(r => ({
+      ...r,
+      worker_profile: r.worker_profile,
+    }));
+  } catch(e) { console.error('Error loading responses:', e); }
+  
+  render();
+}
+
+async function acceptWorker(jobId, workerId) {
+  try {
+    await db.from('job_responses').update({ status: 'accepted' })
+      .eq('job_id', jobId).eq('worker_id', workerId);
+    
+    // Auto-save to crew roster
+    try {
+      await db.from('saved_workers').insert({
+        business_id: state.user.id,
+        worker_id: workerId,
+      });
+    } catch(e) { /* already saved, ignore */ }
+    
+    showToast('Worker hired and added to your crew!');
+    viewJobDetail(jobId);
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+async function declineWorker(jobId, workerId) {
+  try {
+    await db.from('job_responses').update({ status: 'declined' })
+      .eq('job_id', jobId).eq('worker_id', workerId);
+    showToast('Worker declined');
+    viewJobDetail(jobId);
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+async function completeWorker(jobId, workerId) {
+  try {
+    await db.from('job_responses').update({ status: 'completed' })
+      .eq('job_id', jobId).eq('worker_id', workerId);
+    showToast('Job marked complete! Leave a review.');
+    
+    // Show review modal for the worker
+    showRateWorker(workerId);
+    
+    // Refresh
+    viewJobDetail(jobId);
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+async function closeJob(jobId) {
+  try {
+    await db.from('jobs').update({ is_active: false }).eq('id', jobId);
+    showToast('Job posting closed');
+    await loadData();
+    state.viewingJobDetail = null;
+    render();
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
 // ============================================
 // MESSAGES
 // ============================================
 function renderMessages() {
+  // If we're in a chat, show the chat view
+  if (state.chattingWith) return renderChat();
+  
+  // Otherwise show conversations list
   return `
     <div class="page-padding">
       <div class="page-title">Messages</div>
     </div>
-    <div>
+    <div id="conversations-list">
       ${state.conversations.length ? state.conversations.map(c => `
-        <div class="msg-item ${c.unread ? 'unread' : ''}">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span class="msg-name">${c.name}</span>
-            <span class="msg-time">${c.time}</span>
+        <div class="msg-item ${c.unread ? 'unread' : ''}" onclick="openChat('${c.userId}', '${c.name.replace(/'/g, "\\'")}')">
+          <div style="display:flex;gap:10px;align-items:center">
+            <div class="avatar" style="width:40px;height:40px;border-radius:20px;font-size:13px">${getInitials(c.name)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="msg-name">${c.name}</span>
+                <span class="msg-time">${c.time}</span>
+              </div>
+              <div class="msg-preview">${c.preview}</div>
+            </div>
+            ${c.unread ? '<div style="width:10px;height:10px;border-radius:5px;background:var(--green);flex-shrink:0"></div>' : ''}
           </div>
-          <div class="msg-preview">${c.preview}</div>
         </div>
       `).join('') : `
         <div class="empty-state">
           <div class="empty-state-icon">&#128172;</div>
           <h3>No messages yet</h3>
-          <p>${state.profile?.user_type === 'business' ? 'Message a worker to start a conversation.' : 'When a company reaches out, it\'ll show up here.'}</p>
+          <p>${state.profile?.user_type === 'business' ? 'Find a worker and tap "Send Message" to start a conversation.' : 'When a company reaches out, it\'ll show up here.'}</p>
         </div>
       `}
+    </div>
+  `;
+}
+
+function renderChat() {
+  const c = state.chattingWith;
+  return `
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--gray-200);background:var(--white);display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <button style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px" onclick="closeChat()">←</button>
+        <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(c.name)}</div>
+        <div style="cursor:pointer" onclick="viewProfileFromChat('${c.userId}')">
+          <div style="font-weight:700;font-size:14px">${c.name} <span style="font-size:11px;color:var(--green);font-weight:500">View Profile →</span></div>
+          <div style="font-size:11px;color:var(--gray-500)">${c.location || 'CrewFinder'}</div>
+        </div>
+      </div>
+      <div class="chat-messages" id="chat-messages">
+        ${state.chatMessages.length ? state.chatMessages.map(m => `
+          <div class="chat-bubble ${m.sender_id === state.user.id ? 'sent' : 'received'}">
+            ${m.content}
+          </div>
+          <div style="font-size:10px;color:var(--gray-400);${m.sender_id === state.user.id ? 'text-align:right' : ''};margin-top:-4px;margin-bottom:4px">${timeAgo(m.created_at)}</div>
+        `).join('') : `
+          <div style="text-align:center;padding:40px 20px;color:var(--gray-400);font-size:13px">
+            Start the conversation — say hello!
+          </div>
+        `}
+      </div>
+      <div class="chat-input-bar">
+        <input id="chat-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMessage()">
+        <button class="chat-send-btn" onclick="sendMessage()">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
     </div>
   `;
 }
@@ -1553,56 +2226,643 @@ function renderMessages() {
 // ============================================
 // MATCHES (Worker view)
 // ============================================
-function renderMatches() {
+function renderBrowse() {
+  // If viewing a company or worker profile, show that
+  if (state.viewingCompany) {
+    return renderCompanyProfile(state.viewingCompany);
+  }
+  if (state.viewingWorker) {
+    return renderWorkerProfileForWorker(state.viewingWorker);
+  }
+  
+  const tab = state.browseTab || 'workers';
+  
   return `
     <div class="page-padding">
-      <div class="page-title">Companies Interested in You</div>
-      <div class="empty-state">
-        <div class="empty-state-icon">&#10084;&#65039;</div>
-        <h3>No matches yet</h3>
-        <p>When companies are interested in your profile, they'll show up here. Make sure your skills and availability are up to date!</p>
+      <div class="page-title">Browse</div>
+      <div class="page-sub">Find workers and companies in your area</div>
+      <div style="display:flex;gap:0;margin-bottom:16px;border-radius:10px;overflow:hidden;border:1px solid var(--gray-200)">
+        <button style="flex:1;padding:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:inherit;transition:all 0.2s;${tab === 'workers' ? 'background:var(--green);color:#fff' : 'background:var(--white);color:var(--gray-500)'}" onclick="state.browseTab='workers';render()">👷 Workers</button>
+        <button style="flex:1;padding:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:inherit;transition:all 0.2s;${tab === 'companies' ? 'background:var(--green);color:#fff' : 'background:var(--white);color:var(--gray-500)'}" onclick="state.browseTab='companies';render()">🏢 Companies</button>
+      </div>
+    </div>
+    ${tab === 'workers' ? renderBrowseWorkers() : renderBrowseCompanies()}
+  `;
+}
+
+function renderBrowseWorkers() {
+  const workers = state.workers.filter(w => w.id !== state.user.id);
+  
+  return `
+    <div class="page-padding" style="padding-top:0">
+      ${workers.length ? workers.map(w => {
+        const avatarContent = w.avatar_url 
+          ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+          : getInitials(w.name);
+        const avatarStyle = w.avatar_url ? 'overflow:hidden' : '';
+        const workerSkills = (w.worker_skills || []).map(ws => {
+          const skill = state.skills.find(s => s.id === ws.skill_id);
+          return skill ? skill.name : '';
+        }).filter(Boolean);
+        
+        return `
+          <div class="worker-card" onclick="browseViewWorker('${w.id}')">
+            <div class="worker-card-row">
+              <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
+              <div class="worker-info">
+                <div class="worker-name">${w.name}</div>
+                <div class="worker-location">${w.location_text || 'Location not set'}</div>
+                <div class="worker-pay">${formatPay(w.pay_min, w.pay_max, w.pay_type)}</div>
+              </div>
+              <div class="worker-rating">
+                <span class="star">★</span>
+                <span>${w.rating_avg || 'New'}</span>
+              </div>
+            </div>
+            <div class="badge-wrap">
+              <span class="badge badge-avail">${availLabel(w.availability)}</span>
+              ${w.has_insurance ? '<span class="badge badge-cert">🛡️ Insured</span>' : ''}
+              ${workerSkills.slice(0, 3).map(s => `<span class="badge badge-skill">${s}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }).join('') : `
+        <div class="empty-state">
+          <div class="empty-state-icon">👷</div>
+          <h3>No other workers yet</h3>
+          <p>Workers will show up here as they join CrewFinder.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderBrowseCompanies() {
+  const businesses = state.businesses || [];
+  
+  return `
+    <div class="page-padding" style="padding-top:0">
+      ${businesses.length ? businesses.map(b => {
+        const avatarContent = b.avatar_url 
+          ? `<img src="${b.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+          : getInitials(b.company_name || b.name);
+        const avatarStyle = b.avatar_url ? 'overflow:hidden' : '';
+        const jobCount = (state.jobs || []).filter(j => j.business_id === b.id && j.is_active).length;
+        
+        return `
+          <div class="worker-card" onclick="viewCompany('${b.id}')">
+            <div class="worker-card-row">
+              <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
+              <div class="worker-info">
+                <div class="worker-name">${b.company_name || b.name}</div>
+                <div class="worker-location">${b.location_text || 'Location not set'}</div>
+                <div class="rating-row">
+                  <span class="star">★</span>
+                  <span>${b.biz_rating_avg || 'New'}</span>
+                  ${b.biz_rating_count ? `<span class="rating-count">(${b.biz_rating_count})</span>` : ''}
+                </div>
+              </div>
+            </div>
+            <div class="badge-wrap">
+              ${jobCount > 0 ? `<span class="badge badge-avail">${jobCount} active job${jobCount > 1 ? 's' : ''}</span>` : ''}
+              ${b.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${b.company_description.slice(0, 100)}${b.company_description.length > 100 ? '...' : ''}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('') : `
+        <div class="empty-state">
+          <div class="empty-state-icon">🏢</div>
+          <h3>No companies yet</h3>
+          <p>Companies will show up here as they join CrewFinder.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function browseViewWorker(id) {
+  state.viewingWorker = state.workers.find(w => w.id === id);
+  render();
+  
+  // Load photos and reviews async
+  loadWorkerProfileData(id);
+}
+
+function renderWorkerProfileForWorker(w) {
+  const workerSkills = (w.worker_skills || []).map(ws => {
+    const skill = state.skills.find(s => s.id === ws.skill_id);
+    return skill ? skill.name : '';
+  }).filter(Boolean);
+  
+  const avatarContent = w.avatar_url 
+    ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    : `<span style="color:#fff;font-size:20px;font-weight:700">${getInitials(w.name)}</span>`;
+  
+  return `
+    <div class="profile-view-header">
+      <button class="auth-back" onclick="state.viewingWorker=null;render()">&larr; Back</button>
+      <div style="display:flex;gap:14px;align-items:center">
+        <div style="width:60px;height:60px;border-radius:30px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarContent}</div>
+        <div>
+          <div style="font-size:20px;font-weight:700">${w.name}</div>
+          <div style="font-size:13px;opacity:0.8;margin-top:2px">${w.location_text || ''}</div>
+          <div class="rating-row" style="margin-top:4px">
+            <span class="star">★</span>
+            <span style="font-weight:600">${w.rating_avg || 'New'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding-top:12px">
+      <div class="profile-section">
+        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-weight:600;color:var(--forest-mid)">Pay Range</span><span style="font-weight:700;color:var(--green)">${formatPay(w.pay_min, w.pay_max, w.pay_type)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;margin-top:4px"><span style="font-weight:600;color:var(--forest-mid)">Availability</span><span>${availLabel(w.availability)}</span></div>
+      </div>
+      ${w.about ? `
+      <div class="profile-section">
+        <div class="profile-section-title">About</div>
+        <p style="font-size:14px;color:var(--gray-700);line-height:1.5">${w.about}</p>
+      </div>
+      ` : ''}
+      <div class="profile-section">
+        <div class="profile-section-title">Skills</div>
+        <div class="badge-wrap">${workerSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('') || '<span style="color:var(--gray-500);font-size:13px">No skills added yet</span>'}</div>
+      </div>
+      ${w.has_insurance ? `
+      <div class="profile-section">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:24px">🛡️</span>
+          <div>
+            <div class="profile-section-title" style="margin:0">Liability Insurance</div>
+            <div style="font-size:13px;color:var(--green);font-weight:600">Carries own insurance</div>
+            ${w.insurance_expiry ? `<div style="font-size:12px;color:var(--gray-500);margin-top:2px">Expires: ${w.insurance_expiry}</div>` : ''}
+          </div>
+        </div>
+      </div>
+      ` : ''}
+      <div class="profile-section" id="worker-photos-section">
+        <div class="profile-section-title">Work Photos</div>
+        <div id="worker-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          <div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">Loading...</div>
+        </div>
+      </div>
+      <div class="profile-section">
+        <div class="profile-section-title">Reviews</div>
+        <div id="worker-reviews">
+          <div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">Loading...</div>
+        </div>
+      </div>
+      <div style="padding:0 16px 16px">
+        <button class="btn btn-primary" onclick="startChat('${w.id}')">Send Message</button>
       </div>
     </div>
   `;
 }
 
+async function loadWorkerProfileData(id) {
+  // Load photos
+  try {
+    const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', id).order('created_at');
+    const grid = document.getElementById('worker-photos-grid');
+    if (grid) {
+      if (photos && photos.length > 0) {
+        grid.innerHTML = photos.map(p => `
+          <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
+            <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open('${p.photo_url}','_blank')">
+          </div>
+        `).join('');
+      } else {
+        grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet</div>';
+      }
+    }
+  } catch(e) {}
+  
+  // Load reviews
+  try {
+    const { data: reviews } = await db.from('reviews').select('*, profiles!reviewer_id(name, avatar_url, company_name)').eq('reviewed_id', id).order('created_at', { ascending: false });
+    const el = document.getElementById('worker-reviews');
+    if (el) {
+      if (reviews && reviews.length > 0) {
+        el.innerHTML = reviews.map(r => `
+          <div style="padding:12px 0;border-bottom:1px solid var(--gray-200)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:600;font-size:14px">${r.profiles?.company_name || r.profiles?.name || 'User'}</span>
+              <span style="color:#F59E0B;font-size:14px">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+            </div>
+            ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${r.comment}</p>` : ''}
+          </div>
+        `).join('');
+      } else {
+        el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">No reviews yet</div>';
+      }
+    }
+  } catch(e) {}
+}
+
+function renderCompanies() {
+  if (state.viewingCompany) {
+    return renderCompanyProfile(state.viewingCompany);
+  }
+  
+  const businesses = state.businesses || [];
+  
+  return `
+    <div class="page-padding">
+      <div class="page-title">Companies Near You</div>
+      <div class="page-sub">Browse tree service companies hiring in your area</div>
+      ${businesses.length ? businesses.map(b => {
+        const avatarContent = b.avatar_url 
+          ? `<img src="${b.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+          : getInitials(b.company_name || b.name);
+        const avatarStyle = b.avatar_url ? 'overflow:hidden' : '';
+        const jobCount = (state.jobs || []).filter(j => j.business_id === b.id && j.is_active).length;
+        
+        return `
+          <div class="worker-card" onclick="viewCompany('${b.id}')">
+            <div class="worker-card-row">
+              <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
+              <div class="worker-info">
+                <div class="worker-name">${b.company_name || b.name}</div>
+                <div class="worker-location">${b.location_text || 'Location not set'}</div>
+                <div class="rating-row">
+                  <span class="star">★</span>
+                  <span>${b.biz_rating_avg || 'New'}</span>
+                  ${b.biz_rating_count ? `<span class="rating-count">(${b.biz_rating_count})</span>` : ''}
+                </div>
+              </div>
+            </div>
+            <div class="badge-wrap">
+              ${jobCount > 0 ? `<span class="badge badge-avail">${jobCount} active job${jobCount > 1 ? 's' : ''}</span>` : ''}
+              ${b.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${b.company_description.slice(0, 100)}${b.company_description.length > 100 ? '...' : ''}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('') : `
+        <div class="empty-state">
+          <div class="empty-state-icon">🏢</div>
+          <h3>No companies yet</h3>
+          <p>Companies will show up here as they join CrewFinder.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderCompanyProfile(b) {
+  const avatarContent = b.avatar_url 
+    ? `<img src="${b.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    : `<span style="color:#fff;font-size:20px;font-weight:700">${getInitials(b.company_name || b.name)}</span>`;
+  
+  const companyJobs = (state.jobs || []).filter(j => j.business_id === b.id && j.is_active);
+  const reviews = state.viewingCompanyReviews || [];
+  
+  return `
+    <div class="profile-view-header">
+      <button class="auth-back" onclick="state.viewingCompany=null;render()">&larr; Back</button>
+      <div style="display:flex;gap:14px;align-items:center">
+        <div style="width:60px;height:60px;border-radius:30px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarContent}</div>
+        <div>
+          <div style="font-size:20px;font-weight:700">${b.company_name || b.name}</div>
+          <div style="font-size:13px;opacity:0.8;margin-top:2px">${b.location_text || 'Location not set'}</div>
+          <div class="rating-row" style="margin-top:4px">
+            <span class="star">★</span>
+            <span style="font-weight:600">${b.biz_rating_avg || 'New'}</span>
+            ${b.biz_rating_count ? `<span style="opacity:0.8;font-size:13px">(${b.biz_rating_count} reviews)</span>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding-top:12px">
+      ${b.company_description ? `
+      <div class="profile-section">
+        <div class="profile-section-title">About</div>
+        <p style="font-size:14px;color:var(--gray-700);line-height:1.5">${b.company_description}</p>
+      </div>
+      ` : ''}
+      ${b.phone ? `
+      <div class="profile-section">
+        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-weight:600;color:var(--forest-mid)">Phone</span><a href="tel:${b.phone}" style="color:var(--green);font-weight:600;text-decoration:none">${b.phone}</a></div>
+      </div>
+      ` : ''}
+      ${companyJobs.length ? `
+      <div class="profile-section">
+        <div class="profile-section-title">Active Jobs</div>
+        ${companyJobs.map(j => `
+          <div class="card" style="padding:12px;margin-bottom:8px">
+            <div style="font-weight:700">${j.title}</div>
+            <div style="font-size:13px;color:var(--green);font-weight:600;margin-top:2px">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</div>
+            ${j.description ? `<div style="font-size:13px;color:var(--gray-600);margin-top:4px">${j.description.slice(0, 120)}${j.description.length > 120 ? '...' : ''}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+      ` : ''}
+      <div class="profile-section" id="company-photos-section">
+        <div class="profile-section-title">Photos</div>
+        <div id="company-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          <div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">Loading...</div>
+        </div>
+      </div>
+      <div class="profile-section">
+        <div class="profile-section-title">Reviews from Workers</div>
+        <div id="company-reviews">
+          <div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">Loading reviews...</div>
+        </div>
+      </div>
+      <div style="padding:0 16px 16px">
+        <button class="btn btn-primary" style="margin-bottom:8px" onclick="startChatWithBiz('${b.id}')">Send Message</button>
+        <button class="btn btn-outline" onclick="showRateCompany('${b.id}')">Leave a Review</button>
+      </div>
+    </div>
+  `;
+}
+
+async function viewCompany(id) {
+  state.viewingCompany = (state.businesses || []).find(b => b.id === id);
+  state.viewingCompanyReviews = [];
+  render();
+  
+  // Load photos async
+  try {
+    const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', id).order('created_at');
+    const grid = document.getElementById('company-photos-grid');
+    if (grid) {
+      if (photos && photos.length > 0) {
+        grid.innerHTML = photos.map(p => `
+          <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
+            <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open('${p.photo_url}','_blank')">
+          </div>
+        `).join('');
+      } else {
+        grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet</div>';
+      }
+    }
+  } catch(e) {}
+  
+  // Load reviews async
+  try {
+    const { data: reviews } = await db.from('reviews').select('*, profiles!reviewer_id(name, avatar_url)').eq('reviewed_id', id).order('created_at', { ascending: false });
+    const el = document.getElementById('company-reviews');
+    if (el) {
+      if (reviews && reviews.length > 0) {
+        el.innerHTML = reviews.map(r => `
+          <div style="padding:12px 0;border-bottom:1px solid var(--gray-200)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:600;font-size:14px">${r.profiles?.name || 'Worker'}</span>
+              <span style="color:var(--amber);font-size:14px">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+            </div>
+            ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${r.comment}</p>` : ''}
+          </div>
+        `).join('');
+      } else {
+        el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">No reviews yet — be the first!</div>';
+      }
+    }
+  } catch(e) {
+    const el = document.getElementById('company-reviews');
+    if (el) el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">No reviews yet</div>';
+  }
+}
+
+async function startChatWithBiz(bizId) {
+  const biz = (state.businesses || []).find(b => b.id === bizId);
+  const name = biz?.company_name || biz?.name || 'Company';
+  const location = biz?.location_text || '';
+  openChat(bizId, name, location);
+}
+
+function showRateCompany(bizId) {
+  showRateModal(bizId, 'company');
+}
+
+function showRateWorker(workerId) {
+  showRateModal(workerId, 'worker');
+}
+
+function showRateModal(userId, type) {
+  const label = type === 'company' ? 'this company' : 'this worker';
+  const modal = document.createElement('div');
+  modal.id = 'rate-modal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:var(--white);border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center">
+      <h3 style="margin:0 0 4px">Rate ${label}</h3>
+      <p style="font-size:13px;color:var(--gray-500);margin:0 0 16px">Your review helps the community</p>
+      <div id="rate-stars" style="font-size:32px;cursor:pointer;margin-bottom:16px;letter-spacing:4px">
+        ${'☆'.repeat(5).split('').map((_, i) => `<span onclick="selectRating(${i+1})" data-star="${i+1}">☆</span>`).join('')}
+      </div>
+      <textarea id="rate-comment" class="form-input" rows="3" placeholder="Optional — tell others about your experience" style="margin-bottom:12px"></textarea>
+      <button class="btn btn-primary" id="rate-submit-btn" onclick="submitRating('${userId}')" style="margin-bottom:8px">Submit Review</button>
+      <button class="btn btn-outline" onclick="document.getElementById('rate-modal').remove()">Cancel</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  state.selectedRating = 0;
+}
+
+function selectRating(n) {
+  state.selectedRating = n;
+  const stars = document.querySelectorAll('#rate-stars span');
+  stars.forEach(s => {
+    const val = parseInt(s.getAttribute('data-star'));
+    s.textContent = val <= n ? '★' : '☆';
+    s.style.color = val <= n ? '#F59E0B' : '#D1D5DB';
+  });
+}
+
+async function submitRating(userId) {
+  if (!state.selectedRating) {
+    showToast('Tap a star to rate');
+    return;
+  }
+  
+  const btn = document.getElementById('rate-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+  
+  try {
+    const comment = document.getElementById('rate-comment')?.value?.trim();
+    
+    const { error } = await db.from('reviews').insert({
+      reviewer_id: state.user.id,
+      reviewed_id: userId,
+      rating: state.selectedRating,
+      comment: comment || null,
+    });
+    
+    if (error) throw error;
+    
+    document.getElementById('rate-modal')?.remove();
+    showToast('Review submitted!');
+    
+    // Update rating averages
+    try {
+      const { data: allReviews } = await db.from('reviews').select('rating').eq('reviewed_id', userId);
+      if (allReviews && allReviews.length > 0) {
+        const avg = (allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length).toFixed(1);
+        const count = allReviews.length;
+        
+        // Determine if reviewed user is worker or business
+        const isReviewedWorker = state.workers.find(w => w.id === userId);
+        if (isReviewedWorker) {
+          await db.from('profiles').update({ rating_avg: avg, rating_count: count }).eq('id', userId);
+        } else {
+          await db.from('profiles').update({ biz_rating_avg: avg, biz_rating_count: count }).eq('id', userId);
+        }
+      }
+    } catch(e) { console.error('Error updating rating avg:', e); }
+    
+    // Refresh the view
+    if (state.viewingCompany) {
+      viewCompany(state.viewingCompany.id);
+    } else if (state.viewingWorker) {
+      viewWorker(state.viewingWorker.id);
+    }
+    
+  } catch (e) {
+    console.error('Review error:', e);
+    if (e.message?.includes('unique') || e.code === '23505') {
+      showToast("You've already reviewed this person");
+    } else {
+      showToast('Error submitting review: ' + (e.message || 'Try again'));
+    }
+    btn.disabled = false;
+    btn.textContent = 'Submit Review';
+  }
+}
+
 // ============================================
 // STORM BLAST
 // ============================================
-function renderStorm() {
+function renderCrewRoster() {
+  const crew = state.crewRoster || [];
+  
   return `
-    <div class="storm-header">
-      <div class="storm-title">
-        ${icon('storm', 24)}
-        Storm Response Blast
-      </div>
-      <p style="font-size:14px;opacity:0.9;line-height:1.5">Instantly notify all available workers in your area. They'll get a push notification and can respond within hours.</p>
-    </div>
-    <div style="padding:0 16px 16px">
-      <div class="form-group">
-        <label class="form-label">What do you need?</label>
-        <select class="form-select">
-          <option>Climber(s) for storm cleanup</option>
-          <option>Ground crew for debris removal</option>
-          <option>CDL driver with chipper</option>
-          <option>Full crew (climber + ground + driver)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Radius</label>
-        <select class="form-select">
-          <option>25 miles</option><option>50 miles</option><option>100 miles</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Pay Rate</label>
-        <input class="form-input" value="Storm rate: $40-50/hr">
-      </div>
-      <button class="btn btn-primary" style="background:linear-gradient(135deg,#0D47A1,#1976D2)" onclick="sendStormBlast()">
-        Send Storm Blast
-      </button>
+    <div class="page-padding">
+      <div class="page-title">My Crew</div>
+      <div class="page-sub">Your saved workers and past hires — book again in one tap</div>
+      
+      ${crew.length ? crew.map(c => {
+        const w = c.worker || {};
+        const avatarContent = w.avatar_url 
+          ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+          : getInitials(w.name);
+        const avatarStyle = w.avatar_url ? 'overflow:hidden' : '';
+        const workerSkills = (w.worker_skills || []).map(ws => {
+          const skill = state.skills.find(s => s.id === ws.skill_id);
+          return skill ? skill.name : '';
+        }).filter(Boolean);
+        
+        return `
+          <div class="card" style="padding:14px;margin-bottom:10px">
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <div class="avatar" style="width:44px;height:44px;border-radius:22px;font-size:14px;flex-shrink:0;${avatarStyle};cursor:pointer" onclick="viewWorker('${w.id}')">${avatarContent}</div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                  <div style="cursor:pointer" onclick="viewWorker('${w.id}')">
+                    <div style="font-weight:700;font-size:15px">${w.name || 'Worker'}</div>
+                    <div style="font-size:12px;color:var(--gray-500)">${w.location_text || ''}</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="rating-row" style="margin:0"><span class="star">★</span><span style="font-weight:600;font-size:13px">${w.rating_avg || 'New'}</span></div>
+                    <div style="font-size:12px;color:var(--green);font-weight:600">${formatPay(w.pay_min, w.pay_max, w.pay_type)}</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">
+                  <span class="badge badge-avail" style="font-size:10px">${availLabel(w.availability)}</span>
+                  ${w.has_insurance ? '<span class="badge badge-cert" style="font-size:10px">🛡️ Insured</span>' : ''}
+                  ${workerSkills.slice(0, 2).map(s => `<span class="badge badge-skill" style="font-size:10px">${s}</span>`).join('')}
+                </div>
+                ${c.note ? `<div style="font-size:12px;color:var(--gray-600);margin-top:6px;font-style:italic">"${c.note}"</div>` : ''}
+                ${c.last_job_title ? `<div style="font-size:11px;color:var(--gray-400);margin-top:4px">Last job: ${c.last_job_title} · ${timeAgo(c.last_job_date)}</div>` : ''}
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:10px">
+              <button class="btn btn-primary" style="flex:2;font-size:12px;padding:8px" onclick="bookAgain('${w.id}', '${(w.name || '').replace(/'/g, '')}')">Book Again</button>
+              <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="startChat('${w.id}')">Message</button>
+              <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="editCrewNote('${c.id}')">Note</button>
+              <button style="background:none;border:1px solid var(--gray-300);border-radius:var(--radius-sm);padding:8px;font-size:12px;cursor:pointer;color:var(--gray-500)" onclick="removeFromCrew(${c.id}, '${w.name}')">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('') : `
+        <div class="empty-state">
+          <div class="empty-state-icon">👥</div>
+          <h3>No crew members yet</h3>
+          <p>When you save workers from Search or hire them for a job, they'll appear here. Build your go-to crew!</p>
+          <button class="btn btn-primary" style="width:auto;margin:16px auto 0" onclick="switchTab('search')">Find Workers</button>
+        </div>
+      `}
     </div>
   `;
+}
+
+async function loadCrewRoster() {
+  try {
+    const { data: saved } = await db.from('saved_workers')
+      .select('*, worker:profiles!worker_id(*, worker_skills(*))')
+      .eq('business_id', state.user.id)
+      .order('created_at', { ascending: false });
+    
+    // Enrich with last job info
+    const crewData = (saved || []).map(s => {
+      // Find last completed job with this worker
+      const allResponses = Object.values(state.jobResponses || {}).flat();
+      const workerCompleted = allResponses
+        .filter(r => r.worker_id === s.worker_id && r.status === 'completed')
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
+      let lastJobTitle = '';
+      let lastJobDate = '';
+      if (workerCompleted.length) {
+        const job = state.jobs.find(j => j.id === workerCompleted[0].job_id);
+        if (job) {
+          lastJobTitle = job.title;
+          lastJobDate = workerCompleted[0].created_at;
+        }
+      }
+      
+      return { ...s, last_job_title: lastJobTitle, last_job_date: lastJobDate };
+    });
+    
+    state.crewRoster = crewData;
+  } catch(e) {
+    console.error('Error loading crew:', e);
+    state.crewRoster = [];
+  }
+}
+
+async function bookAgain(workerId, workerName) {
+  // Open chat with a pre-filled booking message
+  await startChat(workerId);
+  // After chat opens, pre-fill the input
+  setTimeout(() => {
+    const input = document.getElementById('chat-input');
+    if (input) {
+      input.value = `Hey ${workerName}! I've got another job coming up — are you available?`;
+      input.focus();
+    }
+  }, 300);
+}
+
+function editCrewNote(savedId) {
+  const current = (state.crewRoster || []).find(c => c.id === parseInt(savedId) || c.id === savedId);
+  const note = prompt('Add a note about this worker:', current?.note || '');
+  if (note !== null) {
+    db.from('saved_workers').update({ note: note }).eq('id', savedId).then(() => {
+      showToast('Note saved');
+      loadCrewRoster().then(() => render());
+    });
+  }
+}
+
+async function removeFromCrew(savedId, workerName) {
+  if (!confirm(`Remove ${workerName} from your crew?`)) return;
+  try {
+    await db.from('saved_workers').delete().eq('id', savedId);
+    showToast('Removed from crew');
+    await loadCrewRoster();
+    render();
+  } catch(e) { showToast('Error: ' + e.message); }
 }
 
 // ============================================
@@ -1610,46 +2870,93 @@ function renderStorm() {
 // ============================================
 function renderMyProfile() {
   const p = state.profile;
-  if (!p) return '';
+  if (!p) {
+    // Try to reload profile
+    loadProfile().then(() => { if (state.profile) render(); });
+    return `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#128100;</div>
+        <h3>Loading profile...</h3>
+        <p>If this doesn't load, try logging out and back in.</p>
+        <button class="btn btn-outline" style="width:auto;margin:16px auto 0" onclick="handleLogout()">Log Out</button>
+      </div>
+    `;
+  }
   const isWorker = p.user_type === 'worker';
   
-  const workerSkills = isWorker ? (state.workers.find(w => w.id === p.id)?.worker_skills || []).map(ws => {
-    const skill = state.skills.find(s => s.id === ws.skill_id);
-    return skill ? skill.name : '';
-  }).filter(Boolean) : [];
+  // Get skills from state.workers if available, otherwise use selectedSkills
+  let workerSkills = [];
+  if (isWorker) {
+    const meInWorkers = state.workers.find(w => w.id === p.id);
+    if (meInWorkers && meInWorkers.worker_skills) {
+      workerSkills = meInWorkers.worker_skills.map(ws => {
+        const skill = state.skills.find(s => s.id === ws.skill_id);
+        return skill ? skill.name : '';
+      }).filter(Boolean);
+    } else {
+      // Fallback: use selectedSkills from signup
+      workerSkills = Array.from(state.selectedSkills).map(id => {
+        const skill = state.skills.find(s => s.id === id);
+        return skill ? skill.name : '';
+      }).filter(Boolean);
+    }
+  }
+  
+  const avatarContent = p.avatar_url 
+    ? `<img src="${p.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    : `<span style="color:#fff;font-size:20px;font-weight:700">${getInitials(p.name)}</span>`;
   
   return `
     <div class="profile-view-header">
       <div style="display:flex;gap:14px;align-items:center">
-        <div class="avatar" style="width:60px;height:60px;border-radius:30px;font-size:20px;background:rgba(255,255,255,0.2)">${getInitials(p.name)}</div>
+        <div style="width:60px;height:60px;border-radius:30px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarContent}</div>
         <div>
           <div style="font-size:20px;font-weight:700">${isWorker ? p.name : (p.company_name || p.name)}</div>
           <div style="font-size:13px;opacity:0.8;margin-top:2px">${p.location_text || 'Location not set'} · ${isWorker ? 'Worker' : 'Business'}</div>
-          ${!isWorker ? `
           <div class="rating-row" style="margin-top:4px">
             <span class="star">★</span>
-            <span style="font-weight:600">${p.biz_rating_avg || 'New'}</span>
+            <span style="font-weight:600">${isWorker ? (p.rating_avg || 'New') : (p.biz_rating_avg || 'New')}</span>
           </div>
-          ` : `
-          <div class="rating-row" style="margin-top:4px">
-            <span class="star">★</span>
-            <span style="font-weight:600">${p.rating_avg || 'New'}</span>
-          </div>
-          `}
         </div>
       </div>
     </div>
     <div style="padding-top:12px">
       ${isWorker ? `
       <div class="profile-section">
-        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-weight:600;color:var(--forest-mid)">Pay Range</span><span style="font-weight:700;color:var(--green)">${formatPay(p.pay_min, p.pay_max)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-weight:600;color:var(--forest-mid)">Pay Range</span><span style="font-weight:700;color:var(--green)">${formatPay(p.pay_min, p.pay_max, p.pay_type)}</span></div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;margin-top:4px"><span style="font-weight:600;color:var(--forest-mid)">Availability</span><span>${availLabel(p.availability)}</span></div>
       </div>
       <div class="profile-section">
         <div class="profile-section-title">Skills</div>
-        <div class="badge-wrap">${workerSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('') || '<span style="color:var(--gray-500);font-size:13px">No skills added</span>'}</div>
+        <div class="badge-wrap">${workerSkills.length ? workerSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('') : '<span style="color:var(--gray-500);font-size:13px">No skills added yet</span>'}</div>
+      </div>
+      <div class="profile-section">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:24px">${p.has_insurance ? '🛡️' : '🔓'}</span>
+          <div>
+            <div class="profile-section-title" style="margin:0">Liability Insurance</div>
+            <div style="font-size:13px;color:${p.has_insurance ? 'var(--green)' : 'var(--gray-500)'};font-weight:600">${p.has_insurance ? 'Uploaded — visible to companies' : 'Not uploaded yet'}</div>
+            ${p.insurance_expiry ? `<div style="font-size:12px;color:var(--gray-500);margin-top:2px">Expires: ${p.insurance_expiry}</div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="profile-section" id="my-photos-section">
+        <div class="profile-section-title">Work Photos</div>
+        <div id="my-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          <div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">Loading...</div>
+        </div>
       </div>
       ` : `
+      <div class="profile-section">
+        <div class="profile-section-title">About</div>
+        <p style="font-size:14px;color:var(--gray-700);line-height:1.5">${p.company_description || '<span style="color:var(--gray-500)">No description yet — add one in Edit Profile</span>'}</p>
+      </div>
+      <div class="profile-section" id="my-photos-section">
+        <div class="profile-section-title">Company Photos</div>
+        <div id="my-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          <div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">Loading...</div>
+        </div>
+      </div>
       <div class="profile-section">
         <div class="profile-section-title">Subscription</div>
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--light-green);border-radius:var(--radius-sm)">
@@ -1662,7 +2969,16 @@ function renderMyProfile() {
       </div>
       `}
       <div style="padding:0 16px 16px">
-        <button class="btn btn-outline" onclick="goTo('profile-builder');state.profileStep=1;">Edit Profile</button>
+        <button class="btn btn-primary" style="margin-bottom:8px" onclick="editProfile()">Edit Profile</button>
+        <button class="btn btn-outline" style="margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px" id="push-toggle-btn" onclick="togglePushFromProfile()">
+          <span style="font-size:18px">🔔</span> <span id="push-toggle-label">Enable Notifications</span>
+        </button>
+        ${!isStandalone() ? `
+        <button class="btn btn-outline" style="margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="handleInstallClick()">
+          <span style="font-size:18px">📲</span> Install App to Home Screen
+        </button>
+        ` : ''}
+        <button class="btn btn-outline" onclick="handleLogout()">Log Out</button>
       </div>
     </div>
   `;
@@ -1686,7 +3002,42 @@ function switchTab(tab) {
   state.activeTab = tab;
   state.viewingWorker = null;
   state.viewingJob = null;
+  state.viewingCompany = null;
+  state.viewingJobDetail = null;
+  state.chattingWith = null;
   render();
+  
+  // Load work photos for my profile
+  if (tab === 'profile' && state.profile) {
+    loadMyPhotos();
+  }
+  
+  // Load crew roster
+  if (tab === 'crew') {
+    loadCrewRoster().then(() => render());
+  }
+}
+
+async function loadMyPhotos() {
+  try {
+    const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
+    const grid = document.getElementById('my-photos-grid');
+    if (grid) {
+      if (photos && photos.length > 0) {
+        grid.innerHTML = photos.map(p => `
+          <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
+            <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">
+          </div>
+        `).join('');
+      } else {
+        grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet — add them in Edit Profile</div>';
+      }
+    }
+  } catch (e) {
+    console.error('Error loading photos:', e);
+    const grid = document.getElementById('my-photos-grid');
+    if (grid) grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet</div>';
+  }
 }
 
 function setTradeFilter(trade) {
@@ -1713,30 +3064,502 @@ function selectAvailability(val) {
 }
 
 function updatePayDisplay() {
-  const min = $('#pay-min')?.value || 0;
-  const max = $('#pay-max')?.value || 0;
-  const display = $('#pay-display');
+  const min = document.getElementById('pay-min')?.value || 0;
+  const max = document.getElementById('pay-max')?.value || 0;
+  const display = document.getElementById('pay-display');
+  const payType = state.profile?.pay_type || state.postJobData?.pay_type || 'hourly';
+  const suffix = payType === 'day_rate' ? '/day' : '/hr';
   if (display) {
-    display.textContent = `$${min} - $${max}/hr`;
+    display.textContent = `$${min} - $${max}${suffix}`;
   }
 }
 
 async function viewWorker(id) {
   state.viewingWorker = state.workers.find(w => w.id === id);
   render();
+  
+  // Load work photos async
+  try {
+    const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', id).order('created_at');
+    const grid = document.getElementById('worker-photos-grid');
+    if (grid) {
+      if (photos && photos.length > 0) {
+        grid.innerHTML = photos.map(p => `
+          <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
+            <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open('${p.photo_url}','_blank')">
+          </div>
+        `).join('');
+      } else {
+        grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No work photos yet</div>';
+      }
+    }
+  } catch(e) {}
+  
+  // Load reviews async
+  try {
+    const { data: reviews } = await db.from('reviews').select('*, profiles!reviewer_id(name, avatar_url, company_name)').eq('reviewed_id', id).order('created_at', { ascending: false });
+    const el = document.getElementById('worker-reviews');
+    if (el) {
+      if (reviews && reviews.length > 0) {
+        el.innerHTML = reviews.map(r => `
+          <div style="padding:12px 0;border-bottom:1px solid var(--gray-200)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:600;font-size:14px">${r.profiles?.company_name || r.profiles?.name || 'Company'}</span>
+              <span style="color:#F59E0B;font-size:14px">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+            </div>
+            ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${r.comment}</p>` : ''}
+          </div>
+        `).join('');
+      } else {
+        el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">No reviews yet</div>';
+      }
+    }
+  } catch(e) {}
 }
 
 function showPostJob() {
-  // Simple job posting - we'll enhance this later
-  const title = prompt('Job title (e.g. "Climber Needed Tomorrow"):');
-  if (!title) return;
-  const pay = prompt('Pay range (e.g. "$30-35"):');
-  const desc = prompt('Quick description:');
-  postJob(title, pay, desc);
+  state.activeTab = 'post-job';
+  state.postJobData = {
+    title: '',
+    description: '',
+    pay_type: 'hourly',
+    pay_min: '',
+    pay_max: '',
+    job_type: 'on_demand',
+    location_text: state.profile?.location_text || '',
+    is_urgent: false,
+    selectedSkills: new Set(),
+  };
+  render();
+}
+
+function renderPostJob() {
+  const d = state.postJobData;
+  const trades = {};
+  state.skills.forEach(s => {
+    if (!trades[s.trade]) trades[s.trade] = [];
+    trades[s.trade].push(s);
+  });
+  
+  return `
+    <div style="padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span class="page-title" style="margin:0">${d.bookingFor ? 'Book ' + d.bookingName : 'Post a Job'}</span>
+        <button style="background:none;border:none;color:var(--gray-500);font-size:14px;cursor:pointer;font-family:inherit" onclick="switchTab('jobs')">Cancel</button>
+      </div>
+      
+      ${d.bookingFor ? `
+      <div class="card" style="padding:12px;margin-bottom:16px;background:var(--light-green);border:1px solid var(--green)">
+        <div style="font-size:13px;color:var(--forest-mid)">📋 Creating a job for <strong>${d.bookingName}</strong>. They'll be auto-hired when you post.</div>
+      </div>
+      ` : ''}
+      
+      <div class="form-group">
+        <label class="form-label">Job Title</label>
+        <input class="form-input" id="job-title" type="text" placeholder="e.g. Climber Needed Tomorrow" value="${d.title}">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">What type of work?</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${[
+            { val: 'on_demand', label: 'On-Demand' },
+            { val: 'short_term', label: 'Short-Term' },
+            { val: 'seasonal', label: 'Seasonal' },
+            { val: 'storm_response', label: 'Storm Response' },
+          ].map(t => `
+            <button class="filter-chip ${d.job_type === t.val ? 'active' : ''}" onclick="state.postJobData.job_type='${t.val}';render()">${t.label}</button>
+          `).join('')}
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Pay Type</label>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button class="filter-chip ${(d.pay_type || 'hourly') === 'hourly' ? 'active' : ''}" onclick="state.postJobData.pay_type='hourly';render()">Hourly Rate</button>
+          <button class="filter-chip ${d.pay_type === 'day_rate' ? 'active' : ''}" onclick="state.postJobData.pay_type='day_rate';render()">Flat Day Rate</button>
+        </div>
+        <label class="form-label">Pay Range (${d.pay_type === 'day_rate' ? '$/day' : '$/hr'})</label>
+        <div class="pay-range-row">
+          <input type="number" id="job-pay-min" placeholder="${d.pay_type === 'day_rate' ? '250' : '25'}" value="${d.pay_min}">
+          <span>to</span>
+          <input type="number" id="job-pay-max" placeholder="${d.pay_type === 'day_rate' ? '400' : '40'}" value="${d.pay_max}">
+          <span>${d.pay_type === 'day_rate' ? '/day' : '/hr'}</span>
+        </div>
+        ${d.pay_type === 'day_rate' ? '<div class="form-hint">Hours negotiable — workers will discuss schedule details in messages</div>' : ''}
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input class="form-input" id="job-location" type="text" placeholder="Medway, MA" value="${d.location_text}">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-input" id="job-desc" rows="3" placeholder="What's the job? What should workers expect?">${d.description}</textarea>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Skills Needed</label>
+        <div class="form-hint" style="margin-bottom:8px">Tap the skills required for this job — workers with matching skills will see it first</div>
+        ${Object.entries(trades).map(([trade, skills]) => `
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:6px">${trade}</div>
+            <div class="skill-grid">
+              ${skills.map(s => `
+                <button class="skill-chip ${d.selectedSkills.has(s.id) ? 'selected' : ''}" onclick="toggleJobSkill(${s.id})">${s.name}</button>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <div class="form-group">
+        <button class="avail-option ${d.is_urgent ? 'selected' : ''}" onclick="state.postJobData.is_urgent=!state.postJobData.is_urgent;render()" style="margin-bottom:0">
+          <div class="avail-radio"></div>
+          <div>
+            <div class="avail-label">Mark as Urgent</div>
+            <div class="avail-desc">Highlights the job so workers know you need help fast</div>
+          </div>
+        </button>
+      </div>
+      
+      <button class="btn btn-primary" id="post-job-btn" onclick="handlePostJob(this)" style="margin-top:8px">Post Job</button>
+    </div>
+  `;
+}
+
+function toggleJobSkill(skillId) {
+  if (state.postJobData.selectedSkills.has(skillId)) {
+    state.postJobData.selectedSkills.delete(skillId);
+  } else {
+    state.postJobData.selectedSkills.add(skillId);
+  }
+  // Toggle just the chip without full re-render
+  const chips = document.querySelectorAll('.skill-chip');
+  chips.forEach(chip => {
+    const match = chip.getAttribute('onclick')?.match(/toggleJobSkill\((\d+)\)/);
+    if (match) {
+      const id = parseInt(match[1]);
+      chip.classList.toggle('selected', state.postJobData.selectedSkills.has(id));
+    }
+  });
+}
+
+async function handlePostJob(btn) {
+  const title = document.getElementById('job-title')?.value?.trim();
+  if (!title) { showToast('Add a job title'); return; }
+  
+  const payMin = parseInt(document.getElementById('job-pay-min')?.value || 0) * 100;
+  const payMax = parseInt(document.getElementById('job-pay-max')?.value || 0) * 100;
+  const location = document.getElementById('job-location')?.value?.trim();
+  const desc = document.getElementById('job-desc')?.value?.trim();
+  const d = state.postJobData;
+  
+  btn.disabled = true;
+  btn.textContent = 'Posting...';
+  
+  try {
+    const { data: job, error } = await db.from('jobs').insert({
+      business_id: state.user.id,
+      title: title,
+      description: desc,
+      pay_min: payMin || 2500,
+      pay_max: payMax || payMin || 3500,
+      pay_type: d.pay_type || 'hourly',
+      job_type: d.job_type,
+      location_text: location || state.profile?.location_text,
+      is_urgent: d.is_urgent,
+      is_active: true,
+    }).select().single();
+    
+    if (error) throw error;
+    
+    // Add job skills
+    if (job && d.selectedSkills.size > 0) {
+      const jobSkills = Array.from(d.selectedSkills).map(skillId => ({
+        job_id: job.id,
+        skill_id: skillId,
+      }));
+      await db.from('job_skills').insert(jobSkills);
+    }
+    
+    // Auto-hire if booking a specific worker
+    if (job && d.bookingFor) {
+      await db.from('job_responses').insert({
+        job_id: job.id,
+        worker_id: d.bookingFor,
+        status: 'accepted',
+      });
+      showToast(`Job posted and ${d.bookingName} has been hired!`);
+      
+      // Notify the specific worker
+      sendPushNotification({
+        target_user_id: d.bookingFor,
+        title: '🎉 You\'ve been hired!',
+        body: `${state.profile?.company_name || state.profile?.name} hired you for: ${d.title}`,
+        type: 'hired',
+      });
+    } else {
+      showToast('Job posted! Workers can see it now.');
+      
+      // Notify all workers about new job
+      sendPushNotification({
+        target_type: 'worker',
+        title: '🌲 New Job Posted',
+        body: `${d.title} — ${formatPay(d.pay_min, d.pay_max, d.pay_type)} in ${d.location_text}`,
+        type: 'new_job',
+      });
+    }
+    await loadData();
+    state.activeTab = 'jobs';
+    render();
+    
+  } catch (e) {
+    console.error('Post job error:', e);
+    showToast('Error posting: ' + (e.message || 'Try again'));
+    btn.disabled = false;
+    btn.textContent = 'Post Job';
+  }
+}
+
+function viewProfileFromChat(userId) {
+  const worker = state.workers.find(w => w.id === userId);
+  if (worker) {
+    state.chattingWith = null;
+    state.viewingWorker = worker;
+    // Use browse tab for workers viewing workers, search tab for businesses viewing workers
+    if (state.profile?.user_type === 'worker') {
+      state.activeTab = 'browse';
+      state.browseTab = 'workers';
+    } else {
+      state.activeTab = 'search';
+    }
+    render();
+    loadWorkerProfileData(userId);
+    return;
+  }
+  const biz = (state.businesses || []).find(b => b.id === userId);
+  if (biz) {
+    state.chattingWith = null;
+    state.viewingCompany = biz;
+    if (state.profile?.user_type === 'worker') {
+      state.activeTab = 'browse';
+      state.browseTab = 'companies';
+    } else {
+      state.activeTab = 'search';
+    }
+    render();
+    viewCompany(biz.id);
+    return;
+  }
+  // Fallback — fetch from DB
+  db.from('profiles').select('*').eq('id', userId).single().then(({ data }) => {
+    if (data) {
+      state.chattingWith = null;
+      if (data.user_type === 'worker') {
+        state.workers.push(data);
+        state.viewingWorker = data;
+        state.activeTab = state.profile?.user_type === 'worker' ? 'browse' : 'search';
+      } else {
+        state.businesses.push(data);
+        state.viewingCompany = data;
+        state.activeTab = state.profile?.user_type === 'worker' ? 'browse' : 'search';
+      }
+      render();
+    }
+  });
 }
 
 async function startChat(userId) {
-  showToast('Messaging coming soon! For now, connect directly.');
+  // Look up the user's name from workers, businesses, or crew
+  let target = state.workers.find(w => w.id === userId);
+  if (!target) target = (state.businesses || []).find(b => b.id === userId);
+  if (!target) {
+    const crew = (state.crewRoster || []).find(c => c.worker?.id === userId);
+    if (crew) target = crew.worker;
+  }
+  // Last resort — fetch from DB
+  if (!target) {
+    try {
+      const { data } = await db.from('profiles').select('*').eq('id', userId).single();
+      target = data;
+    } catch(e) {}
+  }
+  const name = target?.company_name || target?.name || 'User';
+  const location = target?.location_text || '';
+  openChat(userId, name, location);
+}
+
+async function openChat(userId, name, location) {
+  // Build conversation ID (sorted pair so it's always the same)
+  const ids = [state.user.id, userId].sort();
+  const conversationId = ids.join('_');
+  
+  state.chattingWith = { userId, name, location: location || '', conversationId };
+  state.chatMessages = [];
+  state.activeTab = 'messages';
+  state.viewingWorker = null;
+  state.viewingCompany = null;
+  
+  render();
+  
+  // Load existing messages
+  const { data: messages } = await db
+    .from('messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true });
+  
+  state.chatMessages = messages || [];
+  render();
+  scrollChatToBottom();
+  
+  // Mark messages as read
+  await db
+    .from('messages')
+    .update({ is_read: true })
+    .eq('conversation_id', conversationId)
+    .eq('receiver_id', state.user.id)
+    .eq('is_read', false);
+  
+  // Subscribe to new messages in real-time
+  if (state.chatSubscription) {
+    state.chatSubscription.unsubscribe();
+  }
+  
+  state.chatSubscription = db
+    .channel('chat_' + conversationId)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      filter: 'conversation_id=eq.' + conversationId,
+    }, (payload) => {
+      // Only add if we don't already have it
+      if (!state.chatMessages.find(m => m.id === payload.new.id)) {
+        state.chatMessages.push(payload.new);
+        render();
+        scrollChatToBottom();
+        // Mark as read if we're the receiver
+        if (payload.new.receiver_id === state.user.id) {
+          db.from('messages').update({ is_read: true }).eq('id', payload.new.id);
+        }
+      }
+    })
+    .subscribe();
+}
+
+function closeChat() {
+  if (state.chatSubscription) {
+    state.chatSubscription.unsubscribe();
+    state.chatSubscription = null;
+  }
+  state.chattingWith = null;
+  state.chatMessages = [];
+  // Reload conversations
+  loadConversations();
+  render();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const content = input?.value?.trim();
+  if (!content || !state.chattingWith) return;
+  
+  input.value = '';
+  
+  const msg = {
+    conversation_id: state.chattingWith.conversationId,
+    sender_id: state.user.id,
+    receiver_id: state.chattingWith.userId,
+    content: content,
+  };
+  
+  // Optimistic add
+  const optimistic = { ...msg, id: Date.now(), created_at: new Date().toISOString(), is_read: false };
+  state.chatMessages.push(optimistic);
+  render();
+  scrollChatToBottom();
+  
+  // Focus input again
+  setTimeout(() => document.getElementById('chat-input')?.focus(), 50);
+  
+  // Actually send
+  const { error } = await db.from('messages').insert(msg);
+  if (error) {
+    showToast('Failed to send message');
+    state.chatMessages.pop();
+    render();
+  } else {
+    // Send push notification to recipient
+    sendPushNotification({
+      target_user_id: state.chattingWith.userId,
+      title: `💬 ${state.profile?.company_name || state.profile?.name || 'Someone'}`,
+      body: content.length > 80 ? content.slice(0, 80) + '...' : content,
+      type: 'message',
+    });
+  }
+}
+
+function scrollChatToBottom() {
+  setTimeout(() => {
+    const el = document.getElementById('chat-messages');
+    if (el) el.scrollTop = el.scrollHeight;
+  }, 50);
+}
+
+async function loadConversations() {
+  // Get all messages where user is sender or receiver
+  const { data: messages } = await db
+    .from('messages')
+    .select('*')
+    .or(`sender_id.eq.${state.user.id},receiver_id.eq.${state.user.id}`)
+    .order('created_at', { ascending: false });
+  
+  if (!messages || !messages.length) {
+    state.conversations = [];
+    return;
+  }
+  
+  // Group by conversation
+  const convos = {};
+  messages.forEach(m => {
+    if (!convos[m.conversation_id]) {
+      convos[m.conversation_id] = {
+        conversationId: m.conversation_id,
+        lastMessage: m,
+        unreadCount: 0,
+        otherUserId: m.sender_id === state.user.id ? m.receiver_id : m.sender_id,
+      };
+    }
+    if (!m.is_read && m.receiver_id === state.user.id) {
+      convos[m.conversation_id].unreadCount++;
+    }
+  });
+  
+  // Look up names for each conversation
+  const otherIds = [...new Set(Object.values(convos).map(c => c.otherUserId))];
+  const { data: profiles } = await db
+    .from('profiles')
+    .select('id, name, company_name, user_type, location_text')
+    .in('id', otherIds);
+  
+  const profileMap = {};
+  (profiles || []).forEach(p => { profileMap[p.id] = p; });
+  
+  state.conversations = Object.values(convos).map(c => {
+    const other = profileMap[c.otherUserId] || {};
+    const displayName = other.user_type === 'business' ? (other.company_name || other.name) : other.name;
+    return {
+      userId: c.otherUserId,
+      name: displayName || 'Unknown',
+      location: other.location_text || '',
+      preview: c.lastMessage.content,
+      time: timeAgo(c.lastMessage.created_at),
+      unread: c.unreadCount > 0,
+    };
+  });
 }
 
 async function saveWorker(userId) {
@@ -1757,7 +3580,13 @@ async function respondToJob(jobId) {
       job_id: jobId,
       worker_id: state.user.id,
     });
-    showToast("Response sent! The company can now see you're interested.");
+    
+    // Update local state immediately
+    if (!state.myJobStatuses) state.myJobStatuses = [];
+    state.myJobStatuses.push({ job_id: jobId, worker_id: state.user.id, status: 'interested' });
+    
+    showToast("Interest sent! The company can see your profile now.");
+    render();
   } catch (e) {
     showToast("You've already responded to this job.");
   }
@@ -1808,26 +3637,59 @@ async function handleSignup() {
     
     if (error) throw error;
     
-    // Create profile
-    const { error: profileError } = await db.from('profiles').insert({
+    // Create profile — check for unclaimed business first
+    let preloadedData = null;
+    if (state.signupType === 'business') {
+      const claimCode = document.getElementById('signup-claim-code')?.value?.trim()?.toUpperCase();
+      if (claimCode) {
+        try {
+          const { data: unclaimed } = await db.from('unclaimed_businesses')
+            .select('*')
+            .eq('claim_code', claimCode)
+            .eq('claimed', false)
+            .single();
+          if (unclaimed) {
+            preloadedData = unclaimed;
+          } else {
+            throw new Error('Invalid or already used claim code');
+          }
+        } catch(e) {
+          if (e.message.includes('Invalid') || e.message.includes('claim')) {
+            errorEl.textContent = 'Invalid claim code. Check the code and try again, or leave it blank to create a new profile.';
+            errorEl.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = 'Create Business Account';
+            return;
+          }
+        }
+      }
+    }
+    
+    const profileData = {
       id: data.user.id,
       user_type: state.signupType,
-      name: name,
+      name: preloadedData?.company_name || name,
       email: email,
-      location_text: location,
-      company_name: state.signupType === 'business' ? (company || name) : null,
-    });
+      location_text: preloadedData?.location_text || location,
+      company_name: state.signupType === 'business' ? (preloadedData?.company_name || company || name) : null,
+      company_description: preloadedData?.company_description || null,
+      phone: preloadedData?.phone || null,
+      avatar_url: preloadedData?.logo_url || null,
+    };
+    
+    const { error: profileError } = await db.from('profiles').insert(profileData);
     
     if (profileError) throw profileError;
     
+    // Mark as claimed if pre-loaded
+    if (preloadedData) {
+      await db.from('unclaimed_businesses').update({ claimed: true, claimed_by: data.user.id })
+        .eq('id', preloadedData.id);
+    }
+    
     state.user = data.user;
     state.profile = {
-      id: data.user.id,
-      user_type: state.signupType,
-      name,
-      email,
-      location_text: location,
-      company_name: company,
+      ...profileData,
       availability: 'available_now',
     };
     
@@ -1884,6 +3746,41 @@ async function handleLogin() {
   }
 }
 
+async function handleResetPassword() {
+  const email = document.getElementById('reset-email')?.value?.trim();
+  const errorEl = document.getElementById('reset-error');
+  const successEl = document.getElementById('reset-success');
+  
+  if (!email) {
+    errorEl.textContent = 'Please enter your email address.';
+    errorEl.classList.add('show');
+    return;
+  }
+  
+  const btn = document.getElementById('reset-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  
+  try {
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/app.html',
+    });
+    
+    if (error) throw error;
+    
+    errorEl.classList.remove('show');
+    successEl.textContent = 'Check your email for a password reset link!';
+    successEl.classList.add('show');
+    btn.textContent = 'Sent!';
+    
+  } catch (e) {
+    errorEl.textContent = e.message || 'Something went wrong. Try again.';
+    errorEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+  }
+}
+
 async function handleLogout() {
   await db.auth.signOut();
   state.user = null;
@@ -1897,52 +3794,96 @@ async function handleLogout() {
 // ============================================
 async function nextProfileStep() {
   const isWorker = state.profile?.user_type === 'worker';
-  const totalSteps = isWorker ? 3 : 1;
+  const totalSteps = isWorker ? 6 : 1;
   
-  if (isWorker && state.profileStep === 1) {
-    // Save skills
-    if (state.selectedSkills.size === 0) {
-      showToast('Select at least one skill!');
-      return;
+  try {
+    if (isWorker && state.profileStep === 1) {
+      const nameEl = document.getElementById('edit-name');
+      const locEl = document.getElementById('edit-location');
+      const bioEl = document.getElementById('edit-bio');
+      const name = (nameEl ? nameEl.value.trim() : '') || state.profile.name;
+      const location = locEl ? locEl.value.trim() : (state.profile.location_text || '');
+      const bio = bioEl ? bioEl.value.trim() : (state.profile.bio || '');
+      const { error } = await db.from('profiles').update({ 
+        name: name,
+        location_text: location, 
+        bio: bio 
+      }).eq('id', state.user.id);
+      if (error) console.error('Step 1 save error:', error);
+      state.profile.name = name;
+      state.profile.location_text = location;
+      state.profile.bio = bio;
+      
+    } else if (isWorker && state.profileStep === 2) {
+      if (state.selectedSkills.size === 0) {
+        showToast('Select at least one skill!');
+        return;
+      }
+      const skills = Array.from(state.selectedSkills).map(skillId => ({
+        worker_id: state.user.id,
+        skill_id: skillId,
+      }));
+      await db.from('worker_skills').delete().eq('worker_id', state.user.id);
+      const { error } = await db.from('worker_skills').insert(skills);
+      if (error) console.error('Step 2 save error:', error);
+      
+    } else if (isWorker && state.profileStep === 3) {
+      const minEl = document.getElementById('pay-min');
+      const maxEl = document.getElementById('pay-max');
+      const min = parseInt(minEl ? minEl.value : 20) * 100;
+      const max = parseInt(maxEl ? maxEl.value : 35) * 100;
+      const payType = state.profile.pay_type || 'hourly';
+      const { error } = await db.from('profiles').update({ pay_min: min, pay_max: max, pay_type: payType }).eq('id', state.user.id);
+      if (error) console.error('Step 3 save error:', error);
+      state.profile.pay_min = min;
+      state.profile.pay_max = max;
+      
+    } else if (isWorker && state.profileStep === 4) {
+      const { error } = await db.from('profiles').update({ availability: state.profile.availability }).eq('id', state.user.id);
+      if (error) console.error('Step 4 save error:', error);
+      try {
+        const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
+        state.workPhotos = photos || [];
+      } catch (e) { state.workPhotos = []; }
+      
+    } else if (isWorker && state.profileStep === 5) {
+      // Photos uploaded individually, nothing to save
+    } else if (isWorker && state.profileStep === 6) {
+      // Save insurance expiry if set
+      const expiry = document.getElementById('insurance-expiry')?.value?.trim();
+      if (expiry || state.profile.insurance_doc_url) {
+        const { error } = await db.from('profiles').update({ 
+          insurance_expiry: expiry || null 
+        }).eq('id', state.user.id);
+        if (error) console.error('Step 6 save error:', error);
+        state.profile.insurance_expiry = expiry;
+      }
     }
     
-    const skills = Array.from(state.selectedSkills).map(skillId => ({
-      worker_id: state.user.id,
-      skill_id: skillId,
-    }));
-    
-    // Delete existing and re-insert
-    await db.from('worker_skills').delete().eq('worker_id', state.user.id);
-    await db.from('worker_skills').insert(skills);
-    
-  } else if (isWorker && state.profileStep === 2) {
-    // Save pay
-    const min = parseInt($('#pay-min')?.value || 20) * 100;
-    const max = parseInt($('#pay-max')?.value || 35) * 100;
-    await db.from('profiles').update({ pay_min: min, pay_max: max }).eq('id', state.user.id);
-    state.profile.pay_min = min;
-    state.profile.pay_max = max;
-    
-  } else if (isWorker && state.profileStep === 3) {
-    // Save availability
-    await db.from('profiles').update({ availability: state.profile.availability }).eq('id', state.user.id);
-  }
-  
-  if (!isWorker) {
-    // Save business details
-    const desc = $('#biz-desc')?.value?.trim();
-    const phone = $('#biz-phone')?.value?.trim();
-    await db.from('profiles').update({
-      company_description: desc,
-      phone: phone,
-    }).eq('id', state.user.id);
-    state.profile.company_description = desc;
-    state.profile.phone = phone;
+    if (!isWorker) {
+      const companyName = (document.getElementById('biz-name')?.value?.trim()) || state.profile.company_name;
+      const location = (document.getElementById('biz-location')?.value?.trim()) || state.profile.location_text;
+      const desc = (document.getElementById('biz-desc')?.value?.trim()) || state.profile.company_description;
+      const phone = (document.getElementById('biz-phone')?.value?.trim()) || state.profile.phone;
+      const { error } = await db.from('profiles').update({
+        company_name: companyName,
+        location_text: location,
+        company_description: desc,
+        phone: phone,
+      }).eq('id', state.user.id);
+      if (error) console.error('Biz save error:', error);
+      state.profile.company_name = companyName;
+      state.profile.location_text = location;
+      state.profile.company_description = desc;
+      state.profile.phone = phone;
+    }
+  } catch (e) {
+    console.error('Profile step error:', e);
+    // Still advance even if save failed
   }
   
   if (state.profileStep >= totalSteps) {
-    // Done! Go to main app
-    await loadData();
+    try { await loadData(); } catch (e) { console.error('loadData error:', e); }
     state.activeTab = isWorker ? 'feed' : 'search';
     state.currentScreen = 'main';
     showToast('Profile set up! You\'re ready to go.');
@@ -1963,27 +3904,170 @@ function prevProfileStep() {
 // ============================================
 // JOB POSTING
 // ============================================
-async function postJob(title, pay, desc) {
-  const payParts = pay?.match(/(\d+)/g) || [25, 35];
-  const { error } = await db.from('jobs').insert({
-    business_id: state.user.id,
-    title,
-    description: desc,
-    pay_min: parseInt(payParts[0] || 25) * 100,
-    pay_max: parseInt(payParts[1] || payParts[0] || 35) * 100,
-    job_type: 'on_demand',
-    location_text: state.profile?.location_text,
-    is_urgent: true,
-    is_active: true,
-  });
+// ============================================
+// PHOTO UPLOADS
+// ============================================
+async function uploadAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
   
-  if (error) {
-    showToast('Error posting job: ' + error.message);
-  } else {
-    showToast('Job posted! Workers will be able to see it.');
-    await loadData();
-    render();
+  const status = document.getElementById('avatar-status');
+  if (status) status.textContent = 'Uploading...';
+  
+  try {
+    const ext = file.name.split('.').pop();
+    const path = `${state.user.id}/avatar.${ext}`;
+    
+    const { error: uploadError } = await db.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true });
+    
+    if (uploadError) throw uploadError;
+    
+    const { data: { publicUrl } } = db.storage.from('avatars').getPublicUrl(path);
+    
+    // Add cache buster
+    const url = publicUrl + '?t=' + Date.now();
+    
+    await db.from('profiles').update({ avatar_url: url }).eq('id', state.user.id);
+    state.profile.avatar_url = url;
+    
+    if (status) status.textContent = 'Photo updated!';
+    
+    // Update preview
+    const preview = document.getElementById('avatar-preview');
+    if (preview) preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
+    
+  } catch (e) {
+    console.error('Avatar upload error:', e);
+    if (status) status.textContent = 'Upload failed — try again';
+    showToast('Photo upload failed: ' + (e.message || 'Unknown error'));
   }
+}
+
+async function uploadWorkPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const status = document.getElementById('photo-status');
+  if (status) status.textContent = 'Uploading...';
+  
+  try {
+    const ext = file.name.split('.').pop();
+    const path = `${state.user.id}/${Date.now()}.${ext}`;
+    
+    const { error: uploadError } = await db.storage
+      .from('work-photos')
+      .upload(path, file);
+    
+    if (uploadError) throw uploadError;
+    
+    const { data: { publicUrl } } = db.storage.from('work-photos').getPublicUrl(path);
+    
+    // Save to work_photos table
+    const { data: photo, error: dbError } = await db.from('work_photos').insert({
+      worker_id: state.user.id,
+      photo_url: publicUrl,
+    }).select().single();
+    
+    if (dbError) throw dbError;
+    
+    if (!state.workPhotos) state.workPhotos = [];
+    state.workPhotos.push(photo);
+    
+    if (status) status.textContent = 'Photo added!';
+    render();
+    
+  } catch (e) {
+    console.error('Work photo upload error:', e);
+    if (status) status.textContent = 'Upload failed — try again';
+    showToast('Photo upload failed: ' + (e.message || 'Unknown error'));
+  }
+}
+
+async function deleteWorkPhoto(photoId) {
+  const photo = (state.workPhotos || []).find(p => p.id === photoId);
+  if (!photo) return;
+  
+  await db.from('work_photos').delete().eq('id', photoId);
+  state.workPhotos = (state.workPhotos || []).filter(p => p.id !== photoId);
+  
+  showToast('Photo removed');
+  render();
+}
+
+async function uploadInsurance(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const status = document.getElementById('insurance-status');
+  if (status) status.textContent = 'Uploading...';
+  
+  try {
+    const ext = file.name.split('.').pop();
+    const path = `${state.user.id}/insurance.${ext}`;
+    
+    const { error: uploadError } = await db.storage
+      .from('insurance-docs')
+      .upload(path, file, { upsert: true });
+    
+    if (uploadError) throw uploadError;
+    
+    const { data: { publicUrl } } = db.storage.from('insurance-docs').getPublicUrl(path);
+    const url = publicUrl + '?t=' + Date.now();
+    
+    await db.from('profiles').update({ 
+      insurance_doc_url: url, 
+      has_insurance: true 
+    }).eq('id', state.user.id);
+    
+    state.profile.insurance_doc_url = url;
+    state.profile.has_insurance = true;
+    
+    if (status) status.textContent = 'Uploaded!';
+    showToast('Insurance document uploaded!');
+    render();
+    
+  } catch (e) {
+    console.error('Insurance upload error:', e);
+    if (status) status.textContent = 'Upload failed — try again';
+    showToast('Upload failed: ' + (e.message || 'Unknown error'));
+  }
+}
+
+async function removeInsurance() {
+  await db.from('profiles').update({ 
+    insurance_doc_url: null, 
+    has_insurance: false,
+    insurance_expiry: null 
+  }).eq('id', state.user.id);
+  
+  state.profile.insurance_doc_url = null;
+  state.profile.has_insurance = false;
+  state.profile.insurance_expiry = null;
+  
+  showToast('Insurance document removed');
+  render();
+}
+
+async function editProfile() {
+  await loadProfile();
+  
+  if (state.profile?.user_type === 'worker') {
+    // Load current skills into selectedSkills
+    const { data: mySkills } = await db.from('worker_skills').select('skill_id').eq('worker_id', state.user.id);
+    state.selectedSkills = new Set((mySkills || []).map(s => s.skill_id));
+  }
+  
+  // Load work/company photos for both types
+  try {
+    const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
+    state.workPhotos = photos || [];
+  } catch (e) { state.workPhotos = []; }
+  
+  state.profileStep = 1;
+  state.currentScreen = 'profile-builder';
+  render();
 }
 
 // ============================================
@@ -2000,22 +4084,50 @@ async function loadProfile() {
 }
 
 async function loadData() {
-  // Load workers (with their skills)
-  const { data: workers } = await db
-    .from('profiles')
-    .select('*, worker_skills(*)')
-    .eq('user_type', 'worker')
-    .neq('availability', 'not_available')
-    .order('rating_avg', { ascending: false });
-  state.workers = workers || [];
+  try {
+    // Load workers (with their skills)
+    const { data: workers } = await db
+      .from('profiles')
+      .select('*, worker_skills(*)')
+      .eq('user_type', 'worker')
+      .order('rating_avg', { ascending: false });
+    state.workers = workers || [];
+  } catch (e) { console.error('Error loading workers:', e); state.workers = []; }
   
-  // Load jobs (with business info and skills)
-  const { data: jobs } = await db
-    .from('jobs')
-    .select('*, profiles!business_id(name, company_name), job_skills(*)')
-    .eq('is_active', true)
-    .order('created_at', { ascending: false });
-  state.jobs = jobs || [];
+  try {
+    // Load jobs (with business info and skills)
+    const { data: jobs } = await db
+      .from('jobs')
+      .select('*, profiles!business_id(name, company_name), job_skills(*)')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+    state.jobs = jobs || [];
+  } catch (e) { console.error('Error loading jobs:', e); state.jobs = []; }
+  
+  try {
+    // Load businesses
+    const { data: businesses } = await db
+      .from('profiles')
+      .select('*')
+      .eq('user_type', 'business')
+      .order('biz_rating_avg', { ascending: false });
+    state.businesses = businesses || [];
+  } catch (e) { console.error('Error loading businesses:', e); state.businesses = []; }
+  
+  // Load worker's own job responses (for showing applied/hired status)
+  if (state.profile?.user_type === 'worker') {
+    try {
+      const { data: myStatuses } = await db.from('job_responses')
+        .select('*')
+        .eq('worker_id', state.user.id);
+      state.myJobStatuses = myStatuses || [];
+    } catch(e) { state.myJobStatuses = []; }
+  }
+  
+  try {
+    // Load conversations
+    await loadConversations();
+  } catch (e) { console.error('Error loading conversations:', e); state.conversations = []; }
 }
 
 // ============================================
@@ -2023,7 +4135,6 @@ async function loadData() {
 // ============================================
 async function init() {
   try {
-    // Check for existing session
     const { data: { session } } = await db.auth.getSession();
     
     if (session?.user) {
@@ -2037,8 +4148,23 @@ async function init() {
         await loadData();
         state.activeTab = profile.user_type === 'business' ? 'search' : 'feed';
         state.currentScreen = 'main';
+        
+        // Subscribe to incoming messages globally
+        db.channel('global_messages_' + state.user.id)
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: 'receiver_id=eq.' + state.user.id,
+          }, (payload) => {
+            // Refresh conversations if we're not in the chat with this person
+            if (!state.chattingWith || state.chattingWith.conversationId !== payload.new.conversation_id) {
+              loadConversations().then(() => render());
+              showToast('New message received!');
+            }
+          })
+          .subscribe();
       } else {
-        // Profile doesn't exist — user got stuck during signup
         await db.auth.signOut();
         state.currentScreen = 'splash';
       }
@@ -2047,7 +4173,6 @@ async function init() {
     }
   } catch (e) {
     console.error('Init error:', e);
-    // If anything fails, just show splash
     try { await db.auth.signOut(); } catch (_) {}
     state.currentScreen = 'splash';
   }
@@ -2067,6 +4192,329 @@ db.auth.onAuthStateChange((event, session) => {
 
 // Start the app
 init();
+
+// ============================================
+// PWA: Service Worker + Install Prompt
+// ============================================
+let deferredPrompt = null;
+const VAPID_PUBLIC_KEY = 'BDKjpMxX0K3plkADCR3vVKelt08Hiv6aJo2aIvfOgyiq8lY3vSY98o9Tzg-9xia4nbVFZtzVadBkFMMQFedOvuE';
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then((reg) => {
+    console.log('SW registered:', reg.scope);
+    // Try to subscribe to push after SW is ready
+    if (state.user) {
+      subscribeToPush(reg);
+    }
+  }).catch((err) => {
+    console.log('SW registration failed:', err);
+  });
+}
+
+async function subscribeToPush(reg) {
+  // Check if already subscribed
+  const existing = await reg.pushManager.getSubscription();
+  if (existing) {
+    // Save to DB in case it wasn't saved before
+    savePushSubscription(existing);
+    return;
+  }
+  
+  // Don't auto-prompt — wait for user to click the bell
+}
+
+async function requestPushPermission() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    showToast('Push notifications not supported on this browser');
+    return;
+  }
+  
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      showToast('Notifications blocked — check your browser settings');
+      return;
+    }
+    
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+    
+    await savePushSubscription(subscription);
+    showToast('🔔 Notifications enabled!');
+    render();
+    
+  } catch (e) {
+    console.error('Push subscription error:', e);
+    showToast('Could not enable notifications: ' + e.message);
+  }
+}
+
+async function savePushSubscription(subscription) {
+  if (!state.user) return;
+  
+  const sub = subscription.toJSON();
+  try {
+    await db.from('push_subscriptions').upsert({
+      user_id: state.user.id,
+      endpoint: sub.endpoint,
+      p256dh: sub.keys.p256dh,
+      auth: sub.keys.auth,
+      user_type: state.profile?.user_type || 'worker',
+    }, { onConflict: 'user_id' });
+  } catch (e) {
+    console.error('Error saving push subscription:', e);
+  }
+}
+
+async function unsubscribeFromPush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.getSubscription();
+    if (subscription) {
+      await subscription.unsubscribe();
+    }
+    await db.from('push_subscriptions').delete().eq('user_id', state.user.id);
+    showToast('Notifications turned off');
+    render();
+  } catch (e) {
+    console.error('Unsubscribe error:', e);
+  }
+}
+
+async function isPushSubscribed() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    return !!sub;
+  } catch(e) { return false; }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function togglePushFromProfile() {
+  const subscribed = await isPushSubscribed();
+  if (subscribed) {
+    unsubscribeFromPush();
+  } else {
+    requestPushPermission();
+  }
+}
+
+async function sendPushNotification(payload) {
+  try {
+    const { data, error } = await db.functions.invoke('send-push-notification', {
+      body: payload,
+    });
+    if (error) console.error('Push function error:', error);
+    else console.log('Push sent:', data);
+  } catch(e) {
+    console.error('Push notification error:', e);
+    // Non-blocking — don't show error to user
+  }
+}
+
+// Update push UI after render
+function updatePushUI() {
+  isPushSubscribed().then(subscribed => {
+    const bell = document.getElementById('notif-bell');
+    if (bell) {
+      bell.textContent = subscribed ? '🔕' : '🔔';
+      bell.title = subscribed ? 'Notifications on — tap to disable' : 'Enable notifications';
+      bell.onclick = subscribed ? unsubscribeFromPush : requestPushPermission;
+    }
+    const label = document.getElementById('push-toggle-label');
+    if (label) {
+      label.textContent = subscribed ? 'Disable Notifications' : 'Enable Notifications';
+    }
+  });
+}
+
+// Hook into render to update push UI
+const _origRender = render;
+render = function() {
+  _origRender();
+  if (state.currentScreen === 'main') {
+    setTimeout(updatePushUI, 100);
+  }
+};
+
+// Capture the install prompt
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show the install banner if user is logged in
+  if (state.user) {
+    showInstallBanner();
+  }
+});
+
+// Check if already installed
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  hideInstallBanner();
+  showToast('CrewFinder installed!');
+});
+
+function showInstallBanner() {
+  const banner = document.getElementById('install-banner');
+  if (banner && !isAppInstalled()) {
+    banner.classList.add('show');
+  }
+}
+
+function hideInstallBanner() {
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.classList.remove('show');
+  // Remember dismissal
+  try { localStorage.setItem('cf_install_dismissed', Date.now()); } catch(e) {}
+}
+
+async function handleInstallClick() {
+  if (deferredPrompt) {
+    // Android / Chrome install
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    hideInstallBanner();
+    if (outcome === 'accepted') {
+      showToast('Installing CrewFinder...');
+    }
+  } else {
+    // Show install instructions modal (works for iOS and any browser)
+    showInstallGuide();
+  }
+}
+
+function showInstallGuide() {
+  // Remove existing modal if any
+  document.getElementById('install-modal')?.remove();
+  
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  
+  let instructions = '';
+  if (isIOS) {
+    instructions = `
+      <div style="text-align:left;font-size:14px;color:var(--gray-700);line-height:1.8">
+        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:12px">
+          <span style="font-size:20px">1️⃣</span>
+          <span>Tap the <strong>Share</strong> button <span style="font-size:18px">⬆️</span> at the bottom of Safari</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:12px">
+          <span style="font-size:20px">2️⃣</span>
+          <span>Scroll down and tap <strong>"Add to Home Screen"</strong> ➕</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="font-size:20px">3️⃣</span>
+          <span>Tap <strong>"Add"</strong> in the top right corner</span>
+        </div>
+      </div>
+      <div style="background:var(--light-green);border-radius:10px;padding:12px;margin-top:16px;font-size:12px;color:var(--forest-mid)">
+        💡 <strong>Must use Safari</strong> — if you're in Chrome or another browser, open this page in Safari first.
+      </div>
+    `;
+  } else {
+    instructions = `
+      <div style="text-align:left;font-size:14px;color:var(--gray-700);line-height:1.8">
+        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:12px">
+          <span style="font-size:20px">1️⃣</span>
+          <span>Tap the <strong>three dots menu</strong> <strong>⋮</strong> in the top right of Chrome</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:12px">
+          <span style="font-size:20px">2️⃣</span>
+          <span>Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong></span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="font-size:20px">3️⃣</span>
+          <span>Tap <strong>"Add"</strong> to confirm</span>
+        </div>
+      </div>
+    `;
+  }
+  
+  const modal = document.createElement('div');
+  modal.id = 'install-modal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:var(--white);border-radius:20px;padding:28px 24px;max-width:360px;width:100%;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">📲</div>
+      <h3 style="margin:0 0 4px;font-size:18px;color:var(--forest)">Install CrewFinder</h3>
+      <p style="font-size:13px;color:var(--gray-500);margin:0 0 20px">Get the full app experience — works offline, loads faster, and feels like a real app.</p>
+      ${instructions}
+      <button class="btn btn-primary" style="margin-top:20px" onclick="document.getElementById('install-modal').remove()">Got it!</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function isStandalone() {
+  if (window.matchMedia('(display-mode: standalone)').matches) return true;
+  if (window.navigator.standalone === true) return true;
+  return false;
+}
+
+function isAppInstalled() {
+  if (isStandalone()) return true;
+  try {
+    const dismissed = localStorage.getItem('cf_install_dismissed');
+    if (dismissed && Date.now() - parseInt(dismissed) < 86400000) return true;
+  } catch(e) {}
+  return false;
+}
+
+// Show install banner after first successful login if not installed
+const originalRender = render;
+render = function() {
+  originalRender();
+  // Show install banner on main screen if not installed
+  if (state.currentScreen === 'main' && !isAppInstalled()) {
+    setTimeout(() => {
+      const banner = document.getElementById('install-banner');
+      if (banner && !banner.classList.contains('show')) {
+        // Show on Android if we have the prompt, or on iOS
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (deferredPrompt || isIOS) {
+          showInstallBanner();
+        }
+      }
+    }, 2000);
+  }
+};
 </script>
+
+<!-- Install Banner (outside #app so it persists) -->
+<div class="install-banner" id="install-banner">
+  <div class="install-banner-content">
+    <div class="install-banner-icon">
+      <svg width="24" height="24" viewBox="0 0 40 40" fill="none">
+        <path d="M20 8L12 16h5v8h6v-8h5L20 8z" fill="#5CB85C"/>
+        <path d="M14 28h12M16 32h8" stroke="#5CB85C" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="install-banner-text">
+      <strong>Install CrewFinder</strong>
+      <span>Add to your home screen for the full experience</span>
+    </div>
+  </div>
+  <div class="install-banner-actions">
+    <button class="btn btn-outline" style="flex:1" onclick="hideInstallBanner()">Not Now</button>
+    <button class="btn btn-primary" style="flex:2" onclick="handleInstallClick()">Install</button>
+  </div>
+</div>
+
 </body>
 </html>
