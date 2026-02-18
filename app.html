@@ -1054,6 +1054,7 @@ let state = {
   myJobStatuses: [],
   selectedRating: 0,
   crewRoster: [],
+  browseTab: 'workers',
 };
 
 // ============================================
@@ -1587,7 +1588,7 @@ function renderMain(app) {
   } else {
     switch (state.activeTab) {
       case 'feed': content = renderJobFeed(); break;
-      case 'companies': content = renderCompanies(); break;
+      case 'browse': content = renderBrowse(); break;
       case 'messages': content = renderMessages(); break;
       case 'profile': content = renderMyProfile(); break;
     }
@@ -1630,7 +1631,7 @@ function renderBottomNav(isBiz) {
       ]
     : [
         { id: 'feed', label: 'Jobs', icon: 'feed' },
-        { id: 'companies', label: 'Companies', icon: 'search' },
+        { id: 'browse', label: 'Browse', icon: 'search' },
         { id: 'messages', label: 'Messages', icon: 'messages', badge: state.conversations.some(c => c.unread) },
         { id: 'profile', label: 'Profile', icon: 'profile' },
       ];
@@ -2219,6 +2220,239 @@ function renderChat() {
 // ============================================
 // MATCHES (Worker view)
 // ============================================
+function renderBrowse() {
+  // If viewing a company or worker profile, show that
+  if (state.viewingCompany) {
+    return renderCompanyProfile(state.viewingCompany);
+  }
+  if (state.viewingWorker) {
+    return renderWorkerProfileForWorker(state.viewingWorker);
+  }
+  
+  const tab = state.browseTab || 'workers';
+  
+  return `
+    <div class="page-padding">
+      <div class="page-title">Browse</div>
+      <div class="page-sub">Find workers and companies in your area</div>
+      <div style="display:flex;gap:0;margin-bottom:16px;border-radius:10px;overflow:hidden;border:1px solid var(--gray-200)">
+        <button style="flex:1;padding:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:inherit;transition:all 0.2s;${tab === 'workers' ? 'background:var(--green);color:#fff' : 'background:var(--white);color:var(--gray-500)'}" onclick="state.browseTab='workers';render()">👷 Workers</button>
+        <button style="flex:1;padding:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:inherit;transition:all 0.2s;${tab === 'companies' ? 'background:var(--green);color:#fff' : 'background:var(--white);color:var(--gray-500)'}" onclick="state.browseTab='companies';render()">🏢 Companies</button>
+      </div>
+    </div>
+    ${tab === 'workers' ? renderBrowseWorkers() : renderBrowseCompanies()}
+  `;
+}
+
+function renderBrowseWorkers() {
+  const workers = state.workers.filter(w => w.id !== state.user.id);
+  
+  return `
+    <div class="page-padding" style="padding-top:0">
+      ${workers.length ? workers.map(w => {
+        const avatarContent = w.avatar_url 
+          ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+          : getInitials(w.name);
+        const avatarStyle = w.avatar_url ? 'overflow:hidden' : '';
+        const workerSkills = (w.worker_skills || []).map(ws => {
+          const skill = state.skills.find(s => s.id === ws.skill_id);
+          return skill ? skill.name : '';
+        }).filter(Boolean);
+        
+        return `
+          <div class="worker-card" onclick="browseViewWorker('${w.id}')">
+            <div class="worker-card-row">
+              <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
+              <div class="worker-info">
+                <div class="worker-name">${w.name}</div>
+                <div class="worker-location">${w.location_text || 'Location not set'}</div>
+                <div class="worker-pay">${formatPay(w.pay_min, w.pay_max, w.pay_type)}</div>
+              </div>
+              <div class="worker-rating">
+                <span class="star">★</span>
+                <span>${w.rating_avg || 'New'}</span>
+              </div>
+            </div>
+            <div class="badge-wrap">
+              <span class="badge badge-avail">${availLabel(w.availability)}</span>
+              ${w.has_insurance ? '<span class="badge badge-cert">🛡️ Insured</span>' : ''}
+              ${workerSkills.slice(0, 3).map(s => `<span class="badge badge-skill">${s}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }).join('') : `
+        <div class="empty-state">
+          <div class="empty-state-icon">👷</div>
+          <h3>No other workers yet</h3>
+          <p>Workers will show up here as they join CrewFinder.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderBrowseCompanies() {
+  const businesses = state.businesses || [];
+  
+  return `
+    <div class="page-padding" style="padding-top:0">
+      ${businesses.length ? businesses.map(b => {
+        const avatarContent = b.avatar_url 
+          ? `<img src="${b.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+          : getInitials(b.company_name || b.name);
+        const avatarStyle = b.avatar_url ? 'overflow:hidden' : '';
+        const jobCount = (state.jobs || []).filter(j => j.business_id === b.id && j.is_active).length;
+        
+        return `
+          <div class="worker-card" onclick="viewCompany('${b.id}')">
+            <div class="worker-card-row">
+              <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
+              <div class="worker-info">
+                <div class="worker-name">${b.company_name || b.name}</div>
+                <div class="worker-location">${b.location_text || 'Location not set'}</div>
+                <div class="rating-row">
+                  <span class="star">★</span>
+                  <span>${b.biz_rating_avg || 'New'}</span>
+                  ${b.biz_rating_count ? `<span class="rating-count">(${b.biz_rating_count})</span>` : ''}
+                </div>
+              </div>
+            </div>
+            <div class="badge-wrap">
+              ${jobCount > 0 ? `<span class="badge badge-avail">${jobCount} active job${jobCount > 1 ? 's' : ''}</span>` : ''}
+              ${b.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${b.company_description.slice(0, 100)}${b.company_description.length > 100 ? '...' : ''}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('') : `
+        <div class="empty-state">
+          <div class="empty-state-icon">🏢</div>
+          <h3>No companies yet</h3>
+          <p>Companies will show up here as they join CrewFinder.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function browseViewWorker(id) {
+  state.viewingWorker = state.workers.find(w => w.id === id);
+  render();
+  
+  // Load photos and reviews async
+  loadWorkerProfileData(id);
+}
+
+function renderWorkerProfileForWorker(w) {
+  const workerSkills = (w.worker_skills || []).map(ws => {
+    const skill = state.skills.find(s => s.id === ws.skill_id);
+    return skill ? skill.name : '';
+  }).filter(Boolean);
+  
+  const avatarContent = w.avatar_url 
+    ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    : `<span style="color:#fff;font-size:20px;font-weight:700">${getInitials(w.name)}</span>`;
+  
+  return `
+    <div class="profile-view-header">
+      <button class="auth-back" onclick="state.viewingWorker=null;render()">&larr; Back</button>
+      <div style="display:flex;gap:14px;align-items:center">
+        <div style="width:60px;height:60px;border-radius:30px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarContent}</div>
+        <div>
+          <div style="font-size:20px;font-weight:700">${w.name}</div>
+          <div style="font-size:13px;opacity:0.8;margin-top:2px">${w.location_text || ''}</div>
+          <div class="rating-row" style="margin-top:4px">
+            <span class="star">★</span>
+            <span style="font-weight:600">${w.rating_avg || 'New'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding-top:12px">
+      <div class="profile-section">
+        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-weight:600;color:var(--forest-mid)">Pay Range</span><span style="font-weight:700;color:var(--green)">${formatPay(w.pay_min, w.pay_max, w.pay_type)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;margin-top:4px"><span style="font-weight:600;color:var(--forest-mid)">Availability</span><span>${availLabel(w.availability)}</span></div>
+      </div>
+      ${w.about ? `
+      <div class="profile-section">
+        <div class="profile-section-title">About</div>
+        <p style="font-size:14px;color:var(--gray-700);line-height:1.5">${w.about}</p>
+      </div>
+      ` : ''}
+      <div class="profile-section">
+        <div class="profile-section-title">Skills</div>
+        <div class="badge-wrap">${workerSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('') || '<span style="color:var(--gray-500);font-size:13px">No skills added yet</span>'}</div>
+      </div>
+      ${w.has_insurance ? `
+      <div class="profile-section">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:24px">🛡️</span>
+          <div>
+            <div class="profile-section-title" style="margin:0">Liability Insurance</div>
+            <div style="font-size:13px;color:var(--green);font-weight:600">Carries own insurance</div>
+            ${w.insurance_expiry ? `<div style="font-size:12px;color:var(--gray-500);margin-top:2px">Expires: ${w.insurance_expiry}</div>` : ''}
+          </div>
+        </div>
+      </div>
+      ` : ''}
+      <div class="profile-section" id="worker-photos-section">
+        <div class="profile-section-title">Work Photos</div>
+        <div id="worker-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          <div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">Loading...</div>
+        </div>
+      </div>
+      <div class="profile-section">
+        <div class="profile-section-title">Reviews</div>
+        <div id="worker-reviews">
+          <div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">Loading...</div>
+        </div>
+      </div>
+      <div style="padding:0 16px 16px">
+        <button class="btn btn-primary" onclick="startChat('${w.id}')">Send Message</button>
+      </div>
+    </div>
+  `;
+}
+
+async function loadWorkerProfileData(id) {
+  // Load photos
+  try {
+    const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', id).order('created_at');
+    const grid = document.getElementById('worker-photos-grid');
+    if (grid) {
+      if (photos && photos.length > 0) {
+        grid.innerHTML = photos.map(p => `
+          <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
+            <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open('${p.photo_url}','_blank')">
+          </div>
+        `).join('');
+      } else {
+        grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet</div>';
+      }
+    }
+  } catch(e) {}
+  
+  // Load reviews
+  try {
+    const { data: reviews } = await db.from('reviews').select('*, profiles!reviewer_id(name, avatar_url, company_name)').eq('reviewed_id', id).order('created_at', { ascending: false });
+    const el = document.getElementById('worker-reviews');
+    if (el) {
+      if (reviews && reviews.length > 0) {
+        el.innerHTML = reviews.map(r => `
+          <div style="padding:12px 0;border-bottom:1px solid var(--gray-200)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:600;font-size:14px">${r.profiles?.company_name || r.profiles?.name || 'User'}</span>
+              <span style="color:#F59E0B;font-size:14px">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+            </div>
+            ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${r.comment}</p>` : ''}
+          </div>
+        `).join('');
+      } else {
+        el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">No reviews yet</div>';
+      }
+    }
+  } catch(e) {}
+}
+
 function renderCompanies() {
   if (state.viewingCompany) {
     return renderCompanyProfile(state.viewingCompany);
@@ -3065,22 +3299,32 @@ async function handlePostJob(btn) {
 }
 
 function viewProfileFromChat(userId) {
-  // Check if it's a worker or business and navigate accordingly
   const worker = state.workers.find(w => w.id === userId);
   if (worker) {
     state.chattingWith = null;
     state.viewingWorker = worker;
-    state.activeTab = 'search';
+    // Use browse tab for workers viewing workers, search tab for businesses viewing workers
+    if (state.profile?.user_type === 'worker') {
+      state.activeTab = 'browse';
+      state.browseTab = 'workers';
+    } else {
+      state.activeTab = 'search';
+    }
     render();
+    loadWorkerProfileData(userId);
     return;
   }
   const biz = (state.businesses || []).find(b => b.id === userId);
   if (biz) {
     state.chattingWith = null;
     state.viewingCompany = biz;
-    state.activeTab = 'companies';
+    if (state.profile?.user_type === 'worker') {
+      state.activeTab = 'browse';
+      state.browseTab = 'companies';
+    } else {
+      state.activeTab = 'search';
+    }
     render();
-    // Load company photos and reviews
     viewCompany(biz.id);
     return;
   }
@@ -3091,11 +3335,11 @@ function viewProfileFromChat(userId) {
       if (data.user_type === 'worker') {
         state.workers.push(data);
         state.viewingWorker = data;
-        state.activeTab = 'search';
+        state.activeTab = state.profile?.user_type === 'worker' ? 'browse' : 'search';
       } else {
         state.businesses.push(data);
         state.viewingCompany = data;
-        state.activeTab = 'companies';
+        state.activeTab = state.profile?.user_type === 'worker' ? 'browse' : 'search';
       }
       render();
     }
