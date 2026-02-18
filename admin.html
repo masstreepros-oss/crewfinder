@@ -3,173 +3,315 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CrewFinder Admin — Add Companies</title>
+<title>CrewFinder Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --forest: #0B1F14; --forest-mid: #1A3C2A; --green: #2D7A3A; --lime: #5CB85C;
-    --white: #FFFFFF; --gray-100: #F7F7F7; --gray-200: #E8E8E8; --gray-500: #888;
+    --white: #FFFFFF; --gray-50: #FAFAFA; --gray-100: #F7F7F7; --gray-200: #E8E8E8; --gray-500: #888; --gray-700: #555;
+    --red: #DC3545; --orange: #E65100; --blue: #1976D2;
   }
-  body { font-family: 'Outfit', sans-serif; background: var(--gray-100); min-height: 100vh; padding: 20px; }
-  .container { max-width: 600px; margin: 0 auto; }
-  h1 { color: var(--forest); margin-bottom: 8px; }
-  .subtitle { color: var(--gray-500); margin-bottom: 24px; font-size: 14px; }
+  body { font-family: 'Outfit', sans-serif; background: var(--gray-100); min-height: 100vh; }
+  
+  .admin-header { background: var(--forest); color: #fff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+  .admin-header h1 { font-size: 18px; font-weight: 800; }
+  .admin-header .logout-btn { background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 6px 14px; border-radius: 6px; font-family: inherit; font-size: 13px; cursor: pointer; }
+  
+  .admin-tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--gray-200); overflow-x: auto; position: sticky; top: 49px; z-index: 99; }
+  .admin-tab { flex: 1; min-width: fit-content; padding: 12px 16px; text-align: center; font-weight: 600; font-size: 13px; color: var(--gray-500); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
+  .admin-tab.active { color: var(--green); border-bottom-color: var(--green); }
+  
+  .container { max-width: 800px; margin: 0 auto; padding: 16px; }
   .card { background: var(--white); border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid var(--gray-200); }
+  .card h3 { margin-bottom: 12px; color: var(--forest); font-size: 16px; }
+  
   .form-group { margin-bottom: 14px; }
   .form-label { display: block; font-weight: 600; font-size: 13px; color: var(--forest-mid); margin-bottom: 4px; }
-  .form-input { width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 15px; font-family: inherit; }
-  .form-input:focus { outline: none; border-color: var(--green); }
-  .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; }
+  .form-input, .form-select { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; font-family: inherit; }
+  .form-input:focus, .form-select:focus { outline: none; border-color: var(--green); }
+  textarea.form-input { resize: vertical; }
+  
+  .btn { padding: 10px 18px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
   .btn-primary { background: var(--green); color: #fff; }
   .btn-primary:hover { background: #256B30; }
-  .btn-outline { background: none; border: 1px solid var(--gray-200); color: var(--gray-500); margin-top: 8px; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #c82333; }
+  .btn-outline { background: none; border: 1px solid var(--gray-200); color: var(--gray-700); }
+  .btn-outline:hover { background: var(--gray-50); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-block { width: 100%; justify-content: center; }
+  
   .status { padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px; display: none; }
   .status.show { display: block; }
   .status.success { background: #D4EDDA; color: #155724; }
   .status.error { background: #F8D7DA; color: #721C24; }
-  .company-list { margin-top: 24px; }
+  
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--white); border: 1px solid var(--gray-200); border-radius: 12px; padding: 16px; text-align: center; }
+  .stat-num { font-size: 32px; font-weight: 800; color: var(--green); }
+  .stat-label { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+  .stat-sub { font-size: 11px; color: var(--gray-500); margin-top: 4px; }
+  
+  .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+  .search-bar input { flex: 1; }
+  .search-bar select { width: 130px; }
+  
+  .user-item { background: var(--white); border: 1px solid var(--gray-200); border-radius: 10px; padding: 14px; margin-bottom: 8px; }
+  .user-item-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .user-info { display: flex; gap: 10px; align-items: center; flex: 1; min-width: 0; }
+  .user-avatar { width: 40px; height: 40px; border-radius: 10px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; font-size: 18px; }
+  .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .user-name { font-weight: 700; font-size: 14px; }
+  .user-meta { font-size: 12px; color: var(--gray-500); }
+  .user-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+  .badge-worker { background: #E3F2FD; color: #1565C0; }
+  .badge-business { background: #FFF3E0; color: #E65100; }
+  .badge-unclaimed { background: #FFF3E0; color: #E65100; }
+  .badge-claimed { background: #D4EDDA; color: #155724; }
+  
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+  .modal { background: var(--white); border-radius: 16px; padding: 24px; width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+  .modal h2 { font-size: 18px; margin-bottom: 16px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-actions .btn { flex: 1; justify-content: center; }
+  
+  .review-item { background: var(--white); border: 1px solid var(--gray-200); border-radius: 10px; padding: 14px; margin-bottom: 8px; }
+  .review-header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .review-stars { color: #F59E0B; font-size: 14px; }
+  .review-text { font-size: 13px; margin-top: 6px; color: var(--gray-700); }
+  .review-meta { font-size: 11px; color: var(--gray-500); margin-top: 6px; }
+  
+  .chart-bar { display: flex; align-items: flex-end; gap: 4px; height: 80px; padding: 0 4px; }
+  .chart-col { flex: 1; background: var(--lime); border-radius: 3px 3px 0 0; min-height: 2px; transition: height 0.3s; }
+  .chart-labels { display: flex; gap: 4px; padding: 4px 4px 0; }
+  .chart-labels span { flex: 1; text-align: center; font-size: 9px; color: var(--gray-500); }
+  
+  .announcement-preview { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; padding: 12px; margin-top: 8px; font-size: 13px; }
+  
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  
+  .login-section { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+  .login-card { max-width: 400px; width: 100%; }
+  .hidden { display: none !important; }
+  .empty-state { text-align: center; padding: 30px; color: var(--gray-500); font-size: 14px; }
+  
   .company-item { background: var(--white); border: 1px solid var(--gray-200); border-radius: 10px; padding: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
   .company-item .name { font-weight: 700; }
   .company-item .meta { font-size: 12px; color: var(--gray-500); }
-  .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-  .badge-unclaimed { background: #FFF3E0; color: #E65100; }
-  .badge-claimed { background: #D4EDDA; color: #155724; }
-  .login-section { text-align: center; padding: 40px 20px; }
-  .hidden { display: none; }
+  .confirm-delete { background: #FFF5F5; border: 1px solid #FFCDD2; border-radius: 8px; padding: 12px; margin-top: 8px; }
+  .confirm-delete p { font-size: 13px; color: var(--red); margin-bottom: 8px; }
 </style>
 </head>
 <body>
-<div class="container">
-  
-  <div id="login-section" class="login-section">
-    <h1>🔒 Admin Login</h1>
-    <p class="subtitle">Log in with your CrewFinder admin account</p>
-    <div class="card">
-      <div class="form-group">
+
+<!-- LOGIN -->
+<div id="login-section" class="login-section">
+  <div class="login-card">
+    <div class="card" style="text-align:center">
+      <h1 style="margin-bottom:4px">🔒 CrewFinder Admin</h1>
+      <p style="color:var(--gray-500);font-size:14px;margin-bottom:20px">Log in with your admin account</p>
+      <div class="form-group" style="text-align:left">
         <label class="form-label">Email</label>
         <input class="form-input" id="admin-email" type="email" placeholder="your@email.com">
       </div>
-      <div class="form-group">
+      <div class="form-group" style="text-align:left">
         <label class="form-label">Password</label>
-        <input class="form-input" id="admin-password" type="password" placeholder="••••••">
+        <input class="form-input" id="admin-password" type="password" placeholder="••••••" onkeydown="if(event.key==='Enter')adminLogin()">
       </div>
-      <button class="btn btn-primary" onclick="adminLogin()">Log In</button>
+      <button class="btn btn-primary btn-block" onclick="adminLogin()">Log In</button>
       <div class="status" id="login-status"></div>
     </div>
   </div>
+</div>
 
-  <div id="admin-panel" class="hidden">
-    <h1>🏢 Add Companies</h1>
-    <p class="subtitle">Pre-load business profiles. Companies can claim them by signing up with the same email.</p>
-    
-    <div class="card">
-      <div class="form-group">
-        <label class="form-label">Company Name *</label>
-        <input class="form-input" id="add-company" type="text" placeholder="Northeast Tree Service">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Company Logo <span style="font-weight:400;color:var(--gray-500)">(optional)</span></label>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div id="logo-preview" style="width:60px;height:60px;border-radius:12px;background:var(--gray-100);border:2px dashed var(--gray-200);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
-            <span style="font-size:24px;color:var(--gray-500)">🏢</span>
-          </div>
-          <div style="flex:1">
-            <input type="file" id="add-logo" accept="image/*" style="display:none" onchange="previewLogo(this)">
-            <button class="btn btn-outline" style="width:auto;padding:8px 16px;font-size:13px" onclick="document.getElementById('add-logo').click()">Choose Image</button>
-            <div style="font-size:11px;color:var(--gray-500);margin-top:4px">JPG or PNG, will be resized</div>
-          </div>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Phone</label>
-        <input class="form-input" id="add-phone" type="text" placeholder="(508) 555-1234">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Location</label>
-        <input class="form-input" id="add-location" type="text" placeholder="Medway, MA">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email <span style="font-weight:400;color:var(--gray-500)">(optional)</span></label>
-        <input class="form-input" id="add-email" type="email" placeholder="info@company.com">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Description (optional)</label>
-        <textarea class="form-input" id="add-description" rows="2" placeholder="Full-service tree company..."></textarea>
-      </div>
-      <button class="btn btn-primary" id="add-btn" onclick="addCompany()">Add Company</button>
-      <div class="status" id="add-status"></div>
-    </div>
-
-    <div class="company-list" id="company-list">
-      <h3 style="margin-bottom:12px">Pre-loaded Companies</h3>
-      <div id="companies-container">Loading...</div>
-    </div>
-    
-    <button class="btn btn-outline" onclick="adminLogout()" style="margin-top:16px">Log Out</button>
+<!-- ADMIN PANEL -->
+<div id="admin-panel" class="hidden">
+  <div class="admin-header">
+    <h1>⚙️ CrewFinder Admin</h1>
+    <button class="logout-btn" onclick="adminLogout()">Log Out</button>
+  </div>
+  
+  <div class="admin-tabs">
+    <div class="admin-tab active" onclick="switchAdminTab('dashboard', this)">📊 Dashboard</div>
+    <div class="admin-tab" onclick="switchAdminTab('users', this)">👥 Users</div>
+    <div class="admin-tab" onclick="switchAdminTab('reviews', this)">⭐ Reviews</div>
+    <div class="admin-tab" onclick="switchAdminTab('companies', this)">🏢 Companies</div>
+    <div class="admin-tab" onclick="switchAdminTab('announce', this)">📢 Announce</div>
   </div>
 
+  <!-- DASHBOARD -->
+  <div class="tab-content active" id="tab-dashboard">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-num" id="stat-total-users">-</div><div class="stat-label">Total Users</div><div class="stat-sub" id="stat-users-sub"></div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-workers">-</div><div class="stat-label">Workers</div><div class="stat-sub" id="stat-workers-sub"></div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-businesses">-</div><div class="stat-label">Businesses</div><div class="stat-sub" id="stat-biz-sub"></div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-jobs">-</div><div class="stat-label">Jobs Posted</div><div class="stat-sub" id="stat-jobs-sub"></div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-messages">-</div><div class="stat-label">Messages</div><div class="stat-sub" id="stat-msg-sub"></div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-reviews">-</div><div class="stat-label">Reviews</div><div class="stat-sub" id="stat-reviews-sub"></div></div>
+      </div>
+      <div class="card">
+        <h3>📈 Signups (Last 14 Days)</h3>
+        <div class="chart-bar" id="signup-chart"></div>
+        <div class="chart-labels" id="signup-labels"></div>
+      </div>
+      <div class="card">
+        <h3>🆕 Recent Signups</h3>
+        <div id="recent-signups">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div class="tab-content" id="tab-users">
+    <div class="container">
+      <div class="search-bar">
+        <input class="form-input" id="user-search" placeholder="Search by name, email, company..." oninput="filterUsers()">
+        <select class="form-select" id="user-filter" onchange="filterUsers()">
+          <option value="all">All Users</option>
+          <option value="worker">Workers</option>
+          <option value="business">Businesses</option>
+        </select>
+      </div>
+      <div id="user-count" style="font-size:12px;color:var(--gray-500);margin-bottom:10px"></div>
+      <div id="users-list">Loading...</div>
+    </div>
+  </div>
+
+  <!-- REVIEWS -->
+  <div class="tab-content" id="tab-reviews">
+    <div class="container">
+      <div class="search-bar">
+        <input class="form-input" id="review-search" placeholder="Search reviews..." oninput="filterReviews()">
+        <select class="form-select" id="review-filter" onchange="filterReviews()">
+          <option value="all">All</option>
+          <option value="low">1-2 Stars</option>
+          <option value="mid">3 Stars</option>
+          <option value="high">4-5 Stars</option>
+        </select>
+      </div>
+      <div id="reviews-list">Loading...</div>
+    </div>
+  </div>
+
+  <!-- COMPANIES -->
+  <div class="tab-content" id="tab-companies">
+    <div class="container">
+      <div class="card">
+        <h3>Add a Company</h3>
+        <p style="font-size:13px;color:var(--gray-500);margin-bottom:14px">Pre-load a business. They claim it with the code when signing up.</p>
+        <div class="form-group">
+          <label class="form-label">Company Name *</label>
+          <input class="form-input" id="add-company" type="text" placeholder="Northeast Tree Service">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Company Logo <span style="font-weight:400;color:var(--gray-500)">(optional)</span></label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div id="logo-preview" style="width:50px;height:50px;border-radius:10px;background:var(--gray-100);border:2px dashed var(--gray-200);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+              <span style="font-size:20px;color:var(--gray-500)">🏢</span>
+            </div>
+            <div>
+              <input type="file" id="add-logo" accept="image/*" style="display:none" onchange="previewLogo(this)">
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('add-logo').click()">Choose Image</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="add-phone" type="text" placeholder="(508) 555-1234"></div>
+          <div class="form-group"><label class="form-label">Location</label><input class="form-input" id="add-location" type="text" placeholder="Medway, MA"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email <span style="font-weight:400;color:var(--gray-500)">(optional)</span></label>
+          <input class="form-input" id="add-email" type="email" placeholder="info@company.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description <span style="font-weight:400;color:var(--gray-500)">(optional)</span></label>
+          <textarea class="form-input" id="add-description" rows="2" placeholder="Full-service tree company..."></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" id="add-btn" onclick="addCompany()">Add Company</button>
+        <div class="status" id="add-status"></div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:12px;font-size:16px;color:var(--forest)">Pre-loaded Companies</h3>
+        <div id="companies-container">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANNOUNCE -->
+  <div class="tab-content" id="tab-announce">
+    <div class="container">
+      <div class="card">
+        <h3>📢 Send Announcement</h3>
+        <p style="font-size:13px;color:var(--gray-500);margin-bottom:14px">Send a message to users via in-app message from your account.</p>
+        <div class="form-group">
+          <label class="form-label">Send To</label>
+          <select class="form-select" id="announce-audience">
+            <option value="all">Everyone</option>
+            <option value="worker">Workers Only</option>
+            <option value="business">Businesses Only</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Message *</label>
+          <textarea class="form-input" id="announce-message" rows="4" placeholder="Hey everyone! Just wanted to let you know..."></textarea>
+        </div>
+        <div id="announce-preview-box" style="display:none">
+          <div class="form-label" style="margin-bottom:4px">Preview</div>
+          <div class="announcement-preview" id="announce-preview"></div>
+        </div>
+        <button class="btn btn-outline btn-block" onclick="previewAnnouncement()" style="margin-top:10px">Preview</button>
+        <button class="btn btn-primary btn-block" onclick="sendAnnouncement()" style="margin-top:8px" id="announce-btn">Send Announcement</button>
+        <div class="status" id="announce-status"></div>
+      </div>
+      <div class="card">
+        <h3>Past Announcements</h3>
+        <div id="past-announcements">Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay hidden" id="edit-modal" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal">
+    <h2 id="edit-modal-title">Edit User</h2>
+    <div id="edit-modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" id="edit-save-btn" onclick="saveUserEdit()">Save Changes</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// REPLACE THIS WITH YOUR SUPABASE URL AND ANON KEY
 const SUPABASE_URL = 'https://mhatwlmbwikvrlcgfojt.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNDUzMTQsImV4cCI6MjA4NjkyMTMxNH0.8LefO4aYzYGfmsUb4blBEBLjIoF4CtYJ7xfimdc7lBE';
-
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let adminUser = null;
-let selectedLogo = null;
+let allUsers = [];
+let allReviews = [];
+let editingUserId = null;
+let selectedLogoFile = null;
 
-function previewLogo(input) {
-  const file = input.files[0];
-  if (!file) return;
-  selectedLogo = file;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    document.getElementById('logo-preview').innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`;
-  };
-  reader.readAsDataURL(file);
-}
-
-async function uploadLogo(claimCode) {
-  if (!selectedLogo) return null;
-  
-  const ext = selectedLogo.name.split('.').pop().toLowerCase();
-  const path = `logos/unclaimed_${claimCode}.${ext}`;
-  
-  const { error } = await db.storage.from('avatars').upload(path, selectedLogo, {
-    cacheControl: '3600',
-    upsert: true,
-  });
-  
-  if (error) {
-    console.error('Logo upload error:', error);
-    return null;
-  }
-  
-  const { data } = db.storage.from('avatars').getPublicUrl(path);
-  return data.publicUrl;
-}
-
-// Check if these match your app.html values — they should be the same
-// Copy the SUPABASE_URL and SUPABASE_ANON_KEY from your app.html file
-
+// ===== AUTH =====
 async function adminLogin() {
   const email = document.getElementById('admin-email').value.trim();
   const password = document.getElementById('admin-password').value;
   const status = document.getElementById('login-status');
-  
   try {
     const { data, error } = await db.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    
     adminUser = data.user;
     document.getElementById('login-section').classList.add('hidden');
     document.getElementById('admin-panel').classList.remove('hidden');
-    loadCompanies();
-    
+    loadDashboard();
   } catch(e) {
     status.textContent = e.message;
     status.className = 'status show error';
@@ -183,6 +325,346 @@ function adminLogout() {
   document.getElementById('admin-panel').classList.add('hidden');
 }
 
+// ===== TABS =====
+function switchAdminTab(tab, el) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'dashboard') loadDashboard();
+  if (tab === 'users') loadUsers();
+  if (tab === 'reviews') loadReviews();
+  if (tab === 'companies') loadCompanies();
+  if (tab === 'announce') loadPastAnnouncements();
+}
+
+// ===== DASHBOARD =====
+async function loadDashboard() {
+  try {
+    const [profilesRes, jobsRes, messagesRes, reviewsRes] = await Promise.all([
+      db.from('profiles').select('id, user_type, created_at, availability'),
+      db.from('jobs').select('id, created_at, is_active'),
+      db.from('messages').select('id, created_at'),
+      db.from('reviews').select('id, created_at'),
+    ]);
+    const profiles = profilesRes.data || [];
+    const jobs = jobsRes.data || [];
+    const messages = messagesRes.data || [];
+    const reviews = reviewsRes.data || [];
+    const workers = profiles.filter(p => p.user_type === 'worker');
+    const businesses = profiles.filter(p => p.user_type === 'business');
+    const available = workers.filter(w => w.availability === 'available');
+    const activeJobs = jobs.filter(j => j.is_active);
+    const today = new Date().toISOString().slice(0, 10);
+    const todaySignups = profiles.filter(p => p.created_at?.slice(0, 10) === today).length;
+    const todayMessages = messages.filter(m => m.created_at?.slice(0, 10) === today).length;
+    const todayJobs = jobs.filter(j => j.created_at?.slice(0, 10) === today).length;
+
+    document.getElementById('stat-total-users').textContent = profiles.length;
+    document.getElementById('stat-users-sub').textContent = todaySignups ? `+${todaySignups} today` : '';
+    document.getElementById('stat-workers').textContent = workers.length;
+    document.getElementById('stat-workers-sub').textContent = `${available.length} available`;
+    document.getElementById('stat-businesses').textContent = businesses.length;
+    document.getElementById('stat-biz-sub').textContent = '';
+    document.getElementById('stat-jobs').textContent = jobs.length;
+    document.getElementById('stat-jobs-sub').textContent = `${activeJobs.length} active` + (todayJobs ? ` · +${todayJobs} today` : '');
+    document.getElementById('stat-messages').textContent = messages.length;
+    document.getElementById('stat-msg-sub').textContent = todayMessages ? `+${todayMessages} today` : '';
+    document.getElementById('stat-reviews').textContent = reviews.length;
+    document.getElementById('stat-reviews-sub').textContent = '';
+
+    renderSignupChart(profiles);
+
+    const { data: fullProfiles } = await db.from('profiles').select('id, name, company_name, user_type, created_at, avatar_url, email').order('created_at', { ascending: false }).limit(10);
+    const recentEl = document.getElementById('recent-signups');
+    if (!fullProfiles?.length) { recentEl.innerHTML = '<div class="empty-state">No users yet</div>'; return; }
+    recentEl.innerHTML = fullProfiles.map(p => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-100)">
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="user-avatar">${p.avatar_url ? `<img src="${p.avatar_url}">` : (p.user_type === 'worker' ? '👷' : '🏢')}</div>
+          <div>
+            <div style="font-weight:600;font-size:13px">${p.name || p.company_name || 'Unnamed'}</div>
+            <div style="font-size:11px;color:var(--gray-500)">${p.email || ''}</div>
+            <span class="badge ${p.user_type === 'worker' ? 'badge-worker' : 'badge-business'}">${p.user_type}</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--gray-500)">${timeAgo(p.created_at)}</div>
+      </div>
+    `).join('');
+  } catch(e) { console.error('Dashboard error:', e); }
+}
+
+function renderSignupChart(profiles) {
+  const counts = {};
+  const labels = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    counts[key] = 0;
+    labels.push(d.toLocaleDateString('en', { month: 'short', day: 'numeric' }));
+  }
+  profiles.forEach(p => { const day = p.created_at?.slice(0, 10); if (day in counts) counts[day]++; });
+  const values = Object.values(counts);
+  const max = Math.max(...values, 1);
+  document.getElementById('signup-chart').innerHTML = values.map(v =>
+    `<div class="chart-col" style="height:${Math.max((v / max) * 100, 3)}%" title="${v} signups"></div>`
+  ).join('');
+  document.getElementById('signup-labels').innerHTML = labels.map((l, i) =>
+    `<span style="${i % 2 ? 'visibility:hidden' : ''}">${l}</span>`
+  ).join('');
+}
+
+// ===== USERS =====
+async function loadUsers() {
+  try {
+    const { data, error } = await db.from('profiles').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    allUsers = data || [];
+    renderUsers(allUsers);
+  } catch(e) { document.getElementById('users-list').innerHTML = `<div style="color:var(--red)">${e.message}</div>`; }
+}
+
+function filterUsers() {
+  const search = document.getElementById('user-search').value.toLowerCase();
+  const type = document.getElementById('user-filter').value;
+  let filtered = allUsers;
+  if (type !== 'all') filtered = filtered.filter(u => u.user_type === type);
+  if (search) filtered = filtered.filter(u =>
+    (u.name || '').toLowerCase().includes(search) ||
+    (u.company_name || '').toLowerCase().includes(search) ||
+    (u.email || '').toLowerCase().includes(search) ||
+    (u.location_text || '').toLowerCase().includes(search)
+  );
+  renderUsers(filtered);
+}
+
+function renderUsers(users) {
+  document.getElementById('user-count').textContent = `${users.length} user${users.length !== 1 ? 's' : ''}`;
+  if (!users.length) { document.getElementById('users-list').innerHTML = '<div class="empty-state">No users found</div>'; return; }
+  document.getElementById('users-list').innerHTML = users.map(u => {
+    const displayName = (u.name || u.company_name || 'Unnamed').replace(/'/g, "\\'");
+    return `
+    <div class="user-item">
+      <div class="user-item-header">
+        <div class="user-info">
+          <div class="user-avatar">${u.avatar_url ? `<img src="${u.avatar_url}">` : (u.user_type === 'worker' ? '👷' : '🏢')}</div>
+          <div style="min-width:0">
+            <div class="user-name">${u.name || u.company_name || 'Unnamed'}</div>
+            <div class="user-meta">${u.email || 'No email'} · ${u.location_text || 'No location'}${u.phone ? ' · ' + u.phone : ''}</div>
+            <div style="margin-top:3px">
+              <span class="badge ${u.user_type === 'worker' ? 'badge-worker' : 'badge-business'}">${u.user_type}</span>
+              ${u.user_type === 'worker' && u.availability ? ` <span class="badge" style="background:${u.availability === 'available' ? '#D4EDDA' : '#F5F5F5'};color:${u.availability === 'available' ? '#155724' : '#888'}">${u.availability}</span>` : ''}
+              ${u.rating_avg ? ` <span class="badge" style="background:#FFF8E1;color:#F57F17">⭐ ${Number(u.rating_avg).toFixed(1)} (${u.rating_count || 0})</span>` : ''}
+              ${u.biz_rating_avg ? ` <span class="badge" style="background:#FFF8E1;color:#F57F17">⭐ ${Number(u.biz_rating_avg).toFixed(1)} (${u.biz_rating_count || 0})</span>` : ''}
+            </div>
+            <div class="user-meta" style="margin-top:2px">Joined ${new Date(u.created_at).toLocaleDateString()}</div>
+          </div>
+        </div>
+        <div class="user-actions">
+          <button class="btn btn-outline btn-sm" onclick="openEditModal('${u.id}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmDeleteUser('${u.id}', '${displayName}')">Delete</button>
+        </div>
+      </div>
+      <div id="delete-confirm-${u.id}" class="hidden"></div>
+    </div>`;
+  }).join('');
+}
+
+function openEditModal(userId) {
+  const user = allUsers.find(u => u.id === userId);
+  if (!user) return;
+  editingUserId = userId;
+  const isWorker = user.user_type === 'worker';
+  document.getElementById('edit-modal-title').textContent = `Edit: ${user.name || user.company_name || 'Unnamed'}`;
+  document.getElementById('edit-modal-body').innerHTML = `
+    <div class="form-group">
+      <label class="form-label">${isWorker ? 'Name' : 'Company Name'}</label>
+      <input class="form-input" id="edit-name" value="${isWorker ? (user.name || '') : (user.company_name || '')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="edit-email" value="${user.email || ''}" disabled style="background:var(--gray-50);color:var(--gray-500)">
+      <div style="font-size:11px;color:var(--gray-500);margin-top:2px">Email is tied to auth and can't be changed here</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input class="form-input" id="edit-phone" value="${user.phone || ''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input class="form-input" id="edit-location" value="${user.location_text || ''}">
+      </div>
+    </div>
+    ${isWorker ? `
+    <div class="form-group">
+      <label class="form-label">Availability</label>
+      <select class="form-select" id="edit-availability">
+        <option value="available" ${user.availability === 'available' ? 'selected' : ''}>Available</option>
+        <option value="busy" ${user.availability === 'busy' ? 'selected' : ''}>Busy</option>
+        <option value="unavailable" ${user.availability === 'unavailable' ? 'selected' : ''}>Unavailable</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Bio</label>
+      <textarea class="form-input" id="edit-bio" rows="2">${user.bio || ''}</textarea>
+    </div>` : `
+    <div class="form-group">
+      <label class="form-label">Company Description</label>
+      <textarea class="form-input" id="edit-bio" rows="2">${user.company_description || ''}</textarea>
+    </div>`}
+  `;
+  document.getElementById('edit-modal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.add('hidden');
+  editingUserId = null;
+}
+
+async function saveUserEdit() {
+  const user = allUsers.find(u => u.id === editingUserId);
+  if (!user) return;
+  const btn = document.getElementById('edit-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const isWorker = user.user_type === 'worker';
+  const updates = {
+    location_text: document.getElementById('edit-location').value.trim() || null,
+    phone: document.getElementById('edit-phone').value.trim() || null,
+  };
+  if (isWorker) {
+    updates.name = document.getElementById('edit-name').value.trim() || null;
+    updates.availability = document.getElementById('edit-availability').value;
+    updates.bio = document.getElementById('edit-bio').value.trim() || null;
+  } else {
+    updates.company_name = document.getElementById('edit-name').value.trim() || null;
+    updates.company_description = document.getElementById('edit-bio').value.trim() || null;
+  }
+  try {
+    const { error } = await db.from('profiles').update(updates).eq('id', editingUserId);
+    if (error) throw error;
+    closeEditModal();
+    loadUsers();
+  } catch(e) { alert('Error saving: ' + e.message); }
+  btn.disabled = false; btn.textContent = 'Save Changes';
+}
+
+function confirmDeleteUser(userId, name) {
+  const el = document.getElementById(`delete-confirm-${userId}`);
+  if (!el.classList.contains('hidden')) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.innerHTML = `
+    <div class="confirm-delete">
+      <p>⚠️ Permanently delete <strong>${name}</strong>? This removes their profile, messages, reviews, and all data. Cannot be undone.</p>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('delete-confirm-${userId}').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser('${userId}')">Yes, Delete</button>
+      </div>
+    </div>`;
+}
+
+async function deleteUser(userId) {
+  try {
+    await Promise.all([
+      db.from('messages').delete().or(`sender_id.eq.${userId},receiver_id.eq.${userId}`),
+      db.from('reviews').delete().or(`reviewer_id.eq.${userId},reviewed_id.eq.${userId}`),
+      db.from('worker_skills').delete().eq('worker_id', userId),
+      db.from('work_photos').delete().eq('worker_id', userId),
+      db.from('job_responses').delete().eq('worker_id', userId),
+      db.from('saved_workers').delete().or(`business_id.eq.${userId},worker_id.eq.${userId}`),
+      db.from('push_subscriptions').delete().eq('user_id', userId),
+    ]);
+    await db.from('jobs').delete().eq('business_id', userId);
+    const { error } = await db.from('profiles').delete().eq('id', userId);
+    if (error) throw error;
+    loadUsers();
+  } catch(e) { alert('Error deleting user: ' + e.message); }
+}
+
+// ===== REVIEWS =====
+async function loadReviews() {
+  try {
+    const { data, error } = await db.from('reviews')
+      .select('*, profiles!reviewer_id(name, company_name, user_type), reviewed:profiles!reviewed_id(name, company_name, user_type)')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    allReviews = data || [];
+    renderReviews(allReviews);
+  } catch(e) { document.getElementById('reviews-list').innerHTML = `<div style="color:var(--red)">${e.message}</div>`; }
+}
+
+function filterReviews() {
+  const search = document.getElementById('review-search').value.toLowerCase();
+  const filter = document.getElementById('review-filter').value;
+  let filtered = allReviews;
+  if (filter === 'low') filtered = filtered.filter(r => r.rating <= 2);
+  if (filter === 'mid') filtered = filtered.filter(r => r.rating === 3);
+  if (filter === 'high') filtered = filtered.filter(r => r.rating >= 4);
+  if (search) filtered = filtered.filter(r =>
+    (r.comment || '').toLowerCase().includes(search) ||
+    (r.profiles?.name || r.profiles?.company_name || '').toLowerCase().includes(search) ||
+    (r.reviewed?.name || r.reviewed?.company_name || '').toLowerCase().includes(search)
+  );
+  renderReviews(filtered);
+}
+
+function renderReviews(reviews) {
+  if (!reviews.length) { document.getElementById('reviews-list').innerHTML = '<div class="empty-state">No reviews found</div>'; return; }
+  document.getElementById('reviews-list').innerHTML = reviews.map(r => {
+    const from = r.profiles?.name || r.profiles?.company_name || 'Unknown';
+    const to = r.reviewed?.name || r.reviewed?.company_name || 'Unknown';
+    return `
+    <div class="review-item">
+      <div class="review-header">
+        <div>
+          <div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
+          <div style="font-size:13px;margin-top:3px"><strong>${from}</strong> → <strong>${to}</strong></div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteReview('${r.id}', '${r.reviewed_id}', '${r.reviewed?.user_type || 'worker'}')">Remove</button>
+      </div>
+      ${r.comment ? `<div class="review-text">"${r.comment}"</div>` : '<div class="review-text" style="font-style:italic;color:var(--gray-500)">No comment</div>'}
+      <div class="review-meta">${new Date(r.created_at).toLocaleDateString()} · ${timeAgo(r.created_at)}</div>
+    </div>`;
+  }).join('');
+}
+
+async function deleteReview(reviewId, reviewedId, reviewedType) {
+  if (!confirm('Remove this review? The user\'s rating will be recalculated.')) return;
+  try {
+    const { error } = await db.from('reviews').delete().eq('id', reviewId);
+    if (error) throw error;
+    // Recalculate rating
+    const { data: remaining } = await db.from('reviews').select('rating').eq('reviewed_id', reviewedId);
+    const ratings = remaining || [];
+    const avg = ratings.length ? ratings.reduce((s, r) => s + r.rating, 0) / ratings.length : null;
+    const isWorker = reviewedType === 'worker';
+    const updateObj = isWorker
+      ? { rating_avg: avg, rating_count: ratings.length }
+      : { biz_rating_avg: avg, biz_rating_count: ratings.length };
+    await db.from('profiles').update(updateObj).eq('id', reviewedId);
+    loadReviews();
+  } catch(e) { alert('Error removing review: ' + e.message); }
+}
+
+// ===== COMPANIES =====
+function previewLogo(input) {
+  const file = input.files[0]; if (!file) return;
+  selectedLogoFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => { document.getElementById('logo-preview').innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`; };
+  reader.readAsDataURL(file);
+}
+
+async function uploadLogo(claimCode) {
+  if (!selectedLogoFile) return null;
+  const ext = selectedLogoFile.name.split('.').pop().toLowerCase();
+  const path = `logos/unclaimed_${claimCode}.${ext}`;
+  const { error } = await db.storage.from('avatars').upload(path, selectedLogoFile, { cacheControl: '3600', upsert: true });
+  if (error) { console.error('Logo upload error:', error); return null; }
+  const { data } = db.storage.from('avatars').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 async function addCompany() {
   const company = document.getElementById('add-company').value.trim();
   const email = document.getElementById('add-email').value.trim();
@@ -191,79 +673,35 @@ async function addCompany() {
   const description = document.getElementById('add-description').value.trim();
   const status = document.getElementById('add-status');
   const btn = document.getElementById('add-btn');
-  
-  if (!company) {
-    status.textContent = 'Company name is required.';
-    status.className = 'status show error';
-    return;
-  }
-  
-  btn.disabled = true;
-  btn.textContent = 'Adding...';
-  
-  // Generate a simple 6-character claim code
+  if (!company) { status.textContent = 'Company name is required.'; status.className = 'status show error'; return; }
+  btn.disabled = true; btn.textContent = 'Adding...';
   const claimCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-  
   try {
-    // Upload logo if selected
     let logoUrl = null;
-    if (selectedLogo) {
-      btn.textContent = 'Uploading logo...';
-      logoUrl = await uploadLogo(claimCode);
-    }
-    
+    if (selectedLogoFile) { btn.textContent = 'Uploading logo...'; logoUrl = await uploadLogo(claimCode); }
     const { error } = await db.from('unclaimed_businesses').insert({
-      company_name: company,
-      email: email ? email.toLowerCase() : null,
-      location_text: location || null,
-      phone: phone || null,
-      company_description: description || null,
-      claim_code: claimCode,
-      logo_url: logoUrl,
-      created_by: adminUser.id,
+      company_name: company, email: email ? email.toLowerCase() : null,
+      location_text: location || null, phone: phone || null,
+      company_description: description || null, claim_code: claimCode,
+      logo_url: logoUrl, created_by: adminUser.id,
     });
-    
     if (error) throw error;
-    
     status.innerHTML = `✅ <strong>${company}</strong> added!<br>Claim code: <strong style="font-size:18px;letter-spacing:2px;color:var(--green)">${claimCode}</strong><br>Send them this code — they enter it when signing up.`;
     status.className = 'status show success';
-    
-    // Clear form
-    document.getElementById('add-company').value = '';
-    document.getElementById('add-email').value = '';
-    document.getElementById('add-location').value = '';
-    document.getElementById('add-phone').value = '';
-    document.getElementById('add-description').value = '';
-    document.getElementById('add-logo').value = '';
-    document.getElementById('logo-preview').innerHTML = '<span style="font-size:24px;color:var(--gray-500)">🏢</span>';
-    selectedLogo = null;
-    
+    ['add-company','add-email','add-location','add-phone','add-description','add-logo'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('logo-preview').innerHTML = '<span style="font-size:20px;color:var(--gray-500)">🏢</span>';
+    selectedLogoFile = null;
     loadCompanies();
-    
-  } catch(e) {
-    status.textContent = e.message || 'Error adding company';
-    status.className = 'status show error';
-  }
-  
-  btn.disabled = false;
-  btn.textContent = 'Add Company';
+  } catch(e) { status.textContent = e.message || 'Error adding company'; status.className = 'status show error'; }
+  btn.disabled = false; btn.textContent = 'Add Company';
 }
 
 async function loadCompanies() {
   const container = document.getElementById('companies-container');
-  
   try {
-    const { data, error } = await db.from('unclaimed_businesses')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
+    const { data, error } = await db.from('unclaimed_businesses').select('*').order('created_at', { ascending: false });
     if (error) throw error;
-    
-    if (!data || data.length === 0) {
-      container.innerHTML = '<div style="color:var(--gray-500);font-size:14px;text-align:center;padding:20px">No companies added yet</div>';
-      return;
-    }
-    
+    if (!data?.length) { container.innerHTML = '<div class="empty-state">No companies added yet</div>'; return; }
     container.innerHTML = data.map(c => `
       <div class="company-item">
         <div style="display:flex;gap:10px;align-items:center;flex:1">
@@ -279,11 +717,99 @@ async function loadCompanies() {
         <span class="badge ${c.claimed ? 'badge-claimed' : 'badge-unclaimed'}">${c.claimed ? 'Claimed ✓' : 'Unclaimed'}</span>
       </div>
     `).join('');
-    
-  } catch(e) {
-    container.innerHTML = `<div style="color:red">${e.message}</div>`;
-  }
+  } catch(e) { container.innerHTML = `<div style="color:var(--red)">${e.message}</div>`; }
 }
+
+// ===== ANNOUNCEMENTS =====
+function previewAnnouncement() {
+  const msg = document.getElementById('announce-message').value.trim(); if (!msg) return;
+  const sel = document.getElementById('announce-audience');
+  document.getElementById('announce-preview').innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--forest-mid);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">📢</div>
+      <div><strong style="font-size:13px">CrewFinder Team</strong><div style="font-size:11px;color:var(--gray-500)">To: ${sel.options[sel.selectedIndex].text}</div></div>
+    </div>
+    <div style="font-size:13px;line-height:1.5">${msg}</div>`;
+  document.getElementById('announce-preview-box').style.display = 'block';
+}
+
+async function sendAnnouncement() {
+  const msg = document.getElementById('announce-message').value.trim();
+  const audience = document.getElementById('announce-audience').value;
+  const status = document.getElementById('announce-status');
+  const btn = document.getElementById('announce-btn');
+  if (!msg) { status.textContent = 'Write a message first.'; status.className = 'status show error'; return; }
+  if (!confirm(`Send this announcement to ${audience === 'all' ? 'ALL users' : audience + 's only'}?`)) return;
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    let query = db.from('profiles').select('id');
+    if (audience !== 'all') query = query.eq('user_type', audience);
+    const { data: targets, error: targetErr } = await query;
+    if (targetErr) throw targetErr;
+    if (!targets?.length) throw new Error('No users to send to');
+    const messages = targets.map(t => ({
+      sender_id: adminUser.id, receiver_id: t.id,
+      content: `📢 ${msg}`, is_read: false,
+    }));
+    const { error: msgErr } = await db.from('messages').insert(messages);
+    if (msgErr) throw msgErr;
+    status.innerHTML = `✅ Sent to <strong>${targets.length}</strong> user${targets.length !== 1 ? 's' : ''}!`;
+    status.className = 'status show success';
+    document.getElementById('announce-message').value = '';
+    document.getElementById('announce-preview-box').style.display = 'none';
+    loadPastAnnouncements();
+  } catch(e) { status.textContent = e.message || 'Error sending'; status.className = 'status show error'; }
+  btn.disabled = false; btn.textContent = 'Send Announcement';
+}
+
+async function loadPastAnnouncements() {
+  const container = document.getElementById('past-announcements');
+  try {
+    if (!adminUser) return;
+    const { data, error } = await db.from('messages')
+      .select('content, created_at, receiver_id')
+      .eq('sender_id', adminUser.id)
+      .like('content', '📢%')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    if (!data?.length) { container.innerHTML = '<div class="empty-state">No announcements sent yet</div>'; return; }
+    const batches = [];
+    data.forEach(m => {
+      const existing = batches.find(b => b.content === m.content && Math.abs(new Date(b.created_at) - new Date(m.created_at)) < 60000);
+      if (existing) existing.count++; else batches.push({ content: m.content, created_at: m.created_at, count: 1 });
+    });
+    container.innerHTML = batches.slice(0, 10).map(b => `
+      <div style="padding:10px 0;border-bottom:1px solid var(--gray-100)">
+        <div style="font-size:13px">${b.content}</div>
+        <div style="font-size:11px;color:var(--gray-500);margin-top:4px">${new Date(b.created_at).toLocaleDateString()} · Sent to ${b.count} user${b.count !== 1 ? 's' : ''}</div>
+      </div>
+    `).join('');
+  } catch(e) { container.innerHTML = '<div class="empty-state">Could not load announcements</div>'; }
+}
+
+// ===== HELPERS =====
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+// Auto-login
+db.auth.getSession().then(({ data }) => {
+  if (data.session) {
+    adminUser = data.session.user;
+    document.getElementById('login-section').classList.add('hidden');
+    document.getElementById('admin-panel').classList.remove('hidden');
+    loadDashboard();
+  }
+});
 </script>
 </body>
 </html>
