@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrewFinder Admin — Add Companies</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --forest: #0B1F14; --forest-mid: #1A3C2A; --green: #2D7A3A; --lime: #5CB85C;
+    --white: #FFFFFF; --gray-100: #F7F7F7; --gray-200: #E8E8E8; --gray-500: #888;
+  }
+  body { font-family: 'Outfit', sans-serif; background: var(--gray-100); min-height: 100vh; padding: 20px; }
+  .container { max-width: 600px; margin: 0 auto; }
+  h1 { color: var(--forest); margin-bottom: 8px; }
+  .subtitle { color: var(--gray-500); margin-bottom: 24px; font-size: 14px; }
+  .card { background: var(--white); border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid var(--gray-200); }
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-weight: 600; font-size: 13px; color: var(--forest-mid); margin-bottom: 4px; }
+  .form-input { width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 15px; font-family: inherit; }
+  .form-input:focus { outline: none; border-color: var(--green); }
+  .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; }
+  .btn-primary { background: var(--green); color: #fff; }
+  .btn-primary:hover { background: #256B30; }
+  .btn-outline { background: none; border: 1px solid var(--gray-200); color: var(--gray-500); margin-top: 8px; }
+  .status { padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px; display: none; }
+  .status.show { display: block; }
+  .status.success { background: #D4EDDA; color: #155724; }
+  .status.error { background: #F8D7DA; color: #721C24; }
+  .company-list { margin-top: 24px; }
+  .company-item { background: var(--white); border: 1px solid var(--gray-200); border-radius: 10px; padding: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .company-item .name { font-weight: 700; }
+  .company-item .meta { font-size: 12px; color: var(--gray-500); }
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+  .badge-unclaimed { background: #FFF3E0; color: #E65100; }
+  .badge-claimed { background: #D4EDDA; color: #155724; }
+  .login-section { text-align: center; padding: 40px 20px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  
+  <div id="login-section" class="login-section">
+    <h1>🔒 Admin Login</h1>
+    <p class="subtitle">Log in with your CrewFinder admin account</p>
+    <div class="card">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="admin-email" type="email" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="admin-password" type="password" placeholder="••••••">
+      </div>
+      <button class="btn btn-primary" onclick="adminLogin()">Log In</button>
+      <div class="status" id="login-status"></div>
+    </div>
+  </div>
+
+  <div id="admin-panel" class="hidden">
+    <h1>🏢 Add Companies</h1>
+    <p class="subtitle">Pre-load business profiles. Companies can claim them by signing up with the same email.</p>
+    
+    <div class="card">
+      <div class="form-group">
+        <label class="form-label">Company Name *</label>
+        <input class="form-input" id="add-company" type="text" placeholder="Northeast Tree Service">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input class="form-input" id="add-email" type="email" placeholder="info@company.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input class="form-input" id="add-location" type="text" placeholder="Medway, MA">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input class="form-input" id="add-phone" type="text" placeholder="(508) 555-1234">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description (optional)</label>
+        <textarea class="form-input" id="add-description" rows="2" placeholder="Full-service tree company..."></textarea>
+      </div>
+      <button class="btn btn-primary" id="add-btn" onclick="addCompany()">Add Company</button>
+      <div class="status" id="add-status"></div>
+    </div>
+
+    <div class="company-list" id="company-list">
+      <h3 style="margin-bottom:12px">Pre-loaded Companies</h3>
+      <div id="companies-container">Loading...</div>
+    </div>
+    
+    <button class="btn btn-outline" onclick="adminLogout()" style="margin-top:16px">Log Out</button>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// REPLACE THIS WITH YOUR SUPABASE URL AND ANON KEY
+const SUPABASE_URL = 'https://mhatwlmbwikvrlcgfojt.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNDUzMTQsImV4cCI6MjA4NjkyMTMxNH0.8LefO4aYzYGfmsUb4blBEBLjIoF4CtYJ7xfimdc7lBE';
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let adminUser = null;
+
+// Check if these match your app.html values — they should be the same
+// Copy the SUPABASE_URL and SUPABASE_ANON_KEY from your app.html file
+
+async function adminLogin() {
+  const email = document.getElementById('admin-email').value.trim();
+  const password = document.getElementById('admin-password').value;
+  const status = document.getElementById('login-status');
+  
+  try {
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    
+    adminUser = data.user;
+    document.getElementById('login-section').classList.add('hidden');
+    document.getElementById('admin-panel').classList.remove('hidden');
+    loadCompanies();
+    
+  } catch(e) {
+    status.textContent = e.message;
+    status.className = 'status show error';
+  }
+}
+
+function adminLogout() {
+  db.auth.signOut();
+  adminUser = null;
+  document.getElementById('login-section').classList.remove('hidden');
+  document.getElementById('admin-panel').classList.add('hidden');
+}
+
+async function addCompany() {
+  const company = document.getElementById('add-company').value.trim();
+  const email = document.getElementById('add-email').value.trim();
+  const location = document.getElementById('add-location').value.trim();
+  const phone = document.getElementById('add-phone').value.trim();
+  const description = document.getElementById('add-description').value.trim();
+  const status = document.getElementById('add-status');
+  const btn = document.getElementById('add-btn');
+  
+  if (!company || !email) {
+    status.textContent = 'Company name and email are required.';
+    status.className = 'status show error';
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.textContent = 'Adding...';
+  
+  try {
+    const { error } = await db.from('unclaimed_businesses').insert({
+      company_name: company,
+      email: email.toLowerCase(),
+      location_text: location || null,
+      phone: phone || null,
+      company_description: description || null,
+      created_by: adminUser.id,
+    });
+    
+    if (error) throw error;
+    
+    status.textContent = `✅ ${company} added! They can claim by signing up with ${email}`;
+    status.className = 'status show success';
+    
+    // Clear form
+    document.getElementById('add-company').value = '';
+    document.getElementById('add-email').value = '';
+    document.getElementById('add-location').value = '';
+    document.getElementById('add-phone').value = '';
+    document.getElementById('add-description').value = '';
+    
+    loadCompanies();
+    
+  } catch(e) {
+    status.textContent = e.message || 'Error adding company';
+    status.className = 'status show error';
+  }
+  
+  btn.disabled = false;
+  btn.textContent = 'Add Company';
+}
+
+async function loadCompanies() {
+  const container = document.getElementById('companies-container');
+  
+  try {
+    const { data, error } = await db.from('unclaimed_businesses')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    if (!data || data.length === 0) {
+      container.innerHTML = '<div style="color:var(--gray-500);font-size:14px;text-align:center;padding:20px">No companies added yet</div>';
+      return;
+    }
+    
+    container.innerHTML = data.map(c => `
+      <div class="company-item">
+        <div>
+          <div class="name">${c.company_name}</div>
+          <div class="meta">${c.email} · ${c.location_text || 'No location'}</div>
+        </div>
+        <span class="badge ${c.claimed ? 'badge-claimed' : 'badge-unclaimed'}">${c.claimed ? 'Claimed ✓' : 'Unclaimed'}</span>
+      </div>
+    `).join('');
+    
+  } catch(e) {
+    container.innerHTML = `<div style="color:red">${e.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>

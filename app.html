@@ -3629,26 +3629,45 @@ async function handleSignup() {
     
     if (error) throw error;
     
-    // Create profile
-    const { error: profileError } = await db.from('profiles').insert({
+    // Create profile — check for unclaimed business first
+    let preloadedData = null;
+    if (state.signupType === 'business') {
+      try {
+        const { data: unclaimed } = await db.from('unclaimed_businesses')
+          .select('*')
+          .eq('email', email.toLowerCase())
+          .eq('claimed', false)
+          .single();
+        if (unclaimed) {
+          preloadedData = unclaimed;
+        }
+      } catch(e) { /* no unclaimed profile, that's fine */ }
+    }
+    
+    const profileData = {
       id: data.user.id,
       user_type: state.signupType,
-      name: name,
+      name: preloadedData?.company_name || name,
       email: email,
-      location_text: location,
-      company_name: state.signupType === 'business' ? (company || name) : null,
-    });
+      location_text: preloadedData?.location_text || location,
+      company_name: state.signupType === 'business' ? (preloadedData?.company_name || company || name) : null,
+      company_description: preloadedData?.company_description || null,
+      phone: preloadedData?.phone || null,
+    };
+    
+    const { error: profileError } = await db.from('profiles').insert(profileData);
     
     if (profileError) throw profileError;
     
+    // Mark as claimed if pre-loaded
+    if (preloadedData) {
+      await db.from('unclaimed_businesses').update({ claimed: true, claimed_by: data.user.id })
+        .eq('id', preloadedData.id);
+    }
+    
     state.user = data.user;
     state.profile = {
-      id: data.user.id,
-      user_type: state.signupType,
-      name,
-      email,
-      location_text: location,
-      company_name: company,
+      ...profileData,
       availability: 'available_now',
     };
     
