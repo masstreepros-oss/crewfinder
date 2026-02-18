@@ -3398,6 +3398,9 @@ async function openChat(userId, name, location) {
   
   state.chattingWith = { userId, name, location: location || '', conversationId };
   state.chatMessages = [];
+  state.activeTab = 'messages';
+  state.viewingWorker = null;
+  state.viewingCompany = null;
   
   render();
   
