@@ -117,6 +117,14 @@ body {
 .splash-logo span { color: #fff; font-size: 30px; font-weight: 800; letter-spacing: -1px; }
 .splash-sub { color: rgba(255,255,255,0.6); font-size: 15px; position: relative; margin-bottom: 48px; }
 
+.splash-companies { width: 100%; max-width: 340px; margin-top: 24px; position: relative; }
+.splash-companies-title { color: rgba(255,255,255,0.45); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; text-align: center; margin-bottom: 10px; }
+.splash-companies-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.splash-company-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 20px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 500; }
+.splash-company-chip img { width: 18px; height: 18px; border-radius: 4px; object-fit: cover; }
+.splash-company-chip .chip-dot { width: 18px; height: 18px; border-radius: 4px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 10px; }
+.splash-companies-more { color: rgba(255,255,255,0.35); font-size: 11px; text-align: center; margin-top: 8px; }
+
 .splash-btn {
   width: 100%; max-width: 300px;
   padding: 18px 20px;
@@ -1189,8 +1197,65 @@ function renderSplash(app) {
         <div class="splash-btn-desc">Pick up jobs and fill your schedule</div>
       </button>
       <button class="splash-link" onclick="goTo('login')">Already have an account? Log in</button>
+      <div class="splash-companies" id="splash-companies"></div>
     </div>
   `;
+  loadSplashCompanies();
+}
+
+// ============================================
+// SPLASH COMPANIES
+// ============================================
+async function loadSplashCompanies() {
+  const container = document.getElementById('splash-companies');
+  if (!container) return;
+  try {
+    // Load unclaimed + claimed businesses to show all companies on the platform
+    const { data: unclaimed } = await db.from('unclaimed_businesses')
+      .select('company_name, logo_url, location_text')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    const { data: claimed } = await db.from('profiles')
+      .select('company_name, avatar_url, location_text')
+      .eq('user_type', 'business')
+      .not('company_name', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    const companies = [];
+    // Add claimed businesses first (real active users)
+    (claimed || []).forEach(c => {
+      if (c.company_name) companies.push({ name: c.company_name, logo: c.avatar_url, location: c.location_text });
+    });
+    // Add unclaimed businesses
+    (unclaimed || []).forEach(c => {
+      if (c.company_name && !companies.find(x => x.name === c.company_name)) {
+        companies.push({ name: c.company_name, logo: c.logo_url, location: c.location_text });
+      }
+    });
+    
+    if (companies.length === 0) return;
+    
+    const shown = companies.slice(0, 8);
+    const remaining = companies.length - shown.length;
+    
+    container.innerHTML = `
+      <div class="splash-companies-title">Companies on CrewFinder</div>
+      <div class="splash-companies-list">
+        ${shown.map(c => `
+          <div class="splash-company-chip">
+            ${c.logo ? `<img src="${c.logo}">` : `<span class="chip-dot">🏢</span>`}
+            ${c.name}
+          </div>
+        `).join('')}
+      </div>
+      ${remaining > 0 ? `<div class="splash-companies-more">+ ${remaining} more</div>` : ''}
+    `;
+  } catch(e) {
+    // Silently fail - this is just social proof, not critical
+    console.log('Could not load splash companies:', e);
+  }
 }
 
 // ============================================
