@@ -1055,6 +1055,7 @@ let state = {
   workPhotos: [],
   showResetPassword: false,
   businesses: [],
+  unclaimedBusinesses: [],
   viewingCompany: null,
   viewingCompanyReviews: [],
   viewingJobDetail: null,
@@ -2385,43 +2386,78 @@ function renderBrowseWorkers() {
 
 function renderBrowseCompanies() {
   const businesses = state.businesses || [];
+  const unclaimed = state.unclaimedBusinesses || [];
   
-  return `
-    <div class="page-padding" style="padding-top:0">
-      ${businesses.length ? businesses.map(b => {
-        const avatarContent = b.avatar_url 
-          ? `<img src="${b.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
-          : getInitials(b.company_name || b.name);
-        const avatarStyle = b.avatar_url ? 'overflow:hidden' : '';
-        const jobCount = (state.jobs || []).filter(j => j.business_id === b.id && j.is_active).length;
-        
-        return `
-          <div class="worker-card" onclick="viewCompany('${b.id}')">
-            <div class="worker-card-row">
-              <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
-              <div class="worker-info">
-                <div class="worker-name">${b.company_name || b.name}</div>
-                <div class="worker-location">${b.location_text || 'Location not set'}</div>
-                <div class="rating-row">
-                  <span class="star">★</span>
-                  <span>${b.biz_rating_avg || 'New'}</span>
-                  ${b.biz_rating_count ? `<span class="rating-count">(${b.biz_rating_count})</span>` : ''}
-                </div>
-              </div>
-            </div>
-            <div class="badge-wrap">
-              ${jobCount > 0 ? `<span class="badge badge-avail">${jobCount} active job${jobCount > 1 ? 's' : ''}</span>` : ''}
-              ${b.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${b.company_description.slice(0, 100)}${b.company_description.length > 100 ? '...' : ''}</span>` : ''}
+  // Render claimed businesses
+  const claimedCards = businesses.map(b => {
+    const avatarContent = b.avatar_url 
+      ? `<img src="${b.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+      : getInitials(b.company_name || b.name);
+    const avatarStyle = b.avatar_url ? 'overflow:hidden' : '';
+    const jobCount = (state.jobs || []).filter(j => j.business_id === b.id && j.is_active).length;
+    
+    return `
+      <div class="worker-card" onclick="viewCompany('${b.id}')">
+        <div class="worker-card-row">
+          <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
+          <div class="worker-info">
+            <div class="worker-name">${b.company_name || b.name}</div>
+            <div class="worker-location">${b.location_text || 'Location not set'}</div>
+            <div class="rating-row">
+              <span class="star">★</span>
+              <span>${b.biz_rating_avg || 'New'}</span>
+              ${b.biz_rating_count ? `<span class="rating-count">(${b.biz_rating_count})</span>` : ''}
             </div>
           </div>
-        `;
-      }).join('') : `
+        </div>
+        <div class="badge-wrap">
+          ${jobCount > 0 ? `<span class="badge badge-avail">${jobCount} active job${jobCount > 1 ? 's' : ''}</span>` : ''}
+          ${b.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${b.company_description.slice(0, 100)}${b.company_description.length > 100 ? '...' : ''}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Render unclaimed businesses (no click action — just display)
+  const unclaimedCards = unclaimed.filter(u => 
+    !businesses.find(b => (b.company_name || '').toLowerCase() === (u.company_name || '').toLowerCase())
+  ).map(u => {
+    const avatarContent = u.logo_url 
+      ? `<img src="${u.logo_url}" style="width:100%;height:100%;object-fit:cover">`
+      : getInitials(u.company_name);
+    const avatarStyle = u.logo_url ? 'overflow:hidden' : '';
+    
+    return `
+      <div class="worker-card" style="opacity:0.85">
+        <div class="worker-card-row">
+          <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
+          <div class="worker-info">
+            <div class="worker-name">${u.company_name}</div>
+            <div class="worker-location">${u.location_text || 'Location not set'}</div>
+          </div>
+        </div>
+        <div class="badge-wrap">
+          <span class="badge" style="background:#FFF3E0;color:#E65100">Unclaimed</span>
+          ${u.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${u.company_description.slice(0, 100)}${u.company_description.length > 100 ? '...' : ''}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const totalCount = businesses.length + unclaimed.filter(u => !businesses.find(b => (b.company_name || '').toLowerCase() === (u.company_name || '').toLowerCase())).length;
+
+  return `
+    <div style="padding: 4px 16px 8px; font-size: 13px; color: var(--gray-500);">${totalCount} companies</div>
+    <div class="page-padding" style="padding-top:0">
+      ${claimedCards || ''}
+      ${unclaimedCards || ''}
+      ${totalCount === 0 ? `
         <div class="empty-state">
           <div class="empty-state-icon">🏢</div>
           <h3>No companies yet</h3>
           <p>Companies will show up here as they join CrewFinder.</p>
         </div>
-      `}
+      ` : ''}
     </div>
   `;
 }
@@ -4216,6 +4252,16 @@ async function loadData() {
       .order('biz_rating_avg', { ascending: false });
     state.businesses = businesses || [];
   } catch (e) { console.error('Error loading businesses:', e); state.businesses = []; }
+  
+  try {
+    // Load unclaimed businesses for browse tab
+    const { data: unclaimed } = await db
+      .from('unclaimed_businesses')
+      .select('company_name, logo_url, location_text, company_description, claimed')
+      .eq('claimed', false)
+      .order('created_at', { ascending: false });
+    state.unclaimedBusinesses = unclaimed || [];
+  } catch (e) { console.error('Error loading unclaimed:', e); state.unclaimedBusinesses = []; }
   
   // Load worker's own job responses (for showing applied/hired status)
   if (state.profile?.user_type === 'worker') {
