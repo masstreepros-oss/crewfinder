@@ -1836,8 +1836,8 @@ function renderJobFeed() {
                 <span style="font-weight:700;color:var(--green);font-size:14px">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</span>
               </div>
               <div style="display:flex;gap:6px;margin-top:8px">
-                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:8px" onclick="startChatWithBiz('${j.business_id}')">Message Company</button>
-                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="showRateCompany('${j.business_id}')">Leave Review</button>
+                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:8px" onclick="event.stopPropagation();startChatWithBiz('${j.business_id}')">Message Company</button>
+                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="event.stopPropagation();showRateCompany('${j.business_id}')">Leave Review</button>
               </div>
             </div>
           `;
@@ -1998,7 +1998,7 @@ function renderJobDetail(job) {
               </div>
               <div style="display:flex;gap:6px">
                 <button class="btn btn-primary" style="width:auto;padding:6px 12px;font-size:12px" onclick="completeWorker(${job.id}, '${r.worker_id}')">Complete</button>
-                <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="startChat('${r.worker_id}')">Message</button>
+                <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="event.stopPropagation();startChat('${r.worker_id}')">Message</button>
               </div>
             </div>
           `;
@@ -2031,7 +2031,7 @@ function renderJobDetail(job) {
               <div style="display:flex;gap:6px;margin-top:8px">
                 <button class="btn btn-primary" style="flex:1;font-size:12px;padding:8px" onclick="acceptWorker(${job.id}, '${r.worker_id}')">Hire</button>
                 <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="declineWorker(${job.id}, '${r.worker_id}')">Decline</button>
-                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="startChat('${r.worker_id}')">Message</button>
+                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="event.stopPropagation();startChat('${r.worker_id}')">Message</button>
               </div>
             </div>
           `;
@@ -2119,6 +2119,7 @@ async function acceptWorker(jobId, workerId) {
 }
 
 async function declineWorker(jobId, workerId) {
+  if (!confirm('Decline this worker? They won\'t be notified but can\'t be hired for this job.')) return;
   try {
     await db.from('job_responses').update({ status: 'declined' })
       .eq('job_id', jobId).eq('worker_id', workerId);
@@ -2777,10 +2778,10 @@ function renderCrewRoster() {
               </div>
             </div>
             <div style="display:flex;gap:6px;margin-top:10px">
-              <button class="btn btn-primary" style="flex:2;font-size:12px;padding:8px" onclick="bookAgain('${w.id}', '${(w.name || '').replace(/'/g, '')}')">Book Again</button>
-              <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="startChat('${w.id}')">Message</button>
-              <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="editCrewNote('${c.id}')">Note</button>
-              <button style="background:none;border:1px solid var(--gray-300);border-radius:var(--radius-sm);padding:8px;font-size:12px;cursor:pointer;color:var(--gray-500)" onclick="removeFromCrew(${c.id}, '${w.name}')">✕</button>
+              <button class="btn btn-primary" style="flex:2;font-size:12px;padding:8px" onclick="event.stopPropagation();bookAgain('${w.id}', '${(w.name || '').replace(/'/g, '')}')">Book Again</button>
+              <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="event.stopPropagation();startChat('${w.id}')">Message</button>
+              <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="event.stopPropagation();editCrewNote('${c.id}')">Note</button>
+              <button style="background:none;border:1px solid var(--gray-300);border-radius:var(--radius-sm);padding:8px;font-size:12px;cursor:pointer;color:var(--gray-500)" onclick="event.stopPropagation();removeFromCrew(${c.id}, '${w.name}')">✕</button>
             </div>
           </div>
         `;
@@ -3256,6 +3257,9 @@ async function handlePostJob(btn) {
   const desc = document.getElementById('job-desc')?.value?.trim();
   const d = state.postJobData;
   
+  if (!location && !state.profile?.location_text) { showToast('Add a job location'); return; }
+  if (payMax > 0 && payMin > payMax) { showToast('Min pay can\'t be higher than max pay'); return; }
+  
   btn.disabled = true;
   btn.textContent = 'Posting...';
   
@@ -3510,6 +3514,7 @@ function scrollChatToBottom() {
 }
 
 async function loadConversations() {
+  try {
   // Get all messages where user is sender or receiver
   const { data: messages } = await db
     .from('messages')
@@ -3560,6 +3565,10 @@ async function loadConversations() {
       unread: c.unreadCount > 0,
     };
   });
+  } catch(e) {
+    console.error('loadConversations error:', e);
+    state.conversations = [];
+  }
 }
 
 async function saveWorker(userId) {
@@ -3986,14 +3995,18 @@ async function uploadWorkPhoto(input) {
 }
 
 async function deleteWorkPhoto(photoId) {
-  const photo = (state.workPhotos || []).find(p => p.id === photoId);
-  if (!photo) return;
-  
-  await db.from('work_photos').delete().eq('id', photoId);
-  state.workPhotos = (state.workPhotos || []).filter(p => p.id !== photoId);
-  
-  showToast('Photo removed');
-  render();
+  try {
+    const photo = (state.workPhotos || []).find(p => p.id === photoId);
+    if (!photo) return;
+    
+    await db.from('work_photos').delete().eq('id', photoId);
+    state.workPhotos = (state.workPhotos || []).filter(p => p.id !== photoId);
+    
+    showToast('Photo removed');
+    render();
+  } catch(e) {
+    showToast('Failed to remove photo');
+  }
 }
 
 async function uploadInsurance(input) {
@@ -4036,18 +4049,22 @@ async function uploadInsurance(input) {
 }
 
 async function removeInsurance() {
-  await db.from('profiles').update({ 
-    insurance_doc_url: null, 
-    has_insurance: false,
-    insurance_expiry: null 
-  }).eq('id', state.user.id);
-  
-  state.profile.insurance_doc_url = null;
-  state.profile.has_insurance = false;
-  state.profile.insurance_expiry = null;
-  
-  showToast('Insurance document removed');
-  render();
+  try {
+    await db.from('profiles').update({ 
+      insurance_doc_url: null, 
+      has_insurance: false,
+      insurance_expiry: null 
+    }).eq('id', state.user.id);
+    
+    state.profile.insurance_doc_url = null;
+    state.profile.has_insurance = false;
+    state.profile.insurance_expiry = null;
+    
+    showToast('Insurance document removed');
+    render();
+  } catch(e) {
+    showToast('Failed to remove insurance');
+  }
 }
 
 async function editProfile() {
