@@ -1611,6 +1611,7 @@ function renderMain(app) {
         <span>CrewFinder</span>
       </div>
       <div class="header-actions">
+        <button class="header-btn" id="notif-bell" onclick="requestPushPermission()" title="Enable notifications">🔔</button>
         <button class="header-btn" onclick="handleLogout()">Log Out</button>
       </div>
     </div>
@@ -2964,6 +2965,9 @@ function renderMyProfile() {
       `}
       <div style="padding:0 16px 16px">
         <button class="btn btn-primary" style="margin-bottom:8px" onclick="editProfile()">Edit Profile</button>
+        <button class="btn btn-outline" style="margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px" id="push-toggle-btn" onclick="togglePushFromProfile()">
+          <span style="font-size:18px">🔔</span> <span id="push-toggle-label">Enable Notifications</span>
+        </button>
         ${!isStandalone() ? `
         <button class="btn btn-outline" style="margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="handleInstallClick()">
           <span style="font-size:18px">📲</span> Install App to Home Screen
@@ -3283,8 +3287,24 @@ async function handlePostJob(btn) {
         status: 'accepted',
       });
       showToast(`Job posted and ${d.bookingName} has been hired!`);
+      
+      // Notify the specific worker
+      sendPushNotification({
+        target_user_id: d.bookingFor,
+        title: '🎉 You\'ve been hired!',
+        body: `${state.profile?.company_name || state.profile?.name} hired you for: ${d.title}`,
+        type: 'hired',
+      });
     } else {
       showToast('Job posted! Workers can see it now.');
+      
+      // Notify all workers about new job
+      sendPushNotification({
+        target_type: 'worker',
+        title: '🌲 New Job Posted',
+        body: `${d.title} — ${formatPay(d.pay_min, d.pay_max, d.pay_type)} in ${d.location_text}`,
+        type: 'new_job',
+      });
     }
     await loadData();
     state.activeTab = 'jobs';
@@ -3463,6 +3483,14 @@ async function sendMessage() {
     showToast('Failed to send message');
     state.chatMessages.pop();
     render();
+  } else {
+    // Send push notification to recipient
+    sendPushNotification({
+      target_user_id: state.chattingWith.userId,
+      title: `💬 ${state.profile?.company_name || state.profile?.name || 'Someone'}`,
+      body: content.length > 80 ? content.slice(0, 80) + '...' : content,
+      type: 'message',
+    });
   }
 }
 
@@ -4128,15 +4156,160 @@ init();
 // PWA: Service Worker + Install Prompt
 // ============================================
 let deferredPrompt = null;
+const VAPID_PUBLIC_KEY = 'BDKjpMxX0K3plkADCR3vVKelt08Hiv6aJo2aIvfOgyiq8lY3vSY98o9Tzg-9xia4nbVFZtzVadBkFMMQFedOvuE';
 
 // Register service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').then((reg) => {
     console.log('SW registered:', reg.scope);
+    // Try to subscribe to push after SW is ready
+    if (state.user) {
+      subscribeToPush(reg);
+    }
   }).catch((err) => {
     console.log('SW registration failed:', err);
   });
 }
+
+async function subscribeToPush(reg) {
+  // Check if already subscribed
+  const existing = await reg.pushManager.getSubscription();
+  if (existing) {
+    // Save to DB in case it wasn't saved before
+    savePushSubscription(existing);
+    return;
+  }
+  
+  // Don't auto-prompt — wait for user to click the bell
+}
+
+async function requestPushPermission() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    showToast('Push notifications not supported on this browser');
+    return;
+  }
+  
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      showToast('Notifications blocked — check your browser settings');
+      return;
+    }
+    
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+    
+    await savePushSubscription(subscription);
+    showToast('🔔 Notifications enabled!');
+    render();
+    
+  } catch (e) {
+    console.error('Push subscription error:', e);
+    showToast('Could not enable notifications: ' + e.message);
+  }
+}
+
+async function savePushSubscription(subscription) {
+  if (!state.user) return;
+  
+  const sub = subscription.toJSON();
+  try {
+    await db.from('push_subscriptions').upsert({
+      user_id: state.user.id,
+      endpoint: sub.endpoint,
+      p256dh: sub.keys.p256dh,
+      auth: sub.keys.auth,
+      user_type: state.profile?.user_type || 'worker',
+    }, { onConflict: 'user_id' });
+  } catch (e) {
+    console.error('Error saving push subscription:', e);
+  }
+}
+
+async function unsubscribeFromPush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.getSubscription();
+    if (subscription) {
+      await subscription.unsubscribe();
+    }
+    await db.from('push_subscriptions').delete().eq('user_id', state.user.id);
+    showToast('Notifications turned off');
+    render();
+  } catch (e) {
+    console.error('Unsubscribe error:', e);
+  }
+}
+
+async function isPushSubscribed() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    return !!sub;
+  } catch(e) { return false; }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function togglePushFromProfile() {
+  const subscribed = await isPushSubscribed();
+  if (subscribed) {
+    unsubscribeFromPush();
+  } else {
+    requestPushPermission();
+  }
+}
+
+async function sendPushNotification(payload) {
+  try {
+    const { data, error } = await db.functions.invoke('send-push-notification', {
+      body: payload,
+    });
+    if (error) console.error('Push function error:', error);
+    else console.log('Push sent:', data);
+  } catch(e) {
+    console.error('Push notification error:', e);
+    // Non-blocking — don't show error to user
+  }
+}
+
+// Update push UI after render
+function updatePushUI() {
+  isPushSubscribed().then(subscribed => {
+    const bell = document.getElementById('notif-bell');
+    if (bell) {
+      bell.textContent = subscribed ? '🔕' : '🔔';
+      bell.title = subscribed ? 'Notifications on — tap to disable' : 'Enable notifications';
+      bell.onclick = subscribed ? unsubscribeFromPush : requestPushPermission;
+    }
+    const label = document.getElementById('push-toggle-label');
+    if (label) {
+      label.textContent = subscribed ? 'Disable Notifications' : 'Enable Notifications';
+    }
+  });
+}
+
+// Hook into render to update push UI
+const _origRender = render;
+render = function() {
+  _origRender();
+  if (state.currentScreen === 'main') {
+    setTimeout(updatePushUI, 100);
+  }
+};
 
 // Capture the install prompt
 window.addEventListener('beforeinstallprompt', (e) => {

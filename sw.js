@@ -50,3 +50,53 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
+// Push notifications
+self.addEventListener('push', (event) => {
+  let data = { title: 'CrewFinder', body: 'You have a new notification' };
+  
+  try {
+    if (event.data) {
+      data = event.data.json();
+    }
+  } catch (e) {
+    data.body = event.data ? event.data.text() : 'New notification';
+  }
+  
+  const options = {
+    body: data.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    vibrate: [200, 100, 200],
+    data: {
+      url: data.url || '/app.html',
+    },
+    actions: data.actions || [],
+    tag: data.tag || 'crewfinder-notification',
+    renotify: true,
+  };
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'CrewFinder', options)
+  );
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  const url = event.notification.data?.url || '/app.html';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Focus existing window if open
+      for (const client of windowClients) {
+        if (client.url.includes('/app.html') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open new window
+      return clients.openWindow(url);
+    })
+  );
+});
