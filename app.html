@@ -1049,7 +1049,11 @@ let state = {
   businesses: [],
   viewingCompany: null,
   viewingCompanyReviews: [],
+  viewingJobDetail: null,
+  jobResponses: {},
+  myJobStatuses: [],
   selectedRating: 0,
+  crewRoster: [],
 };
 
 // ============================================
@@ -1577,7 +1581,7 @@ function renderMain(app) {
       case 'jobs': content = renderMyJobs(); break;
       case 'post-job': content = renderPostJob(); break;
       case 'messages': content = renderMessages(); break;
-      case 'storm': content = renderStorm(); break;
+      case 'crew': content = renderCrewRoster(); break;
       case 'profile': content = renderMyProfile(); break;
     }
   } else {
@@ -1610,7 +1614,7 @@ function renderBottomNav(isBiz) {
         { id: 'search', label: 'Search', icon: 'search' },
         { id: 'jobs', label: 'My Jobs', icon: 'jobs' },
         { id: 'messages', label: 'Messages', icon: 'messages', badge: state.conversations.some(c => c.unread) },
-        { id: 'storm', label: 'Storm', icon: 'storm' },
+        { id: 'crew', label: 'My Crew', icon: 'heart' },
         { id: 'profile', label: 'Profile', icon: 'profile' },
       ]
     : [
@@ -1792,11 +1796,44 @@ function renderWorkerProfile(w) {
 // JOB FEED (Worker view)
 // ============================================
 function renderJobFeed() {
+  const myActiveJobs = (state.myJobStatuses || []).filter(r => r.status === 'accepted');
+  const myCompletedJobs = (state.myJobStatuses || []).filter(r => r.status === 'completed');
+  const myAppliedIds = new Set((state.myJobStatuses || []).map(r => r.job_id));
+  
   return `
     <div class="page-padding">
+      ${myActiveJobs.length ? `
+        <div class="profile-section-title" style="color:var(--green)">🔨 Your Active Jobs</div>
+        ${myActiveJobs.map(r => {
+          const j = state.jobs.find(j => j.id === r.job_id);
+          if (!j) return '';
+          const biz = j.profiles || {};
+          return `
+            <div class="card" style="padding:14px;margin-bottom:8px;border-left:3px solid var(--green)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                  <div style="font-weight:700">${j.title}</div>
+                  <div style="font-size:13px;color:var(--gray-600)">${biz.company_name || biz.name || 'Company'} · ${j.location_text || ''}</div>
+                </div>
+                <span style="font-weight:700;color:var(--green);font-size:14px">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</span>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:8px">
+                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:8px" onclick="startChatWithBiz('${j.business_id}')">Message Company</button>
+                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="showRateCompany('${j.business_id}')">Leave Review</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+        <div style="height:16px"></div>
+      ` : ''}
+      
       <div class="page-title">Available Jobs Near You</div>
       <div class="page-sub">Pick up work that fits your schedule</div>
-      ${state.jobs.length ? state.jobs.filter(j => j.is_active).map(j => renderJobCard(j)).join('') : `
+      ${state.jobs.filter(j => j.is_active).length ? state.jobs.filter(j => j.is_active).map(j => {
+        const applied = myAppliedIds.has(j.id);
+        const myStatus = (state.myJobStatuses || []).find(r => r.job_id === j.id);
+        return renderJobCard(j, applied, myStatus);
+      }).join('') : `
         <div class="empty-state">
           <div class="empty-state-icon">&#128188;</div>
           <h3>No jobs posted yet</h3>
@@ -1807,12 +1844,25 @@ function renderJobFeed() {
   `;
 }
 
-function renderJobCard(j) {
+function renderJobCard(j, applied, myStatus) {
   const biz = j.profiles || {};
   const jobSkills = (j.job_skills || []).map(js => {
     const skill = state.skills.find(s => s.id === js.skill_id);
     return skill ? skill.name : '';
   }).filter(Boolean);
+  
+  let actionBtn = '';
+  if (myStatus?.status === 'accepted') {
+    actionBtn = '<span class="badge" style="background:var(--green);color:#fff;font-size:12px;padding:6px 12px">✅ Hired</span>';
+  } else if (myStatus?.status === 'completed') {
+    actionBtn = '<span class="badge" style="background:var(--gray-500);color:#fff;font-size:12px;padding:6px 12px">🏁 Done</span>';
+  } else if (myStatus?.status === 'declined') {
+    actionBtn = '<span class="badge" style="background:var(--gray-400);color:#fff;font-size:12px;padding:6px 12px">Not selected</span>';
+  } else if (applied) {
+    actionBtn = '<span class="badge" style="background:var(--amber);color:#fff;font-size:12px;padding:6px 12px">Applied ✓</span>';
+  } else {
+    actionBtn = `<button class="btn btn-primary" style="width:auto;padding:8px 20px;font-size:13px" onclick="event.stopPropagation();respondToJob(${j.id})">I'm Interested</button>`;
+  }
   
   return `
     <div class="job-card ${j.is_urgent ? 'urgent' : ''}">
@@ -1834,7 +1884,7 @@ function renderJobCard(j) {
       ${j.description ? `<p style="font-size:13px;color:var(--gray-600);margin-top:8px;line-height:1.4">${j.description}</p>` : ''}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
         <span class="job-posted">Posted ${timeAgo(j.created_at)}</span>
-        <button class="btn btn-primary" style="width:auto;padding:8px 20px;font-size:13px" onclick="respondToJob(${j.id})">I'm Interested</button>
+        ${actionBtn}
       </div>
     </div>
   `;
@@ -1844,6 +1894,10 @@ function renderJobCard(j) {
 // MY JOBS (Business view)
 // ============================================
 function renderMyJobs() {
+  if (state.viewingJobDetail) {
+    return renderJobDetail(state.viewingJobDetail);
+  }
+  
   const myJobs = state.jobs.filter(j => j.business_id === state.user.id);
   
   return `
@@ -1852,7 +1906,34 @@ function renderMyJobs() {
         <span class="page-title" style="margin:0">My Job Posts</span>
         <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px" onclick="showPostJob()">+ Post Job</button>
       </div>
-      ${myJobs.length ? myJobs.map(j => renderJobCard(j)).join('') : `
+      ${myJobs.length ? myJobs.map(j => {
+        const responses = (state.jobResponses || {})[j.id] || [];
+        const accepted = responses.filter(r => r.status === 'accepted');
+        const interested = responses.filter(r => r.status === 'interested');
+        const completed = responses.filter(r => r.status === 'completed');
+        const statusLabel = !j.is_active ? 'Completed' : accepted.length ? 'In Progress' : 'Open';
+        const statusColor = !j.is_active ? 'var(--gray-500)' : accepted.length ? 'var(--green)' : 'var(--amber)';
+        
+        return `
+          <div class="job-card" onclick="viewJobDetail(${j.id})" style="cursor:pointer">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span class="job-title">${j.title}</span>
+                  <span class="badge" style="background:${statusColor};color:#fff;font-size:10px">${statusLabel}</span>
+                </div>
+                <div class="job-meta">${formatPay(j.pay_min, j.pay_max, j.pay_type)} · ${j.location_text || ''}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:8px;font-size:13px;color:var(--gray-600)">
+              ${interested.length ? `<span>📥 ${interested.length} interested</span>` : ''}
+              ${accepted.length ? `<span>✅ ${accepted.length} hired</span>` : ''}
+              ${completed.length ? `<span>🏁 ${completed.length} completed</span>` : ''}
+            </div>
+            <div style="font-size:12px;color:var(--gray-400);margin-top:6px">Posted ${timeAgo(j.created_at)} · Tap to manage</div>
+          </div>
+        `;
+      }).join('') : `
         <div class="empty-state">
           <div class="empty-state-icon">&#128203;</div>
           <h3>No jobs posted yet</h3>
@@ -1861,6 +1942,192 @@ function renderMyJobs() {
       `}
     </div>
   `;
+}
+
+function renderJobDetail(job) {
+  const responses = (state.jobResponses || {})[job.id] || [];
+  const interested = responses.filter(r => r.status === 'interested');
+  const accepted = responses.filter(r => r.status === 'accepted');
+  const completed = responses.filter(r => r.status === 'completed');
+  const declined = responses.filter(r => r.status === 'declined');
+  
+  return `
+    <div class="page-padding">
+      <button class="auth-back" onclick="state.viewingJobDetail=null;render()" style="margin-bottom:12px">&larr; Back to My Jobs</button>
+      
+      <div style="margin-bottom:16px">
+        <div style="font-size:20px;font-weight:700">${job.title}</div>
+        <div style="font-size:14px;color:var(--gray-600);margin-top:4px">${formatPay(job.pay_min, job.pay_max, job.pay_type)} · ${job.location_text || ''}</div>
+        ${job.description ? `<p style="font-size:13px;color:var(--gray-600);margin-top:8px;line-height:1.4">${job.description}</p>` : ''}
+      </div>
+      
+      ${accepted.length ? `
+      <div style="margin-bottom:20px">
+        <div class="profile-section-title">Hired Workers (${accepted.length})</div>
+        ${accepted.map(r => {
+          const w = state.workers.find(w => w.id === r.worker_id) || r.worker_profile || {};
+          return `
+            <div class="card" style="padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(w.name)}</div>
+                <div>
+                  <div style="font-weight:600">${w.name || 'Worker'}</div>
+                  <div style="font-size:12px;color:var(--gray-500)">${w.location_text || ''}</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-primary" style="width:auto;padding:6px 12px;font-size:12px" onclick="completeWorker(${job.id}, '${r.worker_id}')">Complete</button>
+                <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="startChat('${r.worker_id}')">Message</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ` : ''}
+      
+      ${interested.length ? `
+      <div style="margin-bottom:20px">
+        <div class="profile-section-title">Interested Workers (${interested.length})</div>
+        ${interested.map(r => {
+          const w = state.workers.find(w => w.id === r.worker_id) || r.worker_profile || {};
+          const workerSkills = (w.worker_skills || []).map(ws => {
+            const skill = state.skills.find(s => s.id === ws.skill_id);
+            return skill ? skill.name : '';
+          }).filter(Boolean);
+          return `
+            <div class="card" style="padding:12px;margin-bottom:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="viewWorker('${w.id}')">
+                  <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(w.name)}</div>
+                  <div>
+                    <div style="font-weight:600">${w.name || 'Worker'}</div>
+                    <div style="font-size:12px;color:var(--gray-500)">${w.location_text || ''} · ${formatPay(w.pay_min, w.pay_max, w.pay_type)}</div>
+                    ${w.has_insurance ? '<div style="font-size:11px;color:var(--green);font-weight:600">🛡️ Insured</div>' : ''}
+                  </div>
+                </div>
+              </div>
+              ${workerSkills.length ? `<div class="badge-wrap" style="margin-top:6px">${workerSkills.slice(0, 4).map(s => `<span class="badge badge-skill">${s}</span>`).join('')}</div>` : ''}
+              <div style="display:flex;gap:6px;margin-top:8px">
+                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:8px" onclick="acceptWorker(${job.id}, '${r.worker_id}')">Hire</button>
+                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="declineWorker(${job.id}, '${r.worker_id}')">Decline</button>
+                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="startChat('${r.worker_id}')">Message</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ` : ''}
+      
+      ${completed.length ? `
+      <div style="margin-bottom:20px">
+        <div class="profile-section-title">Completed (${completed.length})</div>
+        ${completed.map(r => {
+          const w = state.workers.find(w => w.id === r.worker_id) || r.worker_profile || {};
+          return `
+            <div class="card" style="padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;opacity:0.7">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(w.name)}</div>
+                <div>
+                  <div style="font-weight:600">${w.name || 'Worker'}</div>
+                  <div style="font-size:12px;color:var(--green)">✅ Completed</div>
+                </div>
+              </div>
+              <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="showRateWorker('${r.worker_id}')">Review</button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ` : ''}
+      
+      ${!interested.length && !accepted.length && !completed.length ? `
+        <div class="empty-state" style="padding:20px 0">
+          <div class="empty-state-icon">⏳</div>
+          <h3>No applicants yet</h3>
+          <p>Workers will show up here when they express interest in this job.</p>
+        </div>
+      ` : ''}
+      
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-200)">
+        ${job.is_active ? `
+          <button class="btn btn-outline" style="color:var(--red);border-color:var(--red)" onclick="closeJob(${job.id})">Close Job Posting</button>
+        ` : `
+          <div style="text-align:center;color:var(--gray-500);font-size:13px">This job posting is closed</div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+async function viewJobDetail(jobId) {
+  const job = state.jobs.find(j => j.id === jobId);
+  if (!job) return;
+  state.viewingJobDetail = job;
+  
+  // Load responses for this job with worker profiles
+  try {
+    const { data: responses } = await db.from('job_responses')
+      .select('*, worker_profile:profiles!worker_id(*)')
+      .eq('job_id', jobId);
+    
+    if (!state.jobResponses) state.jobResponses = {};
+    state.jobResponses[jobId] = (responses || []).map(r => ({
+      ...r,
+      worker_profile: r.worker_profile,
+    }));
+  } catch(e) { console.error('Error loading responses:', e); }
+  
+  render();
+}
+
+async function acceptWorker(jobId, workerId) {
+  try {
+    await db.from('job_responses').update({ status: 'accepted' })
+      .eq('job_id', jobId).eq('worker_id', workerId);
+    
+    // Auto-save to crew roster
+    try {
+      await db.from('saved_workers').insert({
+        business_id: state.user.id,
+        worker_id: workerId,
+      });
+    } catch(e) { /* already saved, ignore */ }
+    
+    showToast('Worker hired and added to your crew!');
+    viewJobDetail(jobId);
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+async function declineWorker(jobId, workerId) {
+  try {
+    await db.from('job_responses').update({ status: 'declined' })
+      .eq('job_id', jobId).eq('worker_id', workerId);
+    showToast('Worker declined');
+    viewJobDetail(jobId);
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+async function completeWorker(jobId, workerId) {
+  try {
+    await db.from('job_responses').update({ status: 'completed' })
+      .eq('job_id', jobId).eq('worker_id', workerId);
+    showToast('Job marked complete! Leave a review.');
+    
+    // Show review modal for the worker
+    showRateWorker(workerId);
+    
+    // Refresh
+    viewJobDetail(jobId);
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+async function closeJob(jobId) {
+  try {
+    await db.from('jobs').update({ is_active: false }).eq('id', jobId);
+    showToast('Job posting closed');
+    await loadData();
+    state.viewingJobDetail = null;
+    render();
+  } catch(e) { showToast('Error: ' + e.message); }
 }
 
 // ============================================
@@ -2173,6 +2440,23 @@ async function submitRating(userId) {
     document.getElementById('rate-modal')?.remove();
     showToast('Review submitted!');
     
+    // Update rating averages
+    try {
+      const { data: allReviews } = await db.from('reviews').select('rating').eq('reviewed_id', userId);
+      if (allReviews && allReviews.length > 0) {
+        const avg = (allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length).toFixed(1);
+        const count = allReviews.length;
+        
+        // Determine if reviewed user is worker or business
+        const isReviewedWorker = state.workers.find(w => w.id === userId);
+        if (isReviewedWorker) {
+          await db.from('profiles').update({ rating_avg: avg, rating_count: count }).eq('id', userId);
+        } else {
+          await db.from('profiles').update({ biz_rating_avg: avg, biz_rating_count: count }).eq('id', userId);
+        }
+      }
+    } catch(e) { console.error('Error updating rating avg:', e); }
+    
     // Refresh the view
     if (state.viewingCompany) {
       viewCompany(state.viewingCompany.id);
@@ -2195,40 +2479,141 @@ async function submitRating(userId) {
 // ============================================
 // STORM BLAST
 // ============================================
-function renderStorm() {
+function renderCrewRoster() {
+  const crew = state.crewRoster || [];
+  
   return `
-    <div class="storm-header">
-      <div class="storm-title">
-        ${icon('storm', 24)}
-        Storm Response Blast
-      </div>
-      <p style="font-size:14px;opacity:0.9;line-height:1.5">Instantly notify all available workers in your area. They'll get a push notification and can respond within hours.</p>
-    </div>
-    <div style="padding:0 16px 16px">
-      <div class="form-group">
-        <label class="form-label">What do you need?</label>
-        <select class="form-select">
-          <option>Climber(s) for storm cleanup</option>
-          <option>Ground crew for debris removal</option>
-          <option>CDL driver with chipper</option>
-          <option>Full crew (climber + ground + driver)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Radius</label>
-        <select class="form-select">
-          <option>25 miles</option><option>50 miles</option><option>100 miles</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Pay Rate</label>
-        <input class="form-input" value="Storm rate: $40-50/hr">
-      </div>
-      <button class="btn btn-primary" style="background:linear-gradient(135deg,#0D47A1,#1976D2)" onclick="sendStormBlast()">
-        Send Storm Blast
-      </button>
+    <div class="page-padding">
+      <div class="page-title">My Crew</div>
+      <div class="page-sub">Your saved workers and past hires — book again in one tap</div>
+      
+      ${crew.length ? crew.map(c => {
+        const w = c.worker || {};
+        const avatarContent = w.avatar_url 
+          ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+          : getInitials(w.name);
+        const avatarStyle = w.avatar_url ? 'overflow:hidden' : '';
+        const workerSkills = (w.worker_skills || []).map(ws => {
+          const skill = state.skills.find(s => s.id === ws.skill_id);
+          return skill ? skill.name : '';
+        }).filter(Boolean);
+        
+        return `
+          <div class="card" style="padding:14px;margin-bottom:10px">
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <div class="avatar" style="width:44px;height:44px;border-radius:22px;font-size:14px;flex-shrink:0;${avatarStyle};cursor:pointer" onclick="viewWorker('${w.id}')">${avatarContent}</div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                  <div style="cursor:pointer" onclick="viewWorker('${w.id}')">
+                    <div style="font-weight:700;font-size:15px">${w.name || 'Worker'}</div>
+                    <div style="font-size:12px;color:var(--gray-500)">${w.location_text || ''}</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="rating-row" style="margin:0"><span class="star">★</span><span style="font-weight:600;font-size:13px">${w.rating_avg || 'New'}</span></div>
+                    <div style="font-size:12px;color:var(--green);font-weight:600">${formatPay(w.pay_min, w.pay_max, w.pay_type)}</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">
+                  <span class="badge badge-avail" style="font-size:10px">${availLabel(w.availability)}</span>
+                  ${w.has_insurance ? '<span class="badge badge-cert" style="font-size:10px">🛡️ Insured</span>' : ''}
+                  ${workerSkills.slice(0, 2).map(s => `<span class="badge badge-skill" style="font-size:10px">${s}</span>`).join('')}
+                </div>
+                ${c.note ? `<div style="font-size:12px;color:var(--gray-600);margin-top:6px;font-style:italic">"${c.note}"</div>` : ''}
+                ${c.last_job_title ? `<div style="font-size:11px;color:var(--gray-400);margin-top:4px">Last job: ${c.last_job_title} · ${timeAgo(c.last_job_date)}</div>` : ''}
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:10px">
+              <button class="btn btn-primary" style="flex:2;font-size:12px;padding:8px" onclick="bookAgain('${w.id}', '${(w.name || '').replace(/'/g, '')}')">Book Again</button>
+              <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="startChat('${w.id}')">Message</button>
+              <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="editCrewNote('${c.id}')">Note</button>
+              <button style="background:none;border:1px solid var(--gray-300);border-radius:var(--radius-sm);padding:8px;font-size:12px;cursor:pointer;color:var(--gray-500)" onclick="removeFromCrew(${c.id}, '${w.name}')">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('') : `
+        <div class="empty-state">
+          <div class="empty-state-icon">👥</div>
+          <h3>No crew members yet</h3>
+          <p>When you save workers from Search or hire them for a job, they'll appear here. Build your go-to crew!</p>
+          <button class="btn btn-primary" style="width:auto;margin:16px auto 0" onclick="switchTab('search')">Find Workers</button>
+        </div>
+      `}
     </div>
   `;
+}
+
+async function loadCrewRoster() {
+  try {
+    const { data: saved } = await db.from('saved_workers')
+      .select('*, worker:profiles!worker_id(*, worker_skills(*))')
+      .eq('business_id', state.user.id)
+      .order('created_at', { ascending: false });
+    
+    // Enrich with last job info
+    const crewData = (saved || []).map(s => {
+      // Find last completed job with this worker
+      const allResponses = Object.values(state.jobResponses || {}).flat();
+      const workerCompleted = allResponses
+        .filter(r => r.worker_id === s.worker_id && r.status === 'completed')
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
+      let lastJobTitle = '';
+      let lastJobDate = '';
+      if (workerCompleted.length) {
+        const job = state.jobs.find(j => j.id === workerCompleted[0].job_id);
+        if (job) {
+          lastJobTitle = job.title;
+          lastJobDate = workerCompleted[0].created_at;
+        }
+      }
+      
+      return { ...s, last_job_title: lastJobTitle, last_job_date: lastJobDate };
+    });
+    
+    state.crewRoster = crewData;
+  } catch(e) {
+    console.error('Error loading crew:', e);
+    state.crewRoster = [];
+  }
+}
+
+function bookAgain(workerId, workerName) {
+  state.activeTab = 'post-job';
+  state.postJobData = {
+    title: '',
+    description: `Booking ${workerName} again`,
+    pay_type: 'hourly',
+    pay_min: '',
+    pay_max: '',
+    job_type: 'on_demand',
+    location_text: state.profile?.location_text || '',
+    is_urgent: false,
+    selectedSkills: new Set(),
+    bookingFor: workerId,
+    bookingName: workerName,
+  };
+  render();
+}
+
+function editCrewNote(savedId) {
+  const current = (state.crewRoster || []).find(c => c.id === parseInt(savedId) || c.id === savedId);
+  const note = prompt('Add a note about this worker:', current?.note || '');
+  if (note !== null) {
+    db.from('saved_workers').update({ note: note }).eq('id', savedId).then(() => {
+      showToast('Note saved');
+      loadCrewRoster().then(() => render());
+    });
+  }
+}
+
+async function removeFromCrew(savedId, workerName) {
+  if (!confirm(`Remove ${workerName} from your crew?`)) return;
+  try {
+    await db.from('saved_workers').delete().eq('id', savedId);
+    showToast('Removed from crew');
+    await loadCrewRoster();
+    render();
+  } catch(e) { showToast('Error: ' + e.message); }
 }
 
 // ============================================
@@ -2361,12 +2746,18 @@ function switchTab(tab) {
   state.viewingWorker = null;
   state.viewingJob = null;
   state.viewingCompany = null;
+  state.viewingJobDetail = null;
   state.chattingWith = null;
   render();
   
   // Load work photos for my profile
   if (tab === 'profile' && state.profile) {
     loadMyPhotos();
+  }
+  
+  // Load crew roster
+  if (tab === 'crew') {
+    loadCrewRoster().then(() => render());
   }
 }
 
@@ -2496,9 +2887,15 @@ function renderPostJob() {
   return `
     <div style="padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <span class="page-title" style="margin:0">Post a Job</span>
+        <span class="page-title" style="margin:0">${d.bookingFor ? 'Book ' + d.bookingName : 'Post a Job'}</span>
         <button style="background:none;border:none;color:var(--gray-500);font-size:14px;cursor:pointer;font-family:inherit" onclick="switchTab('jobs')">Cancel</button>
       </div>
+      
+      ${d.bookingFor ? `
+      <div class="card" style="padding:12px;margin-bottom:16px;background:var(--light-green);border:1px solid var(--green)">
+        <div style="font-size:13px;color:var(--forest-mid)">📋 Creating a job for <strong>${d.bookingName}</strong>. They'll be auto-hired when you post.</div>
+      </div>
+      ` : ''}
       
       <div class="form-group">
         <label class="form-label">Job Title</label>
@@ -2630,7 +3027,17 @@ async function handlePostJob(btn) {
       await db.from('job_skills').insert(jobSkills);
     }
     
-    showToast('Job posted! Workers can see it now.');
+    // Auto-hire if booking a specific worker
+    if (job && d.bookingFor) {
+      await db.from('job_responses').insert({
+        job_id: job.id,
+        worker_id: d.bookingFor,
+        status: 'accepted',
+      });
+      showToast(`Job posted and ${d.bookingName} has been hired!`);
+    } else {
+      showToast('Job posted! Workers can see it now.');
+    }
     await loadData();
     state.activeTab = 'jobs';
     render();
@@ -2829,7 +3236,13 @@ async function respondToJob(jobId) {
       job_id: jobId,
       worker_id: state.user.id,
     });
+    
+    // Update local state immediately
+    if (!state.myJobStatuses) state.myJobStatuses = [];
+    state.myJobStatuses.push({ job_id: jobId, worker_id: state.user.id, status: 'interested' });
+    
     showToast("Interest sent! The company can see your profile now.");
+    render();
   } catch (e) {
     showToast("You've already responded to this job.");
   }
@@ -3323,6 +3736,16 @@ async function loadData() {
       .order('biz_rating_avg', { ascending: false });
     state.businesses = businesses || [];
   } catch (e) { console.error('Error loading businesses:', e); state.businesses = []; }
+  
+  // Load worker's own job responses (for showing applied/hired status)
+  if (state.profile?.user_type === 'worker') {
+    try {
+      const { data: myStatuses } = await db.from('job_responses')
+        .select('*')
+        .eq('worker_id', state.user.id);
+      state.myJobStatuses = myStatuses || [];
+    } catch(e) { state.myJobStatuses = []; }
+  }
   
   try {
     // Load conversations
