@@ -153,6 +153,7 @@
         <div class="stat-card"><div class="stat-num" id="stat-jobs">-</div><div class="stat-label">Jobs Posted</div><div class="stat-sub" id="stat-jobs-sub"></div></div>
         <div class="stat-card"><div class="stat-num" id="stat-messages">-</div><div class="stat-label">Messages</div><div class="stat-sub" id="stat-msg-sub"></div></div>
         <div class="stat-card"><div class="stat-num" id="stat-reviews">-</div><div class="stat-label">Reviews</div><div class="stat-sub" id="stat-reviews-sub"></div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-referrals">-</div><div class="stat-label">Referrals</div><div class="stat-sub" id="stat-referrals-sub"></div></div>
       </div>
       <div class="card">
         <h3>📈 Signups (Last 14 Days)</h3>
@@ -342,7 +343,7 @@ function switchAdminTab(tab, el) {
 async function loadDashboard() {
   try {
     const [profilesRes, jobsRes, messagesRes, reviewsRes] = await Promise.all([
-      db.from('profiles').select('id, user_type, created_at, availability'),
+      db.from('profiles').select('id, user_type, created_at, availability, referred_by'),
       db.from('jobs').select('id, created_at, is_active'),
       db.from('messages').select('id, created_at'),
       db.from('reviews').select('id, created_at'),
@@ -372,6 +373,10 @@ async function loadDashboard() {
     document.getElementById('stat-msg-sub').textContent = todayMessages ? `+${todayMessages} today` : '';
     document.getElementById('stat-reviews').textContent = reviews.length;
     document.getElementById('stat-reviews-sub').textContent = '';
+    
+    const referred = profiles.filter(p => p.referred_by);
+    document.getElementById('stat-referrals').textContent = referred.length;
+    document.getElementById('stat-referrals-sub').textContent = referred.length ? `${((referred.length / profiles.length) * 100).toFixed(0)}% of users` : '';
 
     renderSignupChart(profiles);
 
@@ -457,7 +462,7 @@ function renderUsers(users) {
               ${u.rating_avg ? ` <span class="badge" style="background:#FFF8E1;color:#F57F17">⭐ ${Number(u.rating_avg).toFixed(1)} (${u.rating_count || 0})</span>` : ''}
               ${u.biz_rating_avg ? ` <span class="badge" style="background:#FFF8E1;color:#F57F17">⭐ ${Number(u.biz_rating_avg).toFixed(1)} (${u.biz_rating_count || 0})</span>` : ''}
             </div>
-            <div class="user-meta" style="margin-top:2px">Joined ${new Date(u.created_at).toLocaleDateString()}</div>
+            <div class="user-meta" style="margin-top:2px">Joined ${new Date(u.created_at).toLocaleDateString()}${u.referral_code ? ` · Code: <strong style="color:var(--green)">${u.referral_code}</strong>` : ''}${u.referred_by ? ' · 🔗 Referred' : ''}</div>
           </div>
         </div>
         <div class="user-actions">

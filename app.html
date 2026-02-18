@@ -1090,6 +1090,13 @@ function showToast(msg) {
   }, 2500);
 }
 
+function generateReferralCode(name) {
+  // Generate code like MIKE2024 from name
+  const clean = (name || 'USER').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 5);
+  const num = Math.floor(1000 + Math.random() * 9000); // 4-digit random
+  return clean + num;
+}
+
 function getInitials(name) {
   if (!name) return '??';
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -1299,6 +1306,11 @@ function renderSignup(app) {
         <div class="form-group">
           <label class="form-label">Location</label>
           <input class="form-input" id="signup-location" type="text" placeholder="Medway, MA">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Referral Code <span style="font-weight:400;color:var(--gray-500)">(optional)</span></label>
+          <input class="form-input" id="signup-referral" type="text" placeholder="e.g. MIKE2024" style="text-transform:uppercase;letter-spacing:1px">
+          <div style="font-size:12px;color:var(--gray-500);margin-top:4px">Got a code from someone on CrewFinder?</div>
         </div>
         <button class="btn btn-primary" id="signup-btn" onclick="handleSignup()">
           ${isWorker ? 'Create Account' : 'Create Business Account'}
@@ -3091,6 +3103,14 @@ function renderMyProfile() {
       </div>
       `}
       <div style="padding:0 16px 16px">
+        ${p.referral_code ? `
+        <div style="background:var(--light-green);border:1px solid var(--green);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px">
+          <div style="font-weight:700;font-size:13px;color:var(--forest-mid);margin-bottom:6px">📣 Your Referral Code</div>
+          <div style="font-size:24px;font-weight:800;letter-spacing:3px;color:var(--green);text-align:center;padding:8px 0">${p.referral_code}</div>
+          <div style="font-size:12px;color:var(--gray-600);text-align:center;margin-bottom:10px">Share this code with other tree pros to help grow the network</div>
+          <button class="btn btn-primary" style="margin-bottom:0;font-size:13px" onclick="shareReferralCode()">Share Code</button>
+        </div>
+        ` : ''}
         <button class="btn btn-primary" style="margin-bottom:8px" onclick="editProfile()">Edit Profile</button>
         <button class="btn btn-outline" style="margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px" id="push-toggle-btn" onclick="togglePushFromProfile()">
           <span style="font-size:18px">🔔</span> <span id="push-toggle-label">Enable Notifications</span>
@@ -3806,7 +3826,20 @@ async function handleSignup() {
       company_description: preloadedData?.company_description || null,
       phone: preloadedData?.phone || null,
       avatar_url: preloadedData?.logo_url || null,
+      referral_code: generateReferralCode(name),
     };
+    
+    // Check for referral code
+    const referralInput = document.getElementById('signup-referral')?.value?.trim()?.toUpperCase();
+    if (referralInput) {
+      const { data: referrer } = await db.from('profiles')
+        .select('id')
+        .eq('referral_code', referralInput)
+        .single();
+      if (referrer) {
+        profileData.referred_by = referrer.id;
+      }
+    }
     
     const { error: profileError } = await db.from('profiles').insert(profileData);
     
@@ -4186,6 +4219,26 @@ async function removeInsurance() {
     render();
   } catch(e) {
     showToast('Failed to remove insurance');
+  }
+}
+
+async function shareReferralCode() {
+  const code = state.profile?.referral_code;
+  if (!code) return;
+  const text = `Join me on CrewFinder — the free app connecting tree service companies with skilled workers. Use my referral code ${code} when you sign up: https://crewfinder.pages.dev`;
+  
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Join CrewFinder', text });
+    } catch(e) { /* user cancelled */ }
+  } else {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('Copied to clipboard!');
+    } catch(e) {
+      // Fallback
+      prompt('Copy this message:', text);
+    }
   }
 }
 
