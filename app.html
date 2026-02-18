@@ -1593,6 +1593,16 @@ function renderMain(app) {
     }
   }
   
+  const installBanner = !isStandalone() ? `
+    <div style="background:linear-gradient(135deg,var(--forest-mid),var(--green));padding:10px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="handleInstallClick()">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">📲</span>
+        <span style="color:#fff;font-size:13px;font-weight:600">Add CrewFinder to your home screen</span>
+      </div>
+      <span style="color:rgba(255,255,255,0.7);font-size:12px;font-weight:600">Install →</span>
+    </div>
+  ` : '';
+  
   app.innerHTML = `
     <div class="app-header">
       <div class="app-header-logo">
@@ -1603,6 +1613,7 @@ function renderMain(app) {
         <button class="header-btn" onclick="handleLogout()">Log Out</button>
       </div>
     </div>
+    ${installBanner}
     <div class="screen">${content}</div>
     ${renderBottomNav(isBiz)}
   `;
@@ -2719,6 +2730,11 @@ function renderMyProfile() {
       `}
       <div style="padding:0 16px 16px">
         <button class="btn btn-primary" style="margin-bottom:8px" onclick="editProfile()">Edit Profile</button>
+        ${!isStandalone() ? `
+        <button class="btn btn-outline" style="margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="handleInstallClick()">
+          <span style="font-size:18px">📲</span> Install App to Home Screen
+        </button>
+        ` : ''}
         <button class="btn btn-outline" onclick="handleLogout()">Log Out</button>
       </div>
     </div>
@@ -3942,14 +3958,17 @@ function showIOSInstallGuide() {
   }
 }
 
-function isAppInstalled() {
-  // Check if running as installed PWA
+function isStandalone() {
   if (window.matchMedia('(display-mode: standalone)').matches) return true;
   if (window.navigator.standalone === true) return true;
-  // Check if user recently dismissed
+  return false;
+}
+
+function isAppInstalled() {
+  if (isStandalone()) return true;
   try {
     const dismissed = localStorage.getItem('cf_install_dismissed');
-    if (dismissed && Date.now() - parseInt(dismissed) < 86400000) return true; // 24 hours
+    if (dismissed && Date.now() - parseInt(dismissed) < 86400000) return true;
   } catch(e) {}
   return false;
 }
