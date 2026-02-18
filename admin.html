@@ -69,16 +69,16 @@
         <input class="form-input" id="add-company" type="text" placeholder="Northeast Tree Service">
       </div>
       <div class="form-group">
-        <label class="form-label">Email *</label>
-        <input class="form-input" id="add-email" type="email" placeholder="info@company.com">
+        <label class="form-label">Phone</label>
+        <input class="form-input" id="add-phone" type="text" placeholder="(508) 555-1234">
       </div>
       <div class="form-group">
         <label class="form-label">Location</label>
         <input class="form-input" id="add-location" type="text" placeholder="Medway, MA">
       </div>
       <div class="form-group">
-        <label class="form-label">Phone</label>
-        <input class="form-input" id="add-phone" type="text" placeholder="(508) 555-1234">
+        <label class="form-label">Email <span style="font-weight:400;color:var(--gray-500)">(optional)</span></label>
+        <input class="form-input" id="add-email" type="email" placeholder="info@company.com">
       </div>
       <div class="form-group">
         <label class="form-label">Description (optional)</label>
@@ -147,14 +147,17 @@ async function addCompany() {
   const status = document.getElementById('add-status');
   const btn = document.getElementById('add-btn');
   
-  if (!company || !email) {
-    status.textContent = 'Company name and email are required.';
+  if (!company) {
+    status.textContent = 'Company name is required.';
     status.className = 'status show error';
     return;
   }
   
   btn.disabled = true;
   btn.textContent = 'Adding...';
+  
+  // Generate a simple 6-character claim code
+  const claimCode = Math.random().toString(36).substring(2, 8).toUpperCase();
   
   try {
     const { error } = await db.from('unclaimed_businesses').insert({
@@ -163,12 +166,13 @@ async function addCompany() {
       location_text: location || null,
       phone: phone || null,
       company_description: description || null,
+      claim_code: claimCode,
       created_by: adminUser.id,
     });
     
     if (error) throw error;
     
-    status.textContent = `✅ ${company} added! They can claim by signing up with ${email}`;
+    status.innerHTML = `✅ <strong>${company}</strong> added!<br>Claim code: <strong style="font-size:18px;letter-spacing:2px;color:var(--green)">${claimCode}</strong><br>Send them this code — they enter it when signing up.`;
     status.className = 'status show success';
     
     // Clear form
@@ -209,6 +213,7 @@ async function loadCompanies() {
         <div>
           <div class="name">${c.company_name}</div>
           <div class="meta">${c.email} · ${c.location_text || 'No location'}</div>
+          ${!c.claimed ? `<div class="meta" style="margin-top:2px">Code: <strong style="color:var(--green);letter-spacing:1px">${c.claim_code}</strong></div>` : ''}
         </div>
         <span class="badge ${c.claimed ? 'badge-claimed' : 'badge-unclaimed'}">${c.claimed ? 'Claimed ✓' : 'Unclaimed'}</span>
       </div>
