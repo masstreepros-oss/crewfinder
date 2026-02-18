@@ -1216,6 +1216,11 @@ function renderSignup(app) {
           <label class="form-label">Company Name</label>
           <input class="form-input" id="signup-company" type="text" placeholder="Mass Tree Pros">
         </div>
+        <div class="form-group">
+          <label class="form-label">Claim Code <span style="font-weight:400;color:var(--gray-500)">(optional)</span></label>
+          <input class="form-input" id="signup-claim-code" type="text" placeholder="e.g. ABC123" style="text-transform:uppercase;letter-spacing:2px">
+          <div style="font-size:12px;color:var(--gray-500);margin-top:4px">Got a code from CrewFinder? Enter it to claim your pre-built profile.</div>
+        </div>
         ` : ''}
         <div class="form-group">
           <label class="form-label">Email</label>
@@ -3632,16 +3637,29 @@ async function handleSignup() {
     // Create profile — check for unclaimed business first
     let preloadedData = null;
     if (state.signupType === 'business') {
-      try {
-        const { data: unclaimed } = await db.from('unclaimed_businesses')
-          .select('*')
-          .eq('email', email.toLowerCase())
-          .eq('claimed', false)
-          .single();
-        if (unclaimed) {
-          preloadedData = unclaimed;
+      const claimCode = document.getElementById('signup-claim-code')?.value?.trim()?.toUpperCase();
+      if (claimCode) {
+        try {
+          const { data: unclaimed } = await db.from('unclaimed_businesses')
+            .select('*')
+            .eq('claim_code', claimCode)
+            .eq('claimed', false)
+            .single();
+          if (unclaimed) {
+            preloadedData = unclaimed;
+          } else {
+            throw new Error('Invalid or already used claim code');
+          }
+        } catch(e) {
+          if (e.message.includes('Invalid') || e.message.includes('claim')) {
+            errorEl.textContent = 'Invalid claim code. Check the code and try again, or leave it blank to create a new profile.';
+            errorEl.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = 'Create Business Account';
+            return;
+          }
         }
-      } catch(e) { /* no unclaimed profile, that's fine */ }
+      }
     }
     
     const profileData = {
@@ -3653,6 +3671,7 @@ async function handleSignup() {
       company_name: state.signupType === 'business' ? (preloadedData?.company_name || company || name) : null,
       company_description: preloadedData?.company_description || null,
       phone: preloadedData?.phone || null,
+      avatar_url: preloadedData?.logo_url || null,
     };
     
     const { error: profileError } = await db.from('profiles').insert(profileData);
