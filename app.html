@@ -1872,7 +1872,7 @@ function renderJobCard(j, applied, myStatus) {
             <span class="job-title">${j.title}</span>
             ${j.is_urgent ? '<span class="badge badge-urgent">Urgent</span>' : ''}
           </div>
-          <div class="job-meta">${biz.company_name || biz.name || 'Company'} · ${j.location_text || ''}</div>
+          <div class="job-meta"><span style="color:var(--green);font-weight:600;cursor:pointer" onclick="event.stopPropagation();viewCompany('${j.business_id}')">${biz.company_name || biz.name || 'Company'}</span> · ${j.location_text || ''}</div>
         </div>
         <span class="job-pay">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</span>
       </div>
@@ -1884,7 +1884,10 @@ function renderJobCard(j, applied, myStatus) {
       ${j.description ? `<p style="font-size:13px;color:var(--gray-600);margin-top:8px;line-height:1.4">${j.description}</p>` : ''}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
         <span class="job-posted">Posted ${timeAgo(j.created_at)}</span>
-        ${actionBtn}
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="event.stopPropagation();startChatWithBiz('${j.business_id}')">Message</button>
+          ${actionBtn}
+        </div>
       </div>
     </div>
   `;
@@ -2175,8 +2178,8 @@ function renderChat() {
       <div style="padding:12px 16px;border-bottom:1px solid var(--gray-200);background:var(--white);display:flex;align-items:center;gap:10px;flex-shrink:0">
         <button style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px" onclick="closeChat()">←</button>
         <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(c.name)}</div>
-        <div>
-          <div style="font-weight:700;font-size:14px">${c.name}</div>
+        <div style="cursor:pointer" onclick="viewProfileFromChat('${c.userId}')">
+          <div style="font-weight:700;font-size:14px">${c.name} <span style="font-size:11px;color:var(--green);font-weight:500">View Profile →</span></div>
           <div style="font-size:11px;color:var(--gray-500)">${c.location || 'CrewFinder'}</div>
         </div>
       </div>
@@ -2577,22 +2580,17 @@ async function loadCrewRoster() {
   }
 }
 
-function bookAgain(workerId, workerName) {
-  state.activeTab = 'post-job';
-  state.postJobData = {
-    title: '',
-    description: `Booking ${workerName} again`,
-    pay_type: 'hourly',
-    pay_min: '',
-    pay_max: '',
-    job_type: 'on_demand',
-    location_text: state.profile?.location_text || '',
-    is_urgent: false,
-    selectedSkills: new Set(),
-    bookingFor: workerId,
-    bookingName: workerName,
-  };
-  render();
+async function bookAgain(workerId, workerName) {
+  // Open chat with a pre-filled booking message
+  await startChat(workerId);
+  // After chat opens, pre-fill the input
+  setTimeout(() => {
+    const input = document.getElementById('chat-input');
+    if (input) {
+      input.value = `Hey ${workerName}! I've got another job coming up — are you available?`;
+      input.focus();
+    }
+  }, 300);
 }
 
 function editCrewNote(savedId) {
@@ -3050,10 +3048,60 @@ async function handlePostJob(btn) {
   }
 }
 
+function viewProfileFromChat(userId) {
+  // Check if it's a worker or business and navigate accordingly
+  const worker = state.workers.find(w => w.id === userId);
+  if (worker) {
+    state.chattingWith = null;
+    state.viewingWorker = worker;
+    state.activeTab = 'search';
+    render();
+    return;
+  }
+  const biz = (state.businesses || []).find(b => b.id === userId);
+  if (biz) {
+    state.chattingWith = null;
+    state.viewingCompany = biz;
+    state.activeTab = 'companies';
+    render();
+    // Load company photos and reviews
+    viewCompany(biz.id);
+    return;
+  }
+  // Fallback — fetch from DB
+  db.from('profiles').select('*').eq('id', userId).single().then(({ data }) => {
+    if (data) {
+      state.chattingWith = null;
+      if (data.user_type === 'worker') {
+        state.workers.push(data);
+        state.viewingWorker = data;
+        state.activeTab = 'search';
+      } else {
+        state.businesses.push(data);
+        state.viewingCompany = data;
+        state.activeTab = 'companies';
+      }
+      render();
+    }
+  });
+}
+
 async function startChat(userId) {
-  // Look up the user's name
-  const target = state.workers.find(w => w.id === userId);
-  const name = target?.name || target?.company_name || 'User';
+  // Look up the user's name from workers, businesses, or crew
+  let target = state.workers.find(w => w.id === userId);
+  if (!target) target = (state.businesses || []).find(b => b.id === userId);
+  if (!target) {
+    const crew = (state.crewRoster || []).find(c => c.worker?.id === userId);
+    if (crew) target = crew.worker;
+  }
+  // Last resort — fetch from DB
+  if (!target) {
+    try {
+      const { data } = await db.from('profiles').select('*').eq('id', userId).single();
+      target = data;
+    } catch(e) {}
+  }
+  const name = target?.company_name || target?.name || 'User';
   const location = target?.location_text || '';
   openChat(userId, name, location);
 }
