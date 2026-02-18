@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1A3C2A">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>CrewFinder</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -939,6 +940,51 @@ body {
 }
 
 /* ============================================
+   INSTALL BANNER
+   ============================================ */
+.install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  background: var(--white);
+  border-top: 1px solid var(--gray-200);
+  padding: 16px 20px max(16px, env(safe-area-inset-bottom));
+  z-index: 200;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+  display: none;
+}
+
+.install-banner.show { display: block; }
+
+.install-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.install-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--forest-mid), var(--green));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.install-banner-text { flex: 1; }
+.install-banner-text strong { font-size: 14px; display: block; }
+.install-banner-text span { font-size: 12px; color: var(--gray-500); }
+
+.install-banner-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+.install-banner .btn { font-size: 13px; padding: 10px; }
+
+/* ============================================
    PAGE-LEVEL STYLES
    ============================================ */
 .page-padding { padding: 16px; }
@@ -999,6 +1045,7 @@ let state = {
   chatMessages: [],
   chatSubscription: null,
   workPhotos: [],
+  showResetPassword: false,
 };
 
 // ============================================
@@ -1030,12 +1077,13 @@ function getInitials(name) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
-function formatPay(min, max) {
+function formatPay(min, max, payType) {
   const fmin = min ? '$' + (min / 100) : '';
   const fmax = max ? '$' + (max / 100) : '';
-  if (fmin && fmax) return `${fmin}-${fmax}/hr`;
-  if (fmin) return `${fmin}+/hr`;
-  if (fmax) return `Up to ${fmax}/hr`;
+  const suffix = payType === 'day_rate' ? '/day' : '/hr';
+  if (fmin && fmax) return `${fmin}-${fmax}${suffix}`;
+  if (fmin) return `${fmin}+${suffix}`;
+  if (fmax) return `Up to ${fmax}${suffix}`;
   return 'Negotiable';
 }
 
@@ -1187,6 +1235,31 @@ function renderSignup(app) {
 // LOG IN
 // ============================================
 function renderLogin(app) {
+  if (state.showResetPassword) {
+    app.innerHTML = `
+      <div class="auth-screen">
+        <div class="auth-header">
+          <button class="auth-back" onclick="state.showResetPassword=false;render()">&larr; Back</button>
+          <h1>Reset Password</h1>
+          <p>We'll send you a link to reset your password</p>
+        </div>
+        <div class="auth-form">
+          <div class="form-error" id="reset-error"></div>
+          <div class="form-success" id="reset-success"></div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="form-input" id="reset-email" type="email" placeholder="you@email.com">
+          </div>
+          <button class="btn btn-primary" id="reset-btn" onclick="handleResetPassword()">Send Reset Link</button>
+        </div>
+        <div class="auth-footer">
+          Remember your password? <button onclick="state.showResetPassword=false;render()">Log in</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
   app.innerHTML = `
     <div class="auth-screen">
       <div class="auth-header">
@@ -1204,6 +1277,9 @@ function renderLogin(app) {
           <label class="form-label">Password</label>
           <input class="form-input" id="login-password" type="password" placeholder="Your password">
         </div>
+        <div style="text-align:right;margin-bottom:16px">
+          <button style="background:none;border:none;color:var(--green);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" onclick="state.showResetPassword=true;render()">Forgot password?</button>
+        </div>
         <button class="btn btn-primary" id="login-btn" onclick="handleLogin()">Log In</button>
       </div>
       <div class="auth-footer">
@@ -1219,7 +1295,7 @@ function renderLogin(app) {
 function renderProfileBuilder(app) {
   const isWorker = state.profile?.user_type === 'worker';
   const step = state.profileStep;
-  const totalSteps = isWorker ? 5 : 1;
+  const totalSteps = isWorker ? 6 : 1;
   
   let stepContent = '';
   let stepTitle = '';
@@ -1262,15 +1338,24 @@ function renderProfileBuilder(app) {
       stepContent = renderSkillPicker();
     } else if (step === 3) {
       stepTitle = 'Set your rate';
-      stepDesc = 'What\'s your hourly pay range?';
+      stepDesc = 'What do you charge?';
+      const payType = state.profile.pay_type || 'hourly';
+      const suffix = payType === 'day_rate' ? '/day' : '/hr';
+      const minDefault = payType === 'day_rate' ? 250 : 20;
+      const maxDefault = payType === 'day_rate' ? 400 : 35;
       stepContent = `
-        <div class="pay-display" id="pay-display">$${state.profile.pay_min ? state.profile.pay_min/100 : 20} - $${state.profile.pay_max ? state.profile.pay_max/100 : 35}/hr</div>
-        <div class="pay-range-row">
-          <input type="number" id="pay-min" placeholder="20" value="${state.profile.pay_min ? state.profile.pay_min/100 : '20'}" oninput="updatePayDisplay()">
-          <span>to</span>
-          <input type="number" id="pay-max" placeholder="35" value="${state.profile.pay_max ? state.profile.pay_max/100 : '35'}" oninput="updatePayDisplay()">
-          <span>/hr</span>
+        <div style="display:flex;gap:6px;margin-bottom:16px">
+          <button class="filter-chip ${payType === 'hourly' ? 'active' : ''}" onclick="state.profile.pay_type='hourly';render()">Hourly Rate</button>
+          <button class="filter-chip ${payType === 'day_rate' ? 'active' : ''}" onclick="state.profile.pay_type='day_rate';render()">Flat Day Rate</button>
         </div>
+        <div class="pay-display" id="pay-display">$${state.profile.pay_min ? state.profile.pay_min/100 : minDefault} - $${state.profile.pay_max ? state.profile.pay_max/100 : maxDefault}${suffix}</div>
+        <div class="pay-range-row">
+          <input type="number" id="pay-min" placeholder="${minDefault}" value="${state.profile.pay_min ? state.profile.pay_min/100 : minDefault}" oninput="updatePayDisplay()">
+          <span>to</span>
+          <input type="number" id="pay-max" placeholder="${maxDefault}" value="${state.profile.pay_max ? state.profile.pay_max/100 : maxDefault}" oninput="updatePayDisplay()">
+          <span>${suffix}</span>
+        </div>
+        ${payType === 'day_rate' ? '<div class="form-hint" style="text-align:center;margin-top:10px">Hours negotiable with the company for each job</div>' : ''}
       `;
     } else if (step === 4) {
       stepTitle = 'When are you available?';
@@ -1317,6 +1402,37 @@ function renderProfileBuilder(app) {
         <input type="file" id="work-photo-input" accept="image/*" style="display:none" onchange="uploadWorkPhoto(this)">
         <div id="photo-status" style="font-size:13px;color:var(--gray-500);text-align:center;margin-top:12px"></div>
         <div class="form-hint" style="text-align:center;margin-top:8px">Show off removals, hardscape jobs, or anything you're proud of. This is optional — you can always add photos later.</div>
+      `;
+    } else if (step === 6) {
+      stepTitle = 'Liability Insurance';
+      stepDesc = 'Optional — upload proof of insurance to stand out';
+      const hasDoc = state.profile.insurance_doc_url;
+      stepContent = `
+        <div class="card" style="text-align:center;padding:24px">
+          <div style="font-size:40px;margin-bottom:12px">${hasDoc ? '✅' : '🛡️'}</div>
+          <div style="font-weight:700;font-size:16px;margin-bottom:4px">${hasDoc ? 'Insurance Document Uploaded' : 'Do you carry liability insurance?'}</div>
+          <div style="font-size:13px;color:var(--gray-500);margin-bottom:16px;line-height:1.5">${hasDoc ? 'Companies can see you\'re insured — this gives you a big advantage.' : 'Workers with their own insurance are in high demand. Upload your COI (Certificate of Insurance) and companies will see a verified badge on your profile.'}</div>
+          ${hasDoc ? `
+            <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px">
+              <a href="${state.profile.insurance_doc_url}" target="_blank" style="color:var(--green);font-weight:600;font-size:13px">View Document</a>
+              <span style="color:var(--gray-300)">·</span>
+              <button style="background:none;border:none;color:var(--red);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit" onclick="removeInsurance()">Remove</button>
+            </div>
+          ` : ''}
+          <button class="btn ${hasDoc ? 'btn-outline' : 'btn-primary'}" onclick="document.getElementById('insurance-input').click()">
+            ${hasDoc ? 'Replace Document' : 'Upload Insurance Document'}
+          </button>
+          <input type="file" id="insurance-input" accept="image/*,.pdf" style="display:none" onchange="uploadInsurance(this)">
+          <div id="insurance-status" style="font-size:12px;color:var(--gray-500);margin-top:8px"></div>
+        </div>
+        ${state.profile.insurance_doc_url ? `
+        <div class="form-group" style="margin-top:16px">
+          <label class="form-label">Expiration Date (optional)</label>
+          <input class="form-input" id="insurance-expiry" type="text" placeholder="e.g. 12/2025 or Dec 2025" value="${state.profile.insurance_expiry || ''}">
+          <div class="form-hint">Helps companies know your coverage is current</div>
+        </div>
+        ` : ''}
+        <div class="form-hint" style="text-align:center;margin-top:12px">This is completely optional. You can skip this and add it later.</div>
       `;
     }
   } else {
@@ -1579,9 +1695,10 @@ function renderWorkerCard(w) {
             <span class="rating-num">${w.rating_avg || 'New'}</span>
             ${w.rating_count ? `<span class="rating-count">(${w.rating_count} reviews)</span>` : '<span class="rating-count">No reviews yet</span>'}
           </div>
-          <div class="worker-pay">${formatPay(w.pay_min, w.pay_max)}</div>
+          <div class="worker-pay">${formatPay(w.pay_min, w.pay_max, w.pay_type)}${w.pay_type === 'day_rate' ? ' · Hours negotiable' : ''}</div>
           <div class="badge-wrap">
             <span class="badge badge-avail">${availLabel(w.availability)}</span>
+            ${w.has_insurance ? '<span class="badge badge-cert">🛡️ Insured</span>' : ''}
             ${workerSkills.slice(0, 3).map(s => `<span class="badge badge-skill">${s}</span>`).join('')}
             ${workerSkills.length > 3 ? `<span class="badge badge-skill">+${workerSkills.length - 3}</span>` : ''}
           </div>
@@ -1619,7 +1736,7 @@ function renderWorkerProfile(w) {
     </div>
     <div style="padding-top:12px">
       <div class="profile-section">
-        <div style="display:flex;justify-content:space-between;padding:4px 0"><span class="profile-section-title" style="margin:0">Pay Range</span><span style="font-weight:700;color:var(--green);font-size:16px">${formatPay(w.pay_min, w.pay_max)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0"><span class="profile-section-title" style="margin:0">Pay Range</span><span style="font-weight:700;color:var(--green);font-size:16px">${formatPay(w.pay_min, w.pay_max, w.pay_type)}</span></div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;margin-top:4px"><span style="font-weight:600;color:var(--forest-mid)">Availability</span><span>${availLabel(w.availability)}</span></div>
       </div>
       ${w.bio ? `
@@ -1632,6 +1749,19 @@ function renderWorkerProfile(w) {
         <div class="profile-section-title">Skills</div>
         <div class="badge-wrap">${workerSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('') || '<span style="color:var(--gray-500);font-size:13px">No skills added yet</span>'}</div>
       </div>
+      ${w.has_insurance ? `
+      <div class="profile-section">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:24px">🛡️</span>
+          <div>
+            <div class="profile-section-title" style="margin:0">Liability Insurance</div>
+            <div style="font-size:13px;color:var(--green);font-weight:600">Verified — carries own insurance</div>
+            ${w.insurance_expiry ? `<div style="font-size:12px;color:var(--gray-500);margin-top:2px">Expires: ${w.insurance_expiry}</div>` : ''}
+          </div>
+        </div>
+        ${w.insurance_doc_url ? `<a href="${w.insurance_doc_url}" target="_blank" style="display:block;margin-top:10px;font-size:13px;color:var(--blue);font-weight:600;text-decoration:none">View Insurance Document →</a>` : ''}
+      </div>
+      ` : ''}
       <div class="profile-section" id="worker-photos-section">
         <div class="profile-section-title">Work Photos</div>
         <div id="worker-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
@@ -1683,10 +1813,11 @@ function renderJobCard(j) {
           </div>
           <div class="job-meta">${biz.company_name || biz.name || 'Company'} · ${j.location_text || ''}</div>
         </div>
-        <span class="job-pay">${formatPay(j.pay_min, j.pay_max)}</span>
+        <span class="job-pay">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</span>
       </div>
       <div class="badge-wrap" style="margin-top:8px">
         <span class="badge badge-trade">${j.job_type === 'on_demand' ? 'On-Demand' : j.job_type === 'short_term' ? 'Short-Term' : j.job_type === 'seasonal' ? 'Seasonal' : 'Storm Response'}</span>
+        ${j.pay_type === 'day_rate' ? '<span class="badge badge-cert">Day Rate · Hours Negotiable</span>' : ''}
         ${jobSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('')}
       </div>
       ${j.description ? `<p style="font-size:13px;color:var(--gray-600);margin-top:8px;line-height:1.4">${j.description}</p>` : ''}
@@ -1906,12 +2037,22 @@ function renderMyProfile() {
     <div style="padding-top:12px">
       ${isWorker ? `
       <div class="profile-section">
-        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-weight:600;color:var(--forest-mid)">Pay Range</span><span style="font-weight:700;color:var(--green)">${formatPay(p.pay_min, p.pay_max)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-weight:600;color:var(--forest-mid)">Pay Range</span><span style="font-weight:700;color:var(--green)">${formatPay(p.pay_min, p.pay_max, p.pay_type)}</span></div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;margin-top:4px"><span style="font-weight:600;color:var(--forest-mid)">Availability</span><span>${availLabel(p.availability)}</span></div>
       </div>
       <div class="profile-section">
         <div class="profile-section-title">Skills</div>
         <div class="badge-wrap">${workerSkills.length ? workerSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('') : '<span style="color:var(--gray-500);font-size:13px">No skills added yet</span>'}</div>
+      </div>
+      <div class="profile-section">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:24px">${p.has_insurance ? '🛡️' : '🔓'}</span>
+          <div>
+            <div class="profile-section-title" style="margin:0">Liability Insurance</div>
+            <div style="font-size:13px;color:${p.has_insurance ? 'var(--green)' : 'var(--gray-500)'};font-weight:600">${p.has_insurance ? 'Uploaded — visible to companies' : 'Not uploaded yet'}</div>
+            ${p.insurance_expiry ? `<div style="font-size:12px;color:var(--gray-500);margin-top:2px">Expires: ${p.insurance_expiry}</div>` : ''}
+          </div>
+        </div>
       </div>
       <div class="profile-section" id="my-photos-section">
         <div class="profile-section-title">Work Photos</div>
@@ -2022,11 +2163,13 @@ function selectAvailability(val) {
 }
 
 function updatePayDisplay() {
-  const min = $('#pay-min')?.value || 0;
-  const max = $('#pay-max')?.value || 0;
-  const display = $('#pay-display');
+  const min = document.getElementById('pay-min')?.value || 0;
+  const max = document.getElementById('pay-max')?.value || 0;
+  const display = document.getElementById('pay-display');
+  const payType = state.profile?.pay_type || state.postJobData?.pay_type || 'hourly';
+  const suffix = payType === 'day_rate' ? '/day' : '/hr';
   if (display) {
-    display.textContent = `$${min} - $${max}/hr`;
+    display.textContent = `$${min} - $${max}${suffix}`;
   }
 }
 
@@ -2055,6 +2198,7 @@ function showPostJob() {
   state.postJobData = {
     title: '',
     description: '',
+    pay_type: 'hourly',
     pay_min: '',
     pay_max: '',
     job_type: 'on_demand',
@@ -2100,13 +2244,19 @@ function renderPostJob() {
       </div>
       
       <div class="form-group">
-        <label class="form-label">Pay Range ($/hr)</label>
-        <div class="pay-range-row">
-          <input type="number" id="job-pay-min" placeholder="25" value="${d.pay_min}">
-          <span>to</span>
-          <input type="number" id="job-pay-max" placeholder="40" value="${d.pay_max}">
-          <span>/hr</span>
+        <label class="form-label">Pay Type</label>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button class="filter-chip ${(d.pay_type || 'hourly') === 'hourly' ? 'active' : ''}" onclick="state.postJobData.pay_type='hourly';render()">Hourly Rate</button>
+          <button class="filter-chip ${d.pay_type === 'day_rate' ? 'active' : ''}" onclick="state.postJobData.pay_type='day_rate';render()">Flat Day Rate</button>
         </div>
+        <label class="form-label">Pay Range (${d.pay_type === 'day_rate' ? '$/day' : '$/hr'})</label>
+        <div class="pay-range-row">
+          <input type="number" id="job-pay-min" placeholder="${d.pay_type === 'day_rate' ? '250' : '25'}" value="${d.pay_min}">
+          <span>to</span>
+          <input type="number" id="job-pay-max" placeholder="${d.pay_type === 'day_rate' ? '400' : '40'}" value="${d.pay_max}">
+          <span>${d.pay_type === 'day_rate' ? '/day' : '/hr'}</span>
+        </div>
+        ${d.pay_type === 'day_rate' ? '<div class="form-hint">Hours negotiable — workers will discuss schedule details in messages</div>' : ''}
       </div>
       
       <div class="form-group">
@@ -2186,6 +2336,7 @@ async function handlePostJob(btn) {
       description: desc,
       pay_min: payMin || 2500,
       pay_max: payMax || payMin || 3500,
+      pay_type: d.pay_type || 'hourly',
       job_type: d.job_type,
       location_text: location || state.profile?.location_text,
       is_urgent: d.is_urgent,
@@ -2529,6 +2680,41 @@ async function handleLogin() {
   }
 }
 
+async function handleResetPassword() {
+  const email = document.getElementById('reset-email')?.value?.trim();
+  const errorEl = document.getElementById('reset-error');
+  const successEl = document.getElementById('reset-success');
+  
+  if (!email) {
+    errorEl.textContent = 'Please enter your email address.';
+    errorEl.classList.add('show');
+    return;
+  }
+  
+  const btn = document.getElementById('reset-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  
+  try {
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/app.html',
+    });
+    
+    if (error) throw error;
+    
+    errorEl.classList.remove('show');
+    successEl.textContent = 'Check your email for a password reset link!';
+    successEl.classList.add('show');
+    btn.textContent = 'Sent!';
+    
+  } catch (e) {
+    errorEl.textContent = e.message || 'Something went wrong. Try again.';
+    errorEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+  }
+}
+
 async function handleLogout() {
   await db.auth.signOut();
   state.user = null;
@@ -2542,7 +2728,7 @@ async function handleLogout() {
 // ============================================
 async function nextProfileStep() {
   const isWorker = state.profile?.user_type === 'worker';
-  const totalSteps = isWorker ? 5 : 1;
+  const totalSteps = isWorker ? 6 : 1;
   
   try {
     if (isWorker && state.profileStep === 1) {
@@ -2580,7 +2766,8 @@ async function nextProfileStep() {
       const maxEl = document.getElementById('pay-max');
       const min = parseInt(minEl ? minEl.value : 20) * 100;
       const max = parseInt(maxEl ? maxEl.value : 35) * 100;
-      const { error } = await db.from('profiles').update({ pay_min: min, pay_max: max }).eq('id', state.user.id);
+      const payType = state.profile.pay_type || 'hourly';
+      const { error } = await db.from('profiles').update({ pay_min: min, pay_max: max, pay_type: payType }).eq('id', state.user.id);
       if (error) console.error('Step 3 save error:', error);
       state.profile.pay_min = min;
       state.profile.pay_max = max;
@@ -2595,6 +2782,16 @@ async function nextProfileStep() {
       
     } else if (isWorker && state.profileStep === 5) {
       // Photos uploaded individually, nothing to save
+    } else if (isWorker && state.profileStep === 6) {
+      // Save insurance expiry if set
+      const expiry = document.getElementById('insurance-expiry')?.value?.trim();
+      if (expiry || state.profile.insurance_doc_url) {
+        const { error } = await db.from('profiles').update({ 
+          insurance_expiry: expiry || null 
+        }).eq('id', state.user.id);
+        if (error) console.error('Step 6 save error:', error);
+        state.profile.insurance_expiry = expiry;
+      }
     }
     
     if (!isWorker) {
@@ -2733,6 +2930,60 @@ async function deleteWorkPhoto(photoId) {
   render();
 }
 
+async function uploadInsurance(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const status = document.getElementById('insurance-status');
+  if (status) status.textContent = 'Uploading...';
+  
+  try {
+    const ext = file.name.split('.').pop();
+    const path = `${state.user.id}/insurance.${ext}`;
+    
+    const { error: uploadError } = await db.storage
+      .from('insurance-docs')
+      .upload(path, file, { upsert: true });
+    
+    if (uploadError) throw uploadError;
+    
+    const { data: { publicUrl } } = db.storage.from('insurance-docs').getPublicUrl(path);
+    const url = publicUrl + '?t=' + Date.now();
+    
+    await db.from('profiles').update({ 
+      insurance_doc_url: url, 
+      has_insurance: true 
+    }).eq('id', state.user.id);
+    
+    state.profile.insurance_doc_url = url;
+    state.profile.has_insurance = true;
+    
+    if (status) status.textContent = 'Uploaded!';
+    showToast('Insurance document uploaded!');
+    render();
+    
+  } catch (e) {
+    console.error('Insurance upload error:', e);
+    if (status) status.textContent = 'Upload failed — try again';
+    showToast('Upload failed: ' + (e.message || 'Unknown error'));
+  }
+}
+
+async function removeInsurance() {
+  await db.from('profiles').update({ 
+    insurance_doc_url: null, 
+    has_insurance: false,
+    insurance_expiry: null 
+  }).eq('id', state.user.id);
+  
+  state.profile.insurance_doc_url = null;
+  state.profile.has_insurance = false;
+  state.profile.insurance_expiry = null;
+  
+  showToast('Insurance document removed');
+  render();
+}
+
 async function editProfile() {
   await loadProfile();
   
@@ -2855,6 +3106,136 @@ db.auth.onAuthStateChange((event, session) => {
 
 // Start the app
 init();
+
+// ============================================
+// PWA: Service Worker + Install Prompt
+// ============================================
+let deferredPrompt = null;
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then((reg) => {
+    console.log('SW registered:', reg.scope);
+  }).catch((err) => {
+    console.log('SW registration failed:', err);
+  });
+}
+
+// Capture the install prompt
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show the install banner if user is logged in
+  if (state.user) {
+    showInstallBanner();
+  }
+});
+
+// Check if already installed
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  hideInstallBanner();
+  showToast('CrewFinder installed!');
+});
+
+function showInstallBanner() {
+  const banner = document.getElementById('install-banner');
+  if (banner && !isAppInstalled()) {
+    banner.classList.add('show');
+  }
+}
+
+function hideInstallBanner() {
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.classList.remove('show');
+  // Remember dismissal
+  try { localStorage.setItem('cf_install_dismissed', Date.now()); } catch(e) {}
+}
+
+async function handleInstallClick() {
+  if (deferredPrompt) {
+    // Android / Chrome install
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    hideInstallBanner();
+    if (outcome === 'accepted') {
+      showToast('Installing CrewFinder...');
+    }
+  } else {
+    // iOS - show instructions
+    showIOSInstallGuide();
+  }
+}
+
+function showIOSInstallGuide() {
+  const banner = document.getElementById('install-banner');
+  if (banner) {
+    banner.innerHTML = `
+      <div style="text-align:center;padding:8px 0">
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px">Add to Home Screen</div>
+        <div style="font-size:13px;color:var(--gray-600);line-height:1.6">
+          1. Tap the <strong>Share</strong> button <span style="font-size:16px">⬆️</span> at the bottom of your screen<br>
+          2. Scroll down and tap <strong>"Add to Home Screen"</strong><br>
+          3. Tap <strong>"Add"</strong> in the top right
+        </div>
+        <button class="btn btn-outline" style="margin-top:12px;font-size:13px" onclick="hideInstallBanner()">Got it</button>
+      </div>
+    `;
+  }
+}
+
+function isAppInstalled() {
+  // Check if running as installed PWA
+  if (window.matchMedia('(display-mode: standalone)').matches) return true;
+  if (window.navigator.standalone === true) return true;
+  // Check if user recently dismissed
+  try {
+    const dismissed = localStorage.getItem('cf_install_dismissed');
+    if (dismissed && Date.now() - parseInt(dismissed) < 86400000) return true; // 24 hours
+  } catch(e) {}
+  return false;
+}
+
+// Show install banner after first successful login if not installed
+const originalRender = render;
+render = function() {
+  originalRender();
+  // Show install banner on main screen if not installed
+  if (state.currentScreen === 'main' && !isAppInstalled()) {
+    setTimeout(() => {
+      const banner = document.getElementById('install-banner');
+      if (banner && !banner.classList.contains('show')) {
+        // Show on Android if we have the prompt, or on iOS
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (deferredPrompt || isIOS) {
+          showInstallBanner();
+        }
+      }
+    }, 2000);
+  }
+};
 </script>
+
+<!-- Install Banner (outside #app so it persists) -->
+<div class="install-banner" id="install-banner">
+  <div class="install-banner-content">
+    <div class="install-banner-icon">
+      <svg width="24" height="24" viewBox="0 0 40 40" fill="none">
+        <path d="M20 8L12 16h5v8h6v-8h5L20 8z" fill="#5CB85C"/>
+        <path d="M14 28h12M16 32h8" stroke="#5CB85C" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="install-banner-text">
+      <strong>Install CrewFinder</strong>
+      <span>Add to your home screen for the full experience</span>
+    </div>
+  </div>
+  <div class="install-banner-actions">
+    <button class="btn btn-outline" style="flex:1" onclick="hideInstallBanner()">Not Now</button>
+    <button class="btn btn-primary" style="flex:2" onclick="handleInstallClick()">Install</button>
+  </div>
+</div>
+
 </body>
 </html>
