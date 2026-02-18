@@ -1629,7 +1629,7 @@ function renderMain(app) {
 function renderBottomNav(isBiz) {
   const tabs = isBiz
     ? [
-        { id: 'search', label: 'Search', icon: 'search' },
+        { id: 'search', label: 'Browse', icon: 'search' },
         { id: 'jobs', label: 'My Jobs', icon: 'jobs' },
         { id: 'messages', label: 'Messages', icon: 'messages', badge: state.conversations.some(c => c.unread) },
         { id: 'crew', label: 'My Crew', icon: 'heart' },
@@ -1660,6 +1660,23 @@ function renderBottomNav(isBiz) {
 // ============================================
 function renderWorkerSearch() {
   if (state.viewingWorker) return renderWorkerProfile(state.viewingWorker);
+  if (state.viewingCompany) return renderCompanyProfile(state.viewingCompany);
+  
+  const searchTab = state.searchTab || 'workers';
+  
+  const subTabs = `
+    <div class="page-padding">
+      <div class="page-title">Browse</div>
+      <div style="display:flex;gap:0;margin-bottom:16px;border-radius:10px;overflow:hidden;border:1px solid var(--gray-200)">
+        <button style="flex:1;padding:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:inherit;transition:all 0.2s;${searchTab === 'workers' ? 'background:var(--green);color:#fff' : 'background:var(--white);color:var(--gray-500)'}" onclick="state.searchTab='workers';render()">👷 Workers</button>
+        <button style="flex:1;padding:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:inherit;transition:all 0.2s;${searchTab === 'companies' ? 'background:var(--green);color:#fff' : 'background:var(--white);color:var(--gray-500)'}" onclick="state.searchTab='companies';render()">🏢 Companies</button>
+      </div>
+    </div>
+  `;
+  
+  if (searchTab === 'companies') {
+    return subTabs + renderBrowseCompanies();
+  }
   
   const trades = ['All', 'Tree Service', 'Landscaping', 'Hardscaping', 'Irrigation'];
   const filtered = state.workers.filter(w => {
@@ -1672,6 +1689,7 @@ function renderWorkerSearch() {
   });
   
   return `
+    ${subTabs}
     <div class="search-bar">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
       <input placeholder="Search skills, certs, or names..." id="worker-search-input">
@@ -1814,6 +1832,8 @@ function renderWorkerProfile(w) {
 // JOB FEED (Worker view)
 // ============================================
 function renderJobFeed() {
+  if (state.viewingCompany) return renderCompanyProfile(state.viewingCompany);
+  
   const myActiveJobs = (state.myJobStatuses || []).filter(r => r.status === 'accepted');
   const myCompletedJobs = (state.myJobStatuses || []).filter(r => r.status === 'completed');
   const myAppliedIds = new Set((state.myJobStatuses || []).map(r => r.job_id));
@@ -3006,6 +3026,7 @@ function switchTab(tab) {
   state.viewingCompany = null;
   state.viewingJobDetail = null;
   state.chattingWith = null;
+  state.searchTab = null;
   render();
   
   // Load work photos for my profile
