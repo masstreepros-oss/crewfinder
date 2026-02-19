@@ -3926,6 +3926,7 @@ async function handleSignup() {
     // Create profile — check for unclaimed business first
     let preloadedData = null;
     if (state.signupType === 'business') {
+      // Method 1: Claim code (explicit)
       const claimCode = document.getElementById('signup-claim-code')?.value?.trim()?.toUpperCase();
       if (claimCode) {
         try {
@@ -3949,9 +3950,50 @@ async function handleSignup() {
           }
         }
       }
+      
+      // Method 2: Auto-match by email or company name (organic signups)
+      if (!preloadedData) {
+        try {
+          // Try email match first (strongest signal)
+          if (email) {
+            const { data: emailMatch } = await db.from('unclaimed_businesses')
+              .select('*')
+              .eq('email', email.toLowerCase())
+              .eq('claimed', false)
+              .limit(1)
+              .single();
+            if (emailMatch) preloadedData = emailMatch;
+          }
+          
+          // Try company name match if no email match
+          if (!preloadedData && company) {
+            const { data: nameMatches } = await db.from('unclaimed_businesses')
+              .select('*')
+              .eq('claimed', false)
+              .ilike('company_name', company);
+            
+            if (nameMatches && nameMatches.length === 1) {
+              // Exact single match — auto-claim
+              preloadedData = nameMatches[0];
+            } else if (nameMatches && nameMatches.length > 1) {
+              // Multiple matches — try to narrow by zip or location
+              const zipCode = document.getElementById('signup-zip')?.value?.trim();
+              const locMatch = nameMatches.find(m => 
+                (zipCode && m.zip_code === zipCode) ||
+                (location && m.location_text && m.location_text.toLowerCase().includes(location.toLowerCase()))
+              );
+              if (locMatch) preloadedData = locMatch;
+              // If still ambiguous, don't auto-claim — they can claim manually later
+            }
+          }
+        } catch(e) {
+          // Auto-match failed silently — not critical, they just get a fresh profile
+          console.log('Auto-match check:', e.message);
+        }
+      }
     }
     
-    const zipCode = document.getElementById('signup-zip')?.value?.trim() || null;
+    const zipCode = document.getElementById('signup-zip')?.value?.trim() || preloadedData?.zip_code || null;
     
     const profileData = {
       id: data.user.id,
@@ -4455,7 +4497,7 @@ async function loadData() {
     // Load unclaimed businesses for browse tab
     const { data: unclaimed } = await db
       .from('unclaimed_businesses')
-      .select('company_name, logo_url, location_text, company_description, claimed')
+      .select('company_name, logo_url, location_text, company_description, claimed, zip_code')
       .eq('claimed', false)
       .order('created_at', { ascending: false });
     state.unclaimedBusinesses = unclaimed || [];
