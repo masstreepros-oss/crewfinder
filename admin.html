@@ -141,6 +141,7 @@
     <div class="admin-tab" onclick="switchAdminTab('reviews', this)">⭐ Reviews</div>
     <div class="admin-tab" onclick="switchAdminTab('companies', this)">🏢 Companies</div>
     <div class="admin-tab" onclick="switchAdminTab('announce', this)">📢 Announce</div>
+    <div class="admin-tab" onclick="switchAdminTab('import', this)">📥 Import</div>
   </div>
 
   <!-- DASHBOARD -->
@@ -272,6 +273,97 @@
       <div class="card">
         <h3>Past Announcements</h3>
         <div id="past-announcements">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORT -->
+  <div class="tab-content" id="tab-import">
+    <div class="container">
+      <div class="card">
+        <h3>📥 Bulk Import Companies</h3>
+        <p style="font-size:13px;color:var(--gray-500);margin-bottom:14px">Upload a CSV from Outscraper, Google Maps, or any source. Map columns to CrewFinder fields and import in bulk.</p>
+        
+        <div class="form-group">
+          <label class="form-label">Upload CSV File</label>
+          <input type="file" id="csv-file" accept=".csv,.tsv,.txt" class="form-input" onchange="handleCsvUpload(this)" style="padding:8px">
+        </div>
+        
+        <div id="csv-preview-section" style="display:none">
+          <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:14px;margin-bottom:14px">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px">📋 Found <span id="csv-row-count">0</span> rows · <span id="csv-col-count">0</span> columns</div>
+            <div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Map your CSV columns to CrewFinder fields:</div>
+            
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div>
+                <label class="form-label">Company Name *</label>
+                <select class="form-select" id="map-name" style="font-size:13px"></select>
+              </div>
+              <div>
+                <label class="form-label">Phone</label>
+                <select class="form-select" id="map-phone" style="font-size:13px"></select>
+              </div>
+              <div>
+                <label class="form-label">City / Location</label>
+                <select class="form-select" id="map-location" style="font-size:13px"></select>
+              </div>
+              <div>
+                <label class="form-label">State</label>
+                <select class="form-select" id="map-state" style="font-size:13px"></select>
+              </div>
+              <div>
+                <label class="form-label">Zip Code</label>
+                <select class="form-select" id="map-zip" style="font-size:13px"></select>
+              </div>
+              <div>
+                <label class="form-label">Email</label>
+                <select class="form-select" id="map-email" style="font-size:13px"></select>
+              </div>
+              <div>
+                <label class="form-label">Description</label>
+                <select class="form-select" id="map-desc" style="font-size:13px"></select>
+              </div>
+              <div>
+                <label class="form-label">Website</label>
+                <select class="form-select" id="map-website" style="font-size:13px"></select>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card" style="padding:14px">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px">Preview (first 5 rows)</div>
+            <div id="csv-preview-table" style="overflow-x:auto;font-size:12px"></div>
+          </div>
+          
+          <div style="display:flex;gap:8px;align-items:center;margin-top:12px;margin-bottom:8px">
+            <input type="checkbox" id="csv-skip-dupes" checked>
+            <label for="csv-skip-dupes" style="font-size:13px">Skip duplicates (same company name + zip)</label>
+          </div>
+          
+          <button class="btn btn-primary btn-block" id="import-btn" onclick="runImport()">
+            Import <span id="import-count">0</span> Companies
+          </button>
+          
+          <div id="import-progress" style="display:none;margin-top:12px">
+            <div style="background:var(--gray-200);border-radius:4px;height:8px;overflow:hidden">
+              <div id="import-bar" style="background:var(--green);height:100%;width:0%;transition:width 0.3s"></div>
+            </div>
+            <div id="import-progress-text" style="font-size:12px;color:var(--gray-500);margin-top:4px;text-align:center"></div>
+          </div>
+          
+          <div class="status" id="import-status"></div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3>📖 CSV Format Guide</h3>
+        <p style="font-size:13px;color:var(--gray-500);line-height:1.6">
+          Works with any CSV. Common sources:<br><br>
+          <strong>Outscraper (Google Maps)</strong> — Export as CSV. Map "name" → Company Name, "phone" → Phone, "city" → Location, "state" → State, "postal_code" → Zip.<br><br>
+          <strong>Yelp / BBB</strong> — Similar format, just map the right columns.<br><br>
+          <strong>Custom spreadsheet</strong> — Just needs a "Company Name" column at minimum. Add phone, city, state, zip, email for richer listings.<br><br>
+          The importer auto-detects common column names and will skip companies already in the system (by name + zip match).
+        </p>
       </div>
     </div>
   </div>
@@ -815,6 +907,225 @@ db.auth.getSession().then(({ data }) => {
     loadDashboard();
   }
 });
+
+// ===== CSV IMPORT =====
+let csvData = [];
+let csvHeaders = [];
+
+function handleCsvUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const rows = [];
+    
+    // Simple but robust CSV parse
+    const lines = text.split(/\r?\n/);
+    const delimiter = text.includes('\t') ? '\t' : ',';
+    
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const row = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+          if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
+          else inQuotes = !inQuotes;
+        } else if (c === delimiter && !inQuotes) {
+          row.push(current.trim());
+          current = '';
+        } else {
+          current += c;
+        }
+      }
+      row.push(current.trim());
+      rows.push(row);
+    }
+    
+    if (rows.length < 2) { alert('CSV needs at least a header row and one data row'); return; }
+    
+    csvHeaders = rows[0].map(h => h.replace(/^["']|["']$/g, '').trim());
+    csvData = rows.slice(1).filter(r => r.some(c => c.trim()));
+    
+    document.getElementById('csv-row-count').textContent = csvData.length;
+    document.getElementById('csv-col-count').textContent = csvHeaders.length;
+    document.getElementById('import-count').textContent = csvData.length;
+    document.getElementById('csv-preview-section').style.display = 'block';
+    
+    // Auto-map columns
+    populateColumnMappings();
+    renderCsvPreview();
+  };
+  reader.readAsText(file);
+}
+
+function populateColumnMappings() {
+  const fields = ['map-name','map-phone','map-location','map-state','map-zip','map-email','map-desc','map-website'];
+  const patterns = {
+    'map-name': /^(name|company|business|title|company.?name|business.?name)$/i,
+    'map-phone': /^(phone|tel|telephone|phone.?number|main.?phone)$/i,
+    'map-location': /^(city|location|address|city.?name|full.?address|street)$/i,
+    'map-state': /^(state|province|region|state.?name|us.?state)$/i,
+    'map-zip': /^(zip|postal|zip.?code|postal.?code|postcode)$/i,
+    'map-email': /^(email|e.?mail|contact.?email)$/i,
+    'map-desc': /^(desc|description|about|summary|company.?desc|category|categories)$/i,
+    'map-website': /^(website|url|web|site|domain|link)$/i,
+  };
+  
+  fields.forEach(fieldId => {
+    const select = document.getElementById(fieldId);
+    select.innerHTML = '<option value="">— Skip —</option>' + 
+      csvHeaders.map((h, i) => `<option value="${i}">${h}</option>`).join('');
+    
+    // Auto-detect
+    const pattern = patterns[fieldId];
+    if (pattern) {
+      const match = csvHeaders.findIndex(h => pattern.test(h.replace(/[_\-\s]/g, '')));
+      if (match >= 0) select.value = match;
+    }
+  });
+}
+
+function renderCsvPreview() {
+  const preview = csvData.slice(0, 5);
+  const nameIdx = document.getElementById('map-name').value;
+  
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:11px">';
+  html += '<tr>' + csvHeaders.map(h => `<th style="text-align:left;padding:4px 6px;border-bottom:2px solid var(--gray-200);font-weight:600;white-space:nowrap">${h}</th>`).join('') + '</tr>';
+  preview.forEach(row => {
+    html += '<tr>' + row.map(c => `<td style="padding:4px 6px;border-bottom:1px solid var(--gray-100);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c || '<span style="color:var(--gray-500)">—</span>'}</td>`).join('') + '</tr>';
+  });
+  html += '</table>';
+  document.getElementById('csv-preview-table').innerHTML = html;
+}
+
+function getVal(row, selectId) {
+  const idx = document.getElementById(selectId)?.value;
+  if (idx === '' || idx === undefined) return null;
+  return row[parseInt(idx)]?.trim() || null;
+}
+
+async function runImport() {
+  const nameIdx = document.getElementById('map-name').value;
+  if (nameIdx === '') { alert('Map the Company Name column first'); return; }
+  
+  const btn = document.getElementById('import-btn');
+  const status = document.getElementById('import-status');
+  const progressEl = document.getElementById('import-progress');
+  const bar = document.getElementById('import-bar');
+  const progressText = document.getElementById('import-progress-text');
+  const skipDupes = document.getElementById('csv-skip-dupes').checked;
+  
+  btn.disabled = true;
+  btn.textContent = 'Importing...';
+  progressEl.style.display = 'block';
+  status.className = 'status';
+  
+  // Load existing company names for dedup
+  let existingNames = new Set();
+  if (skipDupes) {
+    try {
+      const { data: existing } = await db.from('unclaimed_businesses').select('company_name, zip_code');
+      (existing || []).forEach(e => existingNames.add((e.company_name || '').toLowerCase() + '|' + (e.zip_code || '')));
+      // Also check claimed businesses
+      const { data: claimed } = await db.from('profiles').select('company_name, zip_code').eq('user_type', 'business');
+      (claimed || []).forEach(e => existingNames.add((e.company_name || '').toLowerCase() + '|' + (e.zip_code || '')));
+    } catch(e) { console.error('Dedup load error:', e); }
+  }
+  
+  let imported = 0;
+  let skipped = 0;
+  let errors = 0;
+  const total = csvData.length;
+  const batchSize = 50;
+  
+  // Build all records first
+  const records = [];
+  for (const row of csvData) {
+    const companyName = getVal(row, 'map-name');
+    if (!companyName) { skipped++; continue; }
+    
+    const phone = getVal(row, 'map-phone');
+    const city = getVal(row, 'map-location');
+    const stateVal = getVal(row, 'map-state');
+    const zip = getVal(row, 'map-zip');
+    const email = getVal(row, 'map-email');
+    const desc = getVal(row, 'map-desc');
+    const website = getVal(row, 'map-website');
+    
+    // Build location text from city + state
+    let locationText = '';
+    if (city && stateVal) locationText = `${city}, ${stateVal}`;
+    else if (city) locationText = city;
+    else if (stateVal) locationText = stateVal;
+    
+    // Dedup check
+    const dupeKey = companyName.toLowerCase() + '|' + (zip || '');
+    if (skipDupes && existingNames.has(dupeKey)) { skipped++; continue; }
+    existingNames.add(dupeKey); // prevent dupes within CSV too
+    
+    const claimCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    
+    // Build description from category + website if no desc
+    let description = desc || null;
+    if (website && !description) description = website;
+    
+    records.push({
+      company_name: companyName,
+      phone: phone,
+      location_text: locationText || null,
+      zip_code: zip || null,
+      email: email ? email.toLowerCase() : null,
+      company_description: description,
+      claim_code: claimCode,
+      created_by: adminUser.id,
+    });
+  }
+  
+  // Batch insert
+  for (let i = 0; i < records.length; i += batchSize) {
+    const batch = records.slice(i, i + batchSize);
+    try {
+      const { error } = await db.from('unclaimed_businesses').insert(batch);
+      if (error) { 
+        console.error('Batch error:', error);
+        // Try one-by-one for failed batch
+        for (const record of batch) {
+          try {
+            const { error: singleErr } = await db.from('unclaimed_businesses').insert(record);
+            if (singleErr) { errors++; } else { imported++; }
+          } catch(e) { errors++; }
+        }
+      } else {
+        imported += batch.length;
+      }
+    } catch(e) {
+      errors += batch.length;
+    }
+    
+    const progress = Math.min(((i + batch.length) / records.length) * 100, 100);
+    bar.style.width = progress + '%';
+    progressText.textContent = `${imported} imported · ${skipped} skipped · ${errors} errors — ${Math.round(progress)}%`;
+    
+    // Small delay to not overwhelm Supabase
+    if (i + batchSize < records.length) await new Promise(r => setTimeout(r, 200));
+  }
+  
+  bar.style.width = '100%';
+  
+  status.innerHTML = `✅ Done! <strong>${imported}</strong> companies imported · ${skipped} skipped (dupes/empty) · ${errors} errors`;
+  status.className = 'status show success';
+  
+  btn.disabled = false;
+  btn.textContent = `Import ${csvData.length} Companies`;
+  
+  // Refresh companies list
+  loadCompanies();
+}
 </script>
 </body>
 </html>
