@@ -1403,12 +1403,12 @@ function renderSignup(app) {
         </div>
         <div style="display:grid;grid-template-columns:1fr 120px;gap:10px">
           <div class="form-group">
-            <label class="form-label">Location</label>
-            <input class="form-input" id="signup-location" type="text" placeholder="Medway, MA">
+            <label class="form-label">Location *</label>
+            <input class="form-input" id="signup-location" type="text" placeholder="Medway, MA" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Zip Code</label>
-            <input class="form-input" id="signup-zip" type="text" placeholder="02053" maxlength="5" inputmode="numeric">
+            <label class="form-label">Zip Code *</label>
+            <input class="form-input" id="signup-zip" type="text" placeholder="02053" maxlength="5" inputmode="numeric" required>
           </div>
         </div>
         <div class="form-group">
@@ -1519,11 +1519,11 @@ function renderProfileBuilder(app) {
         </div>
         <div style="display:grid;grid-template-columns:1fr 120px;gap:10px">
           <div class="form-group">
-            <label class="form-label">Location</label>
+            <label class="form-label">Location *</label>
             <input class="form-input" id="edit-location" type="text" placeholder="Medway, MA" value="${state.profile.location_text || ''}">
           </div>
           <div class="form-group">
-            <label class="form-label">Zip Code</label>
+            <label class="form-label">Zip Code *</label>
             <input class="form-input" id="edit-zip" type="text" placeholder="02053" maxlength="5" inputmode="numeric" value="${state.profile.zip_code || ''}">
           </div>
         </div>
@@ -1659,11 +1659,11 @@ function renderProfileBuilder(app) {
       </div>
       <div style="display:grid;grid-template-columns:1fr 120px;gap:10px">
         <div class="form-group">
-          <label class="form-label">Location</label>
+          <label class="form-label">Location *</label>
           <input class="form-input" id="biz-location" type="text" placeholder="Medway, MA" value="${state.profile.location_text || ''}">
         </div>
         <div class="form-group">
-          <label class="form-label">Zip Code</label>
+          <label class="form-label">Zip Code *</label>
           <input class="form-input" id="biz-zip" type="text" placeholder="02053" maxlength="5" inputmode="numeric" value="${state.profile.zip_code || ''}">
         </div>
       </div>
@@ -4022,6 +4022,25 @@ async function handleSignup() {
     return;
   }
   
+  if (!location) {
+    errorEl.textContent = 'Please enter your location (city, state).';
+    errorEl.classList.add('show');
+    return;
+  }
+  
+  const zipVal = document.getElementById('signup-zip')?.value?.trim();
+  if (!zipVal || zipVal.length < 5) {
+    errorEl.textContent = 'Please enter a valid 5-digit zip code.';
+    errorEl.classList.add('show');
+    return;
+  }
+  
+  if (state.signupType === 'business' && !company) {
+    errorEl.textContent = 'Please enter your company name.';
+    errorEl.classList.add('show');
+    return;
+  }
+  
   if (password.length < 6) {
     errorEl.textContent = 'Password must be at least 6 characters.';
     errorEl.classList.add('show');
@@ -4273,6 +4292,9 @@ async function nextProfileStep() {
       const location = locEl ? locEl.value.trim() : (state.profile.location_text || '');
       const zip = zipEl ? zipEl.value.trim() : (state.profile.zip_code || '');
       const bio = bioEl ? bioEl.value.trim() : (state.profile.bio || '');
+      
+      if (!location) { showToast('Please enter your location'); return; }
+      if (!zip || zip.length < 5) { showToast('Please enter a valid zip code'); return; }
       const { error } = await db.from('profiles').update({ 
         name: name,
         location_text: location,
@@ -4337,6 +4359,9 @@ async function nextProfileStep() {
       const zip = (document.getElementById('biz-zip')?.value?.trim()) || state.profile.zip_code;
       const desc = (document.getElementById('biz-desc')?.value?.trim()) || state.profile.company_description;
       const phone = (document.getElementById('biz-phone')?.value?.trim()) || state.profile.phone;
+      
+      if (!location) { showToast('Please enter your location'); return; }
+      if (!zip || zip.length < 5) { showToast('Please enter a valid zip code'); return; }
       const { error } = await db.from('profiles').update({
         company_name: companyName,
         location_text: location,
