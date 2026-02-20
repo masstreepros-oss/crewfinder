@@ -1383,9 +1383,16 @@ function renderSignup(app) {
           <input class="form-input" id="signup-name" type="text" placeholder="${isWorker ? 'Marcus Rivera' : 'John Smith'}">
         </div>
         ${!isWorker ? `
-        <div class="form-group">
+        <div class="form-group" style="position:relative">
           <label class="form-label">Company Name</label>
-          <input class="form-input" id="signup-company" type="text" placeholder="Mass Tree Pros">
+          <input class="form-input" id="signup-company" type="text" placeholder="Start typing to find your company..." oninput="searchCompanySignup(this.value)" autocomplete="off">
+          <div id="company-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--gray-200);border-top:none;border-radius:0 0 10px 10px;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15)"></div>
+        </div>
+        <div id="company-claimed-info" style="display:none;background:var(--light-green);border:1px solid var(--green);border-radius:10px;padding:12px;margin-bottom:12px">
+          <div style="font-weight:600;color:var(--green);font-size:14px">✅ Company found!</div>
+          <div id="company-claimed-detail" style="font-size:13px;color:var(--gray-600);margin-top:4px"></div>
+          <div style="font-size:12px;color:var(--gray-500);margin-top:6px">Your profile will be pre-filled with this info. You can edit it after signing up.</div>
+          <button class="btn btn-outline" style="margin-top:8px;font-size:12px;padding:4px 12px" onclick="clearCompanySelection()">Not my company — start fresh</button>
         </div>
         <div class="form-group">
           <label class="form-label">Claim Code <span style="font-weight:400;color:var(--gray-500)">(optional)</span></label>
@@ -4008,6 +4015,107 @@ function sendStormBlast() {
 // ============================================
 // AUTH HANDLERS
 // ============================================
+// Company search on signup
+let companySearchTimeout = null;
+let selectedUnclaimedCompany = null;
+
+async function searchCompanySignup(query) {
+  const resultsDiv = document.getElementById('company-search-results');
+  if (!resultsDiv) return;
+  
+  if (!query || query.length < 2) {
+    resultsDiv.style.display = 'none';
+    return;
+  }
+  
+  // Debounce
+  clearTimeout(companySearchTimeout);
+  companySearchTimeout = setTimeout(async () => {
+    try {
+      const { data } = await db.from('unclaimed_businesses')
+        .select('id, company_name, location_text, zip_code, phone, company_description, claim_code')
+        .eq('claimed', false)
+        .ilike('company_name', `%${query}%`)
+        .limit(8);
+      
+      if (!data || data.length === 0) {
+        resultsDiv.style.display = 'none';
+        return;
+      }
+      
+      resultsDiv.innerHTML = data.map(c => `
+        <div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--gray-100);transition:background 0.15s" 
+          onmouseover="this.style.background='var(--pale-green)'" 
+          onmouseout="this.style.background='#fff'"
+          onclick="selectCompanyFromSearch(${JSON.stringify(c).replace(/"/g, '&quot;')})">
+          <div style="font-weight:600;font-size:14px">${c.company_name}</div>
+          <div style="font-size:12px;color:var(--gray-500)">${c.location_text || c.zip_code || 'Location not set'}</div>
+        </div>
+      `).join('');
+      resultsDiv.style.display = 'block';
+    } catch(e) {
+      console.log('Company search error:', e);
+      resultsDiv.style.display = 'none';
+    }
+  }, 300);
+}
+
+function selectCompanyFromSearch(company) {
+  selectedUnclaimedCompany = company;
+  
+  // Fill in the company name field
+  const nameInput = document.getElementById('signup-company');
+  if (nameInput) nameInput.value = company.company_name;
+  
+  // Auto-fill location and zip if available
+  if (company.location_text) {
+    const locInput = document.getElementById('signup-location');
+    if (locInput && !locInput.value) locInput.value = company.location_text;
+  }
+  if (company.zip_code) {
+    const zipInput = document.getElementById('signup-zip');
+    if (zipInput && !zipInput.value) zipInput.value = company.zip_code;
+  }
+  
+  // Auto-fill claim code
+  if (company.claim_code) {
+    const claimInput = document.getElementById('signup-claim-code');
+    if (claimInput) claimInput.value = company.claim_code;
+  }
+  
+  // Hide search results, show claimed info
+  const resultsDiv = document.getElementById('company-search-results');
+  if (resultsDiv) resultsDiv.style.display = 'none';
+  
+  const infoDiv = document.getElementById('company-claimed-info');
+  const detailDiv = document.getElementById('company-claimed-detail');
+  if (infoDiv && detailDiv) {
+    let details = [company.company_name];
+    if (company.location_text) details.push(company.location_text);
+    if (company.phone) details.push(company.phone);
+    detailDiv.textContent = details.join(' · ');
+    infoDiv.style.display = 'block';
+  }
+}
+
+function clearCompanySelection() {
+  selectedUnclaimedCompany = null;
+  const nameInput = document.getElementById('signup-company');
+  if (nameInput) { nameInput.value = ''; nameInput.focus(); }
+  const claimInput = document.getElementById('signup-claim-code');
+  if (claimInput) claimInput.value = '';
+  const infoDiv = document.getElementById('company-claimed-info');
+  if (infoDiv) infoDiv.style.display = 'none';
+}
+
+// Hide search results when clicking elsewhere
+document.addEventListener('click', (e) => {
+  const resultsDiv = document.getElementById('company-search-results');
+  if (resultsDiv && !e.target.closest('#signup-company') && !e.target.closest('#company-search-results')) {
+    resultsDiv.style.display = 'none';
+  }
+});
+
 async function handleSignup() {
   const name = $('#signup-name')?.value?.trim();
   const email = $('#signup-email')?.value?.trim();
