@@ -2723,8 +2723,17 @@ function renderBrowseCompanies() {
 
   const totalCount = businesses.length + unclaimedFiltered.length;
 
+  // Export button (only for admin — check if logged-in user is admin)
+  const isAdmin = state.user?.email === 'masstp01@gmail.com';
+  const exportBtn = isAdmin ? `
+    <button onclick="exportCallList()" style="font-size:12px;padding:4px 10px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;margin-left:8px">📋 Export Call List</button>
+  ` : '';
+
   return `
-    <div style="padding: 4px 16px 8px; font-size: 13px; color: var(--gray-500);">${totalCount} companies</div>
+    <div style="padding: 4px 16px 8px; font-size: 13px; color: var(--gray-500);display:flex;align-items:center;justify-content:space-between">
+      <span>${totalCount} companies</span>
+      ${exportBtn}
+    </div>
     <div class="page-padding" style="padding-top:0">
       ${claimedCards || ''}
       ${unclaimedCards || ''}
@@ -2737,6 +2746,58 @@ function renderBrowseCompanies() {
       ` : ''}
     </div>
   `;
+}
+
+// Export unclaimed businesses as CSV call list (filtered by current state/town)
+async function exportCallList() {
+  showToast('Exporting call list...', 'info');
+  try {
+    let query = db.from('unclaimed_businesses')
+      .select('company_name, phone, location_text, zip_code, claim_code, company_description')
+      .eq('claimed', false)
+      .order('company_name');
+    
+    // Apply current state filter if active
+    const stateFilter = state.locationFilter?.state;
+    if (stateFilter) {
+      query = query.or(`location_text.ilike.%${stateFilter}%,location_text.ilike.%${stateFilter}%`);
+    }
+    
+    const { data, error } = await query.limit(5000);
+    if (error) throw error;
+    
+    // Filter by state more precisely client-side
+    let filtered = data || [];
+    if (stateFilter) {
+      const re = new RegExp('\\b' + stateFilter + '\\b', 'i');
+      filtered = filtered.filter(c => re.test(c.location_text || ''));
+    }
+    
+    // Build CSV
+    const headers = ['Company Name', 'Phone', 'Location', 'Zip', 'Claim Code', 'Description', 'Assigned To', 'Called?', 'Date Called', 'Outcome', 'Notes'];
+    const rows = filtered.map(c => [
+      `"${(c.company_name || '').replace(/"/g, '""')}"`,
+      `"${c.phone || ''}"`,
+      `"${(c.location_text || '').replace(/"/g, '""')}"`,
+      c.zip_code || '',
+      c.claim_code || '',
+      `"${(c.company_description || '').slice(0, 100).replace(/"/g, '""')}"`,
+      '', '', '', '', ''
+    ]);
+    
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `crewfinder-call-list${stateFilter ? '-' + stateFilter : ''}-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showToast(`Exported ${filtered.length} companies${stateFilter ? ' in ' + stateFilter : ''}`, 'success');
+  } catch(e) {
+    showToast('Export failed: ' + e.message, 'error');
+  }
 }
 
 function browseViewWorker(id) {

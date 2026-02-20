@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrewFinder · Caller Portal</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --green: #1A3C2A; --lime: #4ade80; --light-green: #E8F5E9;
+  --gray-100: #F5F5F5; --gray-200: #E0E0E0; --gray-400: #BDBDBD;
+  --gray-500: #9E9E9E; --gray-600: #757575; --gray-800: #424242;
+  --red: #EF4444; --orange: #F59E0B; --blue: #3B82F6;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-100); color: var(--gray-800); }
+
+/* Layout */
+.app { max-width: 900px; margin: 0 auto; min-height: 100vh; background: #fff; }
+.header { background: var(--green); color: white; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 18px; font-weight: 700; }
+.header-sub { font-size: 12px; opacity: 0.7; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.header-stat { text-align: center; }
+.header-stat-num { font-size: 20px; font-weight: 700; color: var(--lime); }
+.header-stat-label { font-size: 10px; opacity: 0.7; text-transform: uppercase; }
+
+/* Tabs */
+.tabs { display: flex; border-bottom: 2px solid var(--gray-200); background: #fff; position: sticky; top: 56px; z-index: 99; }
+.tab { flex: 1; padding: 12px; text-align: center; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--gray-500); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+.tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+/* Cards */
+.call-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 12px; padding: 16px; margin: 8px 16px; transition: all 0.2s; }
+.call-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.call-card.done { opacity: 0.5; }
+.company-name { font-size: 16px; font-weight: 700; color: var(--gray-800); }
+.company-detail { font-size: 13px; color: var(--gray-500); margin-top: 2px; }
+.claim-code { font-family: monospace; background: var(--light-green); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--green); font-weight: 600; }
+.call-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; }
+.btn-call { background: var(--green); color: white; }
+.btn-call:hover { background: #2D7A3A; }
+.btn-outcome { background: var(--gray-100); color: var(--gray-600); font-size: 12px; padding: 6px 12px; }
+.btn-outcome:hover { background: var(--gray-200); }
+.btn-outcome.selected { background: var(--lime); color: var(--green); }
+.btn-sm { font-size: 11px; padding: 4px 10px; }
+
+/* Log form */
+.log-form { background: var(--light-green); border-radius: 10px; padding: 14px; margin-top: 12px; display: none; }
+.log-form.open { display: block; }
+.log-form label { font-size: 12px; font-weight: 600; color: var(--gray-600); display: block; margin-top: 8px; }
+.log-form input, .log-form textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 13px; margin-top: 4px; font-family: inherit; }
+.log-form textarea { resize: vertical; min-height: 60px; }
+.outcome-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.pill { padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid var(--gray-200); background: white; transition: all 0.15s; }
+.pill:hover { border-color: var(--lime); }
+.pill.active { background: var(--lime); color: var(--green); border-color: var(--lime); font-weight: 600; }
+
+/* Stats */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px; }
+.stat-card { background: var(--gray-100); border-radius: 10px; padding: 16px; text-align: center; }
+.stat-num { font-size: 28px; font-weight: 800; color: var(--green); }
+.stat-label { font-size: 11px; color: var(--gray-500); text-transform: uppercase; margin-top: 4px; }
+
+/* Filter bar */
+.filter-bar { padding: 12px 16px; background: var(--gray-100); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.filter-bar select, .filter-bar input { padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 13px; background: white; }
+.filter-bar select { min-width: 80px; }
+
+/* Log history */
+.log-entry { padding: 12px 16px; border-bottom: 1px solid var(--gray-100); }
+.log-entry:last-child { border-bottom: none; }
+.log-company { font-weight: 600; font-size: 14px; }
+.log-meta { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+.log-outcome { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.outcome-signup { background: #DCFCE7; color: #166534; }
+.outcome-interested { background: #FEF3C7; color: #92400E; }
+.outcome-voicemail { background: #DBEAFE; color: #1E40AF; }
+.outcome-noanswer { background: var(--gray-100); color: var(--gray-500); }
+.outcome-notinterested { background: #FEE2E2; color: #991B1B; }
+
+/* Login */
+.login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: var(--green); }
+.login-box { background: white; border-radius: 16px; padding: 32px; width: 100%; max-width: 380px; }
+.login-box h2 { color: var(--green); font-size: 22px; margin-bottom: 4px; }
+.login-box p { color: var(--gray-500); font-size: 13px; margin-bottom: 20px; }
+.login-box label { font-size: 13px; font-weight: 600; color: var(--gray-600); display: block; margin-top: 12px; }
+.login-box input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; margin-top: 4px; }
+.login-box .btn { width: 100%; margin-top: 16px; padding: 12px; font-size: 15px; }
+.login-error { color: var(--red); font-size: 13px; margin-top: 8px; text-align: center; }
+
+/* Toast */
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--green); color: white; padding: 10px 20px; border-radius: 10px; font-size: 14px; z-index: 1000; display: none; }
+
+/* Script */
+.script-box { background: var(--light-green); border-left: 4px solid var(--green); padding: 16px; margin: 12px 16px; border-radius: 0 10px 10px 0; font-size: 14px; line-height: 1.6; }
+.script-box strong { color: var(--green); }
+.script-toggle { padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--green); cursor: pointer; }
+
+/* Empty state */
+.empty { text-align: center; padding: 60px 20px; color: var(--gray-400); }
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .filter-bar { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================
+// SUPABASE (same backend as CrewFinder)
+// ============================================
+const SUPABASE_URL = 'https://mhatwlmbwikvrlcgfojt.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNDUzMTQsImV4cCI6MjA4NjkyMTMxNH0.8LefO4aYzYGfmsUb4blBEBLjIoF4CtYJ7xfimdc7lBE';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ============================================
+// STATE
+// ============================================
+const state = {
+  screen: 'login', // login, main
+  tab: 'queue',    // queue, log, stats, script
+  caller: null,    // { id, name, email, assigned_states }
+  queue: [],       // companies to call
+  callLog: [],     // completed calls
+  stateFilter: '',
+  searchQuery: '',
+  expandedCard: null,
+  selectedOutcome: null,
+};
+
+// ============================================
+// INIT
+// ============================================
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    await loadCallerProfile(session.user);
+  } else {
+    render();
+  }
+}
+
+async function loadCallerProfile(user) {
+  // Check if user has a caller profile
+  const { data: profile } = await db.from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+  
+  if (profile && profile.user_type === 'caller') {
+    state.caller = {
+      id: user.id,
+      name: profile.name,
+      email: user.email,
+      assigned_states: profile.assigned_states ? profile.assigned_states.split(',') : [],
+    };
+    state.screen = 'main';
+    await loadQueue();
+    await loadCallLog();
+  } else if (profile) {
+    // Regular user — check if admin
+    state.caller = {
+      id: user.id,
+      name: profile.name || user.email,
+      email: user.email,
+      assigned_states: [], // admin sees all
+      isAdmin: user.email === 'masstp01@gmail.com',
+    };
+    state.screen = 'main';
+    await loadQueue();
+    await loadCallLog();
+  }
+  render();
+}
+
+// ============================================
+// DATA LOADING
+// ============================================
+async function loadQueue() {
+  let query = db.from('unclaimed_businesses')
+    .select('id, company_name, phone, location_text, zip_code, claim_code, company_description')
+    .eq('claimed', false)
+    .not('phone', 'is', null)
+    .neq('phone', '')
+    .order('company_name')
+    .limit(500);
+  
+  if (state.stateFilter) {
+    query = query.ilike('location_text', `%${state.stateFilter}%`);
+  }
+
+  const { data } = await query;
+  
+  // Filter out already-called companies
+  const calledIds = new Set(state.callLog.map(l => l.company_id));
+  state.queue = (data || []).filter(c => !calledIds.has(c.id));
+}
+
+async function loadCallLog() {
+  let query = db.from('call_log')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(500);
+  
+  // Non-admin callers only see their own calls
+  if (state.caller && !state.caller.isAdmin) {
+    query = query.eq('caller_id', state.caller.id);
+  }
+  
+  const { data } = await query;
+  state.callLog = data || [];
+}
+
+// ============================================
+// ACTIONS
+// ============================================
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error');
+  
+  if (!email || !password) { errorEl.textContent = 'Enter email and password'; return; }
+  
+  const { data, error } = await db.auth.signInWithPassword({ email, password });
+  if (error) { errorEl.textContent = error.message; return; }
+  
+  await loadCallerProfile(data.user);
+}
+
+async function logCall(companyId) {
+  const form = document.getElementById(`form-${companyId}`);
+  const outcome = state.selectedOutcome;
+  const contactName = document.getElementById(`contact-${companyId}`)?.value?.trim() || '';
+  const notes = document.getElementById(`notes-${companyId}`)?.value?.trim() || '';
+  const followUp = document.getElementById(`followup-${companyId}`)?.value || '';
+  
+  if (!outcome) { showToast('Select an outcome'); return; }
+  
+  const company = state.queue.find(c => c.id === companyId);
+  if (!company) return;
+  
+  const entry = {
+    caller_id: state.caller.id,
+    caller_name: state.caller.name,
+    company_id: companyId,
+    company_name: company.company_name,
+    company_phone: company.phone,
+    company_location: company.location_text,
+    claim_code: company.claim_code,
+    contact_name: contactName,
+    outcome: outcome,
+    notes: notes,
+    follow_up_date: followUp || null,
+  };
+  
+  const { error } = await db.from('call_log').insert(entry);
+  if (error) {
+    // Table might not exist yet — create it
+    showToast('Logging call...');
+    console.log('Call log error:', error);
+  }
+  
+  // Update local state
+  state.callLog.unshift({ ...entry, created_at: new Date().toISOString() });
+  state.queue = state.queue.filter(c => c.id !== companyId);
+  state.expandedCard = null;
+  state.selectedOutcome = null;
+  
+  showToast(`✅ Logged: ${company.company_name} — ${outcome}`);
+  render();
+}
+
+async function skipCompany(companyId) {
+  state.queue = state.queue.filter(c => c.id !== companyId);
+  state.expandedCard = null;
+  render();
+}
+
+function toggleCard(id) {
+  state.expandedCard = state.expandedCard === id ? null : id;
+  state.selectedOutcome = null;
+  render();
+}
+
+function selectOutcome(outcome) {
+  state.selectedOutcome = outcome;
+  // Re-render just the pills
+  document.querySelectorAll('.pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.outcome === outcome);
+  });
+}
+
+async function filterByState(st) {
+  state.stateFilter = st;
+  await loadQueue();
+  render();
+}
+
+async function handleSearch(q) {
+  state.searchQuery = q.toLowerCase();
+  render();
+}
+
+async function logout() {
+  await db.auth.signOut();
+  state.screen = 'login';
+  state.caller = null;
+  render();
+}
+
+// ============================================
+// RENDER
+// ============================================
+function render() {
+  const app = document.getElementById('app');
+  if (state.screen === 'login') {
+    app.innerHTML = renderLogin();
+  } else {
+    app.innerHTML = renderMain();
+  }
+}
+
+function renderLogin() {
+  return `
+    <div class="login-screen">
+      <div class="login-box">
+        <h2>🌲 CrewFinder</h2>
+        <p>Caller Portal — Log in to start calling</p>
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@email.com">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="Password" onkeydown="if(event.key==='Enter')handleLogin()">
+        <div class="login-error" id="login-error"></div>
+        <button class="btn btn-call" onclick="handleLogin()">Log In</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderMain() {
+  const todayCalls = state.callLog.filter(l => {
+    const d = new Date(l.created_at);
+    const today = new Date();
+    return d.toDateString() === today.toDateString() && l.caller_id === state.caller?.id;
+  });
+  const todaySignups = todayCalls.filter(l => l.outcome === 'Signed Up').length;
+  
+  return `
+    <div class="header">
+      <div>
+        <h1>🌲 CrewFinder Caller</h1>
+        <div class="header-sub">${state.caller?.name || 'Caller'}</div>
+      </div>
+      <div class="header-right">
+        <div class="header-stat">
+          <div class="header-stat-num">${todayCalls.length}</div>
+          <div class="header-stat-label">Today</div>
+        </div>
+        <div class="header-stat">
+          <div class="header-stat-num">${todaySignups}</div>
+          <div class="header-stat-label">Signups</div>
+        </div>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:white;font-size:11px" onclick="logout()">Logout</button>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <div class="tab ${state.tab === 'queue' ? 'active' : ''}" onclick="state.tab='queue';render()">📞 Call Queue (${state.queue.length})</div>
+      <div class="tab ${state.tab === 'log' ? 'active' : ''}" onclick="state.tab='log';render()">📋 Log (${state.callLog.length})</div>
+      <div class="tab ${state.tab === 'stats' ? 'active' : ''}" onclick="state.tab='stats';render()">📊 Stats</div>
+      <div class="tab ${state.tab === 'script' ? 'active' : ''}" onclick="state.tab='script';render()">📝 Script</div>
+    </div>
+    
+    ${state.tab === 'queue' ? renderQueue() : ''}
+    ${state.tab === 'log' ? renderLog() : ''}
+    ${state.tab === 'stats' ? renderStats() : ''}
+    ${state.tab === 'script' ? renderScript() : ''}
+  `;
+}
+
+function renderQueue() {
+  let filtered = state.queue;
+  if (state.searchQuery) {
+    filtered = filtered.filter(c => 
+      (c.company_name || '').toLowerCase().includes(state.searchQuery) ||
+      (c.location_text || '').toLowerCase().includes(state.searchQuery)
+    );
+  }
+  
+  const states = [...new Set(state.queue.map(c => {
+    const m = (c.location_text || '').match(/\b([A-Z]{2})\b/);
+    return m ? m[1] : null;
+  }).filter(Boolean))].sort();
+  
+  return `
+    <div class="filter-bar">
+      <select onchange="filterByState(this.value)">
+        <option value="">All States</option>
+        ${states.map(s => `<option value="${s}" ${state.stateFilter === s ? 'selected' : ''}>${s}</option>`).join('')}
+      </select>
+      <input type="text" placeholder="Search companies..." style="flex:1" oninput="handleSearch(this.value)" value="${state.searchQuery}">
+      <span style="font-size:12px;color:var(--gray-500)">${filtered.length} remaining</span>
+    </div>
+    
+    ${filtered.length === 0 ? `
+      <div class="empty">
+        <div class="empty-icon">✅</div>
+        <p>No companies left in queue!<br>Try a different state filter or check back later.</p>
+      </div>
+    ` : ''}
+    
+    ${filtered.slice(0, 50).map(c => renderCallCard(c)).join('')}
+    
+    ${filtered.length > 50 ? `<div style="padding:20px;text-align:center;color:var(--gray-500);font-size:13px">Showing 50 of ${filtered.length} — filter by state to narrow down</div>` : ''}
+  `;
+}
+
+function renderCallCard(c) {
+  const isExpanded = state.expandedCard === c.id;
+  const outcomes = ['Signed Up', 'Interested - Follow Up', 'Left Voicemail', 'No Answer', 'Not Interested', 'Wrong Number'];
+  
+  return `
+    <div class="call-card">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div>
+          <div class="company-name">${c.company_name}</div>
+          <div class="company-detail">${c.location_text || 'Location not set'}${c.zip_code ? ' · ' + c.zip_code : ''}</div>
+          ${c.phone ? `<div class="company-detail" style="margin-top:4px">📞 <a href="tel:${c.phone}" style="color:var(--blue);text-decoration:none;font-weight:600">${c.phone}</a></div>` : '<div class="company-detail" style="color:var(--red)">⚠️ No phone number</div>'}
+        </div>
+        <span class="claim-code">${c.claim_code || 'N/A'}</span>
+      </div>
+      ${c.company_description ? `<div style="font-size:12px;color:var(--gray-500);margin-top:6px;line-height:1.4">${c.company_description.slice(0, 120)}${c.company_description.length > 120 ? '...' : ''}</div>` : ''}
+      
+      <div class="call-actions">
+        ${c.phone ? `<a href="tel:${c.phone}" class="btn btn-call">📞 Call Now</a>` : ''}
+        <button class="btn btn-outcome" onclick="toggleCard('${c.id}')">${isExpanded ? '✕ Cancel' : '📝 Log Outcome'}</button>
+        <button class="btn btn-outcome btn-sm" onclick="skipCompany('${c.id}')">Skip →</button>
+      </div>
+      
+      <div class="log-form ${isExpanded ? 'open' : ''}" id="form-${c.id}">
+        <label>Outcome</label>
+        <div class="outcome-pills">
+          ${outcomes.map(o => `<div class="pill ${state.selectedOutcome === o ? 'active' : ''}" data-outcome="${o}" onclick="selectOutcome('${o}')">${o}</div>`).join('')}
+        </div>
+        <label>Contact Name</label>
+        <input type="text" id="contact-${c.id}" placeholder="Who did you speak to?">
+        <label>Notes</label>
+        <textarea id="notes-${c.id}" placeholder="What happened? Any details..."></textarea>
+        <label>Follow-Up Date</label>
+        <input type="date" id="followup-${c.id}">
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-call" style="flex:1" onclick="logCall('${c.id}')">✅ Save & Next</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderLog() {
+  const outcomeClass = {
+    'Signed Up': 'outcome-signup',
+    'Interested - Follow Up': 'outcome-interested',
+    'Left Voicemail': 'outcome-voicemail',
+    'No Answer': 'outcome-noanswer',
+    'Not Interested': 'outcome-notinterested',
+    'Wrong Number': 'outcome-noanswer',
+  };
+  
+  return `
+    <div style="padding:16px 16px 8px;font-size:13px;color:var(--gray-500)">${state.callLog.length} calls logged</div>
+    ${state.callLog.length === 0 ? `
+      <div class="empty">
+        <div class="empty-icon">📋</div>
+        <p>No calls logged yet.<br>Start calling from the queue!</p>
+      </div>
+    ` : ''}
+    ${state.callLog.map(l => `
+      <div class="log-entry">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="log-company">${l.company_name}</div>
+          <span class="log-outcome ${outcomeClass[l.outcome] || ''}">${l.outcome}</span>
+        </div>
+        <div class="log-meta">
+          ${l.company_location || ''} · ${l.company_phone || ''}
+          ${l.contact_name ? ' · Spoke to: ' + l.contact_name : ''}
+          ${l.caller_name && state.caller?.isAdmin ? ' · Caller: ' + l.caller_name : ''}
+        </div>
+        ${l.notes ? `<div style="font-size:12px;color:var(--gray-600);margin-top:4px;background:var(--gray-100);padding:6px 10px;border-radius:6px">${l.notes}</div>` : ''}
+        <div class="log-meta" style="margin-top:4px">${new Date(l.created_at).toLocaleString()}</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderStats() {
+  const myCalls = state.caller?.isAdmin 
+    ? state.callLog 
+    : state.callLog.filter(l => l.caller_id === state.caller?.id);
+  
+  const total = myCalls.length;
+  const signups = myCalls.filter(l => l.outcome === 'Signed Up').length;
+  const interested = myCalls.filter(l => l.outcome === 'Interested - Follow Up').length;
+  const voicemails = myCalls.filter(l => l.outcome === 'Left Voicemail').length;
+  const noAnswer = myCalls.filter(l => l.outcome === 'No Answer').length;
+  const notInterested = myCalls.filter(l => l.outcome === 'Not Interested').length;
+  const convRate = total > 0 ? ((signups / total) * 100).toFixed(1) : '0.0';
+  
+  // Today's calls
+  const today = new Date().toDateString();
+  const todayCalls = myCalls.filter(l => new Date(l.created_at).toDateString() === today);
+  const todaySignups = todayCalls.filter(l => l.outcome === 'Signed Up').length;
+  
+  // By state
+  const byState = {};
+  myCalls.forEach(l => {
+    const m = (l.company_location || '').match(/\b([A-Z]{2})\b/);
+    const st = m ? m[1] : 'Unknown';
+    if (!byState[st]) byState[st] = { calls: 0, signups: 0 };
+    byState[st].calls++;
+    if (l.outcome === 'Signed Up') byState[st].signups++;
+  });
+  
+  // If admin, show per-caller breakdown
+  const callerStats = {};
+  if (state.caller?.isAdmin) {
+    state.callLog.forEach(l => {
+      const name = l.caller_name || 'Unknown';
+      if (!callerStats[name]) callerStats[name] = { calls: 0, signups: 0 };
+      callerStats[name].calls++;
+      if (l.outcome === 'Signed Up') callerStats[name].signups++;
+    });
+  }
+  
+  return `
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num">${todayCalls.length}</div>
+        <div class="stat-label">Calls Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">${todaySignups}</div>
+        <div class="stat-label">Signups Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">${total}</div>
+        <div class="stat-label">Total Calls</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" style="color:${parseFloat(convRate) >= 5 ? 'var(--green)' : 'var(--orange)'}">${convRate}%</div>
+        <div class="stat-label">Conversion</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">${signups}</div>
+        <div class="stat-label">Total Signups</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">${interested}</div>
+        <div class="stat-label">Follow-Ups</div>
+      </div>
+    </div>
+    
+    <div style="padding:0 16px 16px">
+      <h3 style="font-size:15px;margin-bottom:10px">By Outcome</h3>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${[
+          ['✅ Signed Up', signups, '#DCFCE7', '#166534'],
+          ['🔄 Interested', interested, '#FEF3C7', '#92400E'],
+          ['📞 Voicemail', voicemails, '#DBEAFE', '#1E40AF'],
+          ['⬜ No Answer', noAnswer, '#F5F5F5', '#757575'],
+          ['❌ Not Interested', notInterested, '#FEE2E2', '#991B1B'],
+        ].map(([label, count, bg, color]) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:${bg};border-radius:6px">
+            <span style="font-size:13px;color:${color}">${label}</span>
+            <span style="font-weight:700;color:${color}">${count}</span>
+          </div>
+        `).join('')}
+      </div>
+      
+      ${Object.keys(byState).length > 0 ? `
+        <h3 style="font-size:15px;margin:20px 0 10px">By State</h3>
+        ${Object.entries(byState).sort((a,b) => b[1].calls - a[1].calls).map(([st, data]) => `
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gray-100);font-size:13px">
+            <span style="font-weight:600">${st}</span>
+            <span>${data.calls} calls · ${data.signups} signups · ${data.calls > 0 ? ((data.signups/data.calls)*100).toFixed(0) : 0}%</span>
+          </div>
+        `).join('')}
+      ` : ''}
+      
+      ${state.caller?.isAdmin && Object.keys(callerStats).length > 0 ? `
+        <h3 style="font-size:15px;margin:20px 0 10px">By Caller</h3>
+        ${Object.entries(callerStats).sort((a,b) => b[1].calls - a[1].calls).map(([name, data]) => `
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:13px">
+            <span style="font-weight:600">${name}</span>
+            <span>${data.calls} calls · ${data.signups} signups · ${data.calls > 0 ? ((data.signups/data.calls)*100).toFixed(0) : 0}%</span>
+          </div>
+        `).join('')}
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderScript() {
+  return `
+    <div style="padding:16px">
+      <h3 style="font-size:16px;margin-bottom:12px;color:var(--green)">📞 Call Script</h3>
+      
+      <div class="script-box">
+        <strong>Opening:</strong><br>
+        "Hi, this is <em>[YOUR NAME]</em> calling from CrewFinder — we're a free platform that helps tree service companies find climbers and ground crew when they need them. Is this the owner or manager?"
+      </div>
+      
+      <div class="script-box" style="margin-top:8px">
+        <strong>If yes:</strong><br>
+        "Great — I'm reaching out because <em>[COMPANY NAME]</em> already has a profile page on our platform. I wanted to let you know so you can claim it for free and start getting matched with skilled workers in your area. It takes about 2 minutes."
+      </div>
+      
+      <div class="script-box" style="margin-top:8px">
+        <strong>If gatekeeper:</strong><br>
+        "No worries — could I get the best email to send them the info? We have a free profile set up for <em>[COMPANY NAME]</em> that they can claim."
+      </div>
+      
+      <h3 style="font-size:15px;margin:20px 0 10px;color:var(--green)">Objection Handling</h3>
+      
+      <div class="script-box">
+        <strong>"What is this exactly?"</strong><br>
+        "CrewFinder is like an Indeed but specifically for the tree care industry. Companies post when they need a climber or ground guy, and workers in the area get notified. It's free to sign up."
+      </div>
+      
+      <div class="script-box" style="margin-top:8px">
+        <strong>"We're not hiring right now"</strong><br>
+        "Totally understand — most companies use it for those last-minute situations. A climber calls out sick on Monday morning, you need a sub by 7 AM. That's when CrewFinder saves the day."
+      </div>
+      
+      <div class="script-box" style="margin-top:8px">
+        <strong>"How much does it cost?"</strong><br>
+        "It's completely free right now. We're building up the network in <em>[STATE]</em> so there's no charge to sign up or claim your page."
+      </div>
+      
+      <div class="script-box" style="margin-top:8px">
+        <strong>"Send me an email"</strong><br>
+        "Absolutely — what's the best email? I'll send over a direct link to your company page."
+      </div>
+      
+      <div class="script-box" style="margin-top:8px">
+        <strong>"Not interested"</strong><br>
+        "No problem at all. If things change, your page will be there at crewfinder.pages.dev. Have a great day."
+      </div>
+      
+      <h3 style="font-size:15px;margin:20px 0 10px;color:var(--green)">🎙️ Voicemail Script</h3>
+      
+      <div class="script-box">
+        "Hi, this is <em>[NAME]</em> from CrewFinder. We have a free company profile set up for <em>[COMPANY NAME]</em> on our platform — it's a network for finding tree climbers and ground crew. Visit crewfinder.pages.dev to claim your page. Thanks!"
+      </div>
+      
+      <h3 style="font-size:15px;margin:20px 0 10px;color:var(--green)">✅ Signup Walkthrough</h3>
+      
+      <div class="script-box">
+        "Just go to <strong>crewfinder.pages.dev</strong> on your phone or computer. Click <strong>'I'm a Business'</strong>, put in your name and company name — when you type <em>[COMPANY NAME]</em> it should pop right up. Tap it to claim it. Your claim code is <strong>[CODE]</strong>. That's it — you're set up!"
+      </div>
+    </div>
+  `;
+}
+
+// ============================================
+// TOAST
+// ============================================
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// ============================================
+// BOOT
+// ============================================
+init();
+</script>
+</body>
+</html>
