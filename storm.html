@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>CrewFinder — Storm & Sub Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Outfit', -apple-system, sans-serif; background: #E8E8E8; display: flex; justify-content: center; min-height: 100vh; }
+  #app { width: 100%; max-width: 430px; min-height: 100vh; background: #F7FAF7; display: flex; flex-direction: column; }
+  @media (min-width: 431px) { body { padding: 20px; align-items: center; } #app { min-height: 85vh; max-height: 90vh; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; } }
+  .header { background: #fff; padding: 12px 16px; border-bottom: 1px solid #E8E8E8; display: flex; justify-content: space-between; align-items: center; }
+  .header-logo { display: flex; align-items: center; gap: 8px; }
+  .header-logo svg { width: 28px; height: 28px; }
+  .header-logo span { font-weight: 800; font-size: 18px; color: #1A3C2A; }
+  .header-back { background: none; border: 1px solid #DDD; border-radius: 8px; padding: 5px 12px; font-size: 11px; color: #888; cursor: pointer; font-family: inherit; }
+  .content { flex: 1; overflow-y: auto; padding: 16px; }
+
+  .alert-banner { background: linear-gradient(135deg, #FFF3E0, #FFECB3); border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; border: 1px solid #FFE0B2; display: flex; align-items: center; gap: 8px; }
+  .alert-icon { font-size: 20px; }
+  .alert-title { font-weight: 700; font-size: 13px; color: #E65100; }
+  .alert-desc { font-size: 12px; color: #BF360C; }
+
+  .filters { display: flex; gap: 6px; margin-bottom: 14px; }
+  .filter-pill { padding: 7px 14px; border-radius: 20px; border: none; background: #E8EDE9; color: #5A6B5E; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .filter-pill.active { background: #2D7A3A; color: #fff; }
+
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .section-title { font-size: 16px; font-weight: 700; color: #1A3C2A; }
+  .count-badge { display: inline-flex; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; color: #2D7A3A; background: rgba(45,122,58,0.1); margin-left: 8px; }
+  .btn-post-new { background: #E65100; color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+
+  .card { background: #fff; border-radius: 14px; border: 1px solid #E2E8E4; padding: 14px 16px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .card.emergency { border-left: 4px solid #D32F2F; border-color: rgba(211,47,47,0.3); box-shadow: 0 2px 12px rgba(211,47,47,0.1); }
+  .badges { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+  .badge { display: inline-flex; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge-emergency { color: #D32F2F; background: #FFEBEE; }
+  .badge-urgent { color: #E65100; background: #FFF3E0; }
+  .badge-normal { color: #5A6B5E; background: #E8EDE9; }
+  .badge-storm-need { color: #D32F2F; background: #FFEBEE; }
+  .badge-storm-avail { color: #1565C0; background: #E3F2FD; }
+  .badge-sub-need { color: #E65100; background: #FFF3E0; }
+  .badge-sub-avail { color: #2E7D32; background: #E8F5E9; }
+  .badge-equip { color: #5A6B5E; background: #E8EDE9; }
+
+  .card-title { font-weight: 700; font-size: 15px; color: #1A3C2A; margin-bottom: 6px; }
+  .card-poster { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 12px; color: #8A9B8E; }
+  .card-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .card-meta span { display: flex; align-items: center; gap: 3px; font-size: 12px; color: #8A9B8E; }
+  .card-equip { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+  .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid #E2E8E4; }
+  .card-pay { font-weight: 700; font-size: 13px; color: #2D7A3A; }
+  .card-footer-right { display: flex; align-items: center; gap: 12px; }
+  .card-responses { font-size: 12px; color: #8A9B8E; }
+  .btn-respond { background: #2D7A3A; color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: #1A3C2A; margin-bottom: 6px; }
+  .form-input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #E2E8E4; font-size: 14px; font-family: inherit; background: #fff; outline: none; }
+  .form-input:focus { border-color: #2D7A3A; }
+  .form-select { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #E2E8E4; font-size: 14px; font-family: inherit; background: #fff; }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+  .btn-primary { width: 100%; padding: 14px; border-radius: 12px; background: #2D7A3A; color: #fff; border: none; font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .detail-back { background: none; border: none; color: #2D7A3A; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; padding: 0; margin-bottom: 12px; }
+
+  .empty { text-align: center; padding: 32px 16px; color: #8A9B8E; }
+  .loading { text-align: center; padding: 32px; color: #8A9B8E; }
+  .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #E2E8E4; border-top-color: #2D7A3A; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .bottom-nav { background: #fff; border-top: 1px solid #E8E8E8; display: flex; padding: 6px 8px 10px; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; background: none; border: none; cursor: pointer; color: #8A9B8E; font-family: inherit; padding: 6px 0; text-decoration: none; }
+  .nav-item.active { color: #2D7A3A; }
+  .nav-item span { font-size: 10px; font-weight: 500; }
+  .nav-item.active span { font-weight: 700; }
+  .nav-dot { width: 4px; height: 4px; border-radius: 50%; background: #2D7A3A; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-logo">
+      <svg viewBox="0 0 100 100" fill="none"><path d="M50 8 L30 40 L38 40 L22 65 L32 65 L18 90 L82 90 L68 65 L78 65 L62 40 L70 40 Z" fill="#2D7A3A" opacity="0.9"/><rect x="44" y="85" width="12" height="15" rx="2" fill="#5D4037"/></svg>
+      <span>CrewFinder</span>
+    </div>
+    <button class="header-back" onclick="window.location.href='app.html'">← App</button>
+  </div>
+  <div class="content" id="content"><div class="loading"><div class="spinner"></div><div style="margin-top:8px">Loading board...</div></div></div>
+  <div class="bottom-nav">
+    <a href="app.html" class="nav-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span>Jobs</span></a>
+    <a href="calendar.html" class="nav-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Calendar</span></a>
+    <a href="equipment.html" class="nav-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg><span>Gear</span></a>
+    <a href="storm.html" class="nav-item active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"/><polyline points="13 11 9 17 15 17 11 23"/></svg><span>Storm</span><div class="nav-dot"></div></a>
+    <a href="news.html" class="nav-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg><span>News</span></a>
+  </div>
+</div>
+<script>
+const SUPABASE_URL = 'https://mhatwlmbwikvrlcgfojt.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgxMDQ4ODYsImV4cCI6MjA1MzY4MDg4Nn0.CHiaEB4vg1qCCpnOb4cOYGP6O_-TE_0Iu21VDnORfCE';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const content = document.getElementById('content');
+let filter = 'all';
+let posts = [];
+
+const TYPE_LABELS = { storm_need: '🌧️ Need Crew', storm_available: '⚡ Available', subcontract_need: '🤝 Need Sub', subcontract_available: '💪 Sub Available' };
+const TYPE_CLASSES = { storm_need: 'badge-storm-need', storm_available: 'badge-storm-avail', subcontract_need: 'badge-sub-need', subcontract_available: 'badge-sub-avail' };
+const URG_CLASSES = { emergency: 'badge-emergency', urgent: 'badge-urgent', normal: 'badge-normal' };
+const URG_LABELS = { emergency: '🔴 EMERGENCY', urgent: '🟠 URGENT', normal: 'Normal' };
+
+function timeAgo(d) { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (m < 60) return m + 'm ago'; const h = Math.floor(m/60); if (h < 24) return h + 'h ago'; return Math.floor(h/24) + 'd ago'; }
+
+async function loadPosts() {
+  let q = sb.from('storm_board').select('*').eq('is_active', true).order('created_at', { ascending: false });
+  if (filter === 'storm') q = q.in('post_type', ['storm_need', 'storm_available']);
+  else if (filter === 'sub') q = q.in('post_type', ['subcontract_need', 'subcontract_available']);
+  const { data, error } = await q;
+  posts = data || [];
+  renderBoard();
+}
+
+function renderBoard() {
+  const hasEmergency = posts.some(p => p.urgency === 'emergency');
+  content.innerHTML = `
+    ${hasEmergency ? `<div class="alert-banner"><span class="alert-icon">⚠️</span><div><div class="alert-title">Active Emergency Posts</div><div class="alert-desc">Crews needed urgently — respond if you can help</div></div></div>` : ''}
+    <div class="filters">
+      <button class="filter-pill ${filter === 'all' ? 'active' : ''}" onclick="setFilter('all')">All Posts</button>
+      <button class="filter-pill ${filter === 'storm' ? 'active' : ''}" onclick="setFilter('storm')">⛈️ Storm</button>
+      <button class="filter-pill ${filter === 'sub' ? 'active' : ''}" onclick="setFilter('sub')">🤝 Subcontract</button>
+    </div>
+    <div class="section-header">
+      <div><span class="section-title">Active Posts</span><span class="count-badge">${posts.length}</span></div>
+      <button class="btn-post-new" onclick="showPostForm()">+ Post</button>
+    </div>
+    ${posts.length === 0 ? `<div class="empty"><div style="font-size:32px;margin-bottom:8px">⛈️</div><div style="font-weight:600;color:#5A6B5E">No active posts</div><div style="font-size:13px;margin-top:4px">Post a storm need or sub request</div></div>` :
+    posts.map(p => `
+      <div class="card ${p.urgency === 'emergency' ? 'emergency' : ''}">
+        <div class="badges">
+          <span class="badge ${URG_CLASSES[p.urgency]}">${URG_LABELS[p.urgency]}</span>
+          <span class="badge ${TYPE_CLASSES[p.post_type]}">${TYPE_LABELS[p.post_type]}</span>
+        </div>
+        <div class="card-title">${p.title}</div>
+        <div class="card-poster"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${p.poster_name}</div>
+        <div class="card-meta">
+          <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${p.location}</span>
+          ${p.start_date ? `<span>📅 ${new Date(p.start_date + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'})}${p.end_date ? ' - ' + new Date(p.end_date + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'}) : ''}</span>` : ''}
+          ${p.crew_needed ? `<span>👥 ${p.crew_needed} needed</span>` : ''}
+        </div>
+        ${p.equipment_needed && p.equipment_needed.length ? `<div class="card-equip">${p.equipment_needed.map(eq => `<span class="badge badge-equip">${eq}</span>`).join('')}</div>` : ''}
+        ${p.description ? `<div style="font-size:13px;color:#5A6B5E;margin-bottom:8px;line-height:1.5">${p.description.substring(0, 150)}${p.description.length > 150 ? '...' : ''}</div>` : ''}
+        <div class="card-footer">
+          <span class="card-pay">${p.pay_rate || 'Contact for rates'}</span>
+          <div class="card-footer-right">
+            <span class="card-responses">${p.responses_count || 0} responses</span>
+            <button class="btn-respond" onclick="respondToPost('${p.id}')">Respond</button>
+          </div>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function showPostForm() {
+  content.innerHTML = `
+    <button class="detail-back" onclick="loadPosts()">← Back to board</button>
+    <div style="font-size:20px;font-weight:800;color:#1A3C2A;margin-bottom:16px">Post to Storm/Sub Board</div>
+    <form id="stormForm" onsubmit="submitPost(event)">
+      <div class="form-group"><label class="form-label">Post Type *</label>
+        <select class="form-select" name="post_type"><option value="storm_need">🌧️ Storm — Need Crew</option><option value="storm_available">⚡ Storm — I'm Available</option><option value="subcontract_need">🤝 Need Subcontractor</option><option value="subcontract_available">💪 Available to Sub</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Urgency</label>
+        <select class="form-select" name="urgency"><option value="normal">Normal</option><option value="urgent">Urgent</option><option value="emergency">Emergency</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Title *</label><input class="form-input" name="title" placeholder="Brief description of what you need/offer" required></div>
+      <div class="form-group"><label class="form-label">Description</label><textarea class="form-input form-textarea" name="description" placeholder="Details about the job, requirements, etc."></textarea></div>
+      <div class="form-group"><label class="form-label">Your Name/Company *</label><input class="form-input" name="poster_name" required></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Location *</label><input class="form-input" name="location" placeholder="City, State" required></div>
+        <div class="form-group"><label class="form-label">Crew Needed</label><input class="form-input" name="crew_needed" type="number" min="0" placeholder="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Start Date</label><input class="form-input" name="start_date" type="date"></div>
+        <div class="form-group"><label class="form-label">End Date</label><input class="form-input" name="end_date" type="date"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Pay Rate</label><input class="form-input" name="pay_rate" placeholder="e.g. $65/hr, $2500 flat, FEMA rates"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-input" name="phone" type="tel"></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" name="email" type="email"></div>
+      </div>
+      <button type="submit" class="btn-primary" style="margin-top:8px">⛈️ Post to Board</button>
+    </form>
+  `;
+}
+
+async function submitPost(e) {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(document.getElementById('stormForm')));
+  data.poster_type = 'company';
+  data.is_active = true;
+  data.responses_count = 0;
+  if (data.crew_needed) data.crew_needed = parseInt(data.crew_needed); else delete data.crew_needed;
+  if (!data.start_date) delete data.start_date;
+  if (!data.end_date) delete data.end_date;
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true; btn.textContent = 'Posting...';
+  const { error } = await sb.from('storm_board').insert([data]);
+  if (error) { alert('Error: ' + error.message); btn.disabled = false; btn.textContent = '⛈️ Post to Board'; }
+  else { alert('Posted!'); filter = 'all'; await loadPosts(); }
+}
+
+function respondToPost(id) { alert('Response feature coming soon! For now, use the contact info on the post.'); }
+function setFilter(f) { filter = f; loadPosts(); }
+
+loadPosts();
+</script>
+</body>
+</html>
