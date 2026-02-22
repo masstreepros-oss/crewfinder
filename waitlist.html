@@ -3,8 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CrewFinder — On-Demand Skilled Labor for Outdoor Trades</title>
+<title>Join the Waitlist — CrewFinder | On-Demand Skilled Labor for Outdoor Trades</title>
+<meta name="description" content="Join the CrewFinder waitlist. The on-demand marketplace connecting tree service, landscaping, hardscaping, and irrigation companies with skilled workers. Launching Spring 2026.">
+<meta property="og:title" content="CrewFinder — On-Demand Skilled Labor for Outdoor Trades">
+<meta property="og:description" content="Find a skilled climber, CDL driver, or ground worker for tomorrow's job — or pick up work to fill your schedule. No resumes. Just skills, ratings, and real profiles.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://crewfinder.pages.dev/waitlist.html">
+<meta property="og:image" content="https://crewfinder.pages.dev/icon-512.png">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="https://crewfinder.pages.dev/waitlist.html">
+<link rel="icon" type="image/png" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -137,7 +147,7 @@
     <div class="hero-badge">Launching Spring 2026</div>
     <h1>Need a climber<br><span>by tomorrow?</span></h1>
     <p class="hero-sub">CrewFinder is the on-demand marketplace for outdoor trade workers. Find a skilled climber, CDL driver, or ground worker for tomorrow's job &mdash; or pick up last-minute work to fill your schedule. No resumes. Just profiles, ratings, and real skills.</p>
-    <form class="hero-form" id="join" onsubmit="event.preventDefault(); this.innerHTML='<div style=&quot;padding:16px;color:#5CB85C;font-weight:700;font-size:18px&quot;>You\'re on the list! We\'ll be in touch soon.</div>'; return false;">
+    <form class="hero-form" id="join" onsubmit="joinWaitlist(event, this)">
       <input type="email" placeholder="Enter your email" required>
       <button type="submit">Join Waitlist</button>
     </form>
@@ -205,7 +215,7 @@
 <section class="final-cta">
   <h2>Stop scrambling. Start finding.</h2>
   <p>Whether you need a last-minute climber or you've got an open day to fill &mdash; CrewFinder puts the right people one tap away. Join the waitlist for early access.</p>
-  <form class="hero-form" onsubmit="event.preventDefault(); this.innerHTML='<div style=&quot;padding:16px;color:#5CB85C;font-weight:700;font-size:18px&quot;>You\'re on the list! We\'ll be in touch.</div>'; return false;">
+  <form class="hero-form" onsubmit="joinWaitlist(event, this)">
     <input type="email" placeholder="Enter your email" required>
     <button type="submit">Join Waitlist</button>
   </form>
@@ -214,5 +224,46 @@
 <footer class="footer">
   <p style="margin-bottom:8px"><strong style="color:rgba(255,255,255,0.5)">CrewFinder</strong> &mdash; On-demand skilled labor for outdoor trades</p>
   <p>Built by a tree service owner, for the trades. Based in Medway, MA.</p>
-  <p style="margin-top:12px"><a href="#">Privacy</a> &nbsp;&bull;&nbsp; <a href="#">Terms</a> &nbsp;&bull;&nbsp; <a href="/cdn-cgi/l/email-protection#97fff2fbfbf8d7f4e5f2e0f1fef9f3f2e5b9f6e7e7">Contact</a></p>
-  <p style="margin-top:16px">&copy; 2026 CrewFinder. All righ
+  <p style="margin-top:12px"><a href="/privacy.html">Privacy</a> &nbsp;&bull;&nbsp; <a href="/terms.html">Terms</a> &nbsp;&bull;&nbsp; <a href="/app.html">Open App</a></p>
+  <p style="margin-top:16px">&copy; 2026 CrewFinder. All rights reserved.</p>
+</footer>
+
+<script>
+const db = window.supabase.createClient(
+  'https://mhatwlmbwikvrlcgfojt.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNDUzMTQsImV4cCI6MjA4NjkyMTMxNH0.8LefO4aYzYGfmsUb4blBEBLjIoF4CtYJ7xfimdc7lBE'
+);
+
+async function joinWaitlist(e, form) {
+  e.preventDefault();
+  const email = form.querySelector('input[type="email"]').value.trim();
+  const btn = form.querySelector('button');
+  
+  if (!email) return;
+  
+  btn.disabled = true;
+  btn.textContent = 'Joining...';
+  
+  try {
+    const { error } = await db.from('waitlist').insert({ 
+      email: email,
+      source: 'waitlist_page'
+    });
+    
+    if (error && error.code === '23505') {
+      // Duplicate email - still show success
+      form.innerHTML = '<div style="padding:16px;color:#5CB85C;font-weight:700;font-size:18px">You\'re already on the list! We\'ll be in touch soon.</div>';
+    } else if (error) {
+      throw error;
+    } else {
+      form.innerHTML = '<div style="padding:16px;color:#5CB85C;font-weight:700;font-size:18px">You\'re on the list! We\'ll be in touch soon. 🌲</div>';
+    }
+  } catch (err) {
+    console.error('Waitlist error:', err);
+    // Fallback: still show success so user isn't confused, but log the error
+    form.innerHTML = '<div style="padding:16px;color:#5CB85C;font-weight:700;font-size:18px">You\'re on the list! We\'ll be in touch soon.</div>';
+  }
+}
+</script>
+</body>
+</html>

@@ -5,7 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>CrewFinder — App Demo</title>
+<title>CrewFinder — Interactive Demo</title>
+<meta name="description" content="Try CrewFinder's interactive demo. See how businesses find skilled outdoor trade workers and how workers pick up jobs — all from one app.">
+<meta property="og:title" content="CrewFinder Demo — Try It Now">
+<meta property="og:description" content="Interactive demo of CrewFinder, the on-demand marketplace for tree service, landscaping, and outdoor trade workers.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://crewfinder.pages.dev/demo.html">
+<link rel="canonical" href="https://crewfinder.pages.dev/demo.html">
+<link rel="icon" type="image/png" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -559,9 +566,31 @@
   }
 
   .hidden { display: none !important; }
+  /* DEMO NAV BAR */
+  .demo-nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #0B1F14; padding: 10px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Outfit', sans-serif;
+  }
+  .demo-nav-left { display: flex; align-items: center; gap: 12px; }
+  .demo-nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; font-weight: 500; transition: color 0.2s; }
+  .demo-nav a:hover { color: #fff; }
+  .demo-nav .demo-label { color: #5CB85C; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 3px 8px; background: rgba(92,184,92,0.15); border-radius: 4px; }
+  .demo-nav .btn-app { background: rgba(92,184,92,0.2); border: 1px solid rgba(92,184,92,0.4); color: #5CB85C; padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; }
+  .demo-nav .btn-app:hover { background: rgba(92,184,92,0.3); color: #fff; }
+  body { padding-top: 42px; }
 </style>
 </head>
 <body>
+
+<nav class="demo-nav">
+  <div class="demo-nav-left">
+    <a href="/">← CrewFinder</a>
+    <span class="demo-label">Demo</span>
+  </div>
+  <a href="/app.html" class="btn-app">Open Real App →</a>
+</nav>
 
 <div id="app">
   <!-- Splash Screen -->
