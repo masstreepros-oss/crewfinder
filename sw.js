@@ -1,4 +1,4 @@
-const CACHE_NAME = 'crewfinder-v1';
+const CACHE_NAME = 'crewfinder-v2';
 const OFFLINE_URL = '/app.html';
 
 // Install - cache the app shell

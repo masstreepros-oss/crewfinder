@@ -1360,7 +1360,7 @@ async function loadSplashCompanies() {
     `;
   } catch(e) {
     // Silently fail - this is just social proof, not critical
-    console.log('Could not load splash companies:', e);
+    void 0;
   }
 }
 
@@ -1739,7 +1739,7 @@ async function handleNextStep(btn) {
   try {
     await nextProfileStep();
   } catch (e) {
-    console.error('Step error:', e);
+    void 0;
     // Force advance anyway
     state.profileStep++;
     render();
@@ -2339,7 +2339,7 @@ async function viewJobDetail(jobId) {
       ...r,
       worker_profile: r.worker_profile,
     }));
-  } catch(e) { console.error('Error loading responses:', e); }
+  } catch(e) { void 0; }
   
   render();
 }
@@ -3169,7 +3169,7 @@ async function submitRating(userId) {
           await db.from('profiles').update({ biz_rating_avg: avg, biz_rating_count: count }).eq('id', userId);
         }
       }
-    } catch(e) { console.error('Error updating rating avg:', e); }
+    } catch(e) { void 0; }
     
     // Refresh the view
     if (state.viewingCompany) {
@@ -3179,7 +3179,7 @@ async function submitRating(userId) {
     }
     
   } catch (e) {
-    console.error('Review error:', e);
+    void 0;
     if (e.message?.includes('unique') || e.code === '23505') {
       showToast("You've already reviewed this person");
     } else {
@@ -3286,7 +3286,7 @@ async function loadCrewRoster() {
     
     state.crewRoster = crewData;
   } catch(e) {
-    console.error('Error loading crew:', e);
+    void 0;
     state.crewRoster = [];
   }
 }
@@ -3503,7 +3503,7 @@ async function loadMyPhotos() {
       }
     }
   } catch (e) {
-    console.error('Error loading photos:', e);
+    void 0;
     const grid = document.getElementById('my-photos-grid');
     if (grid) grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet</div>';
   }
@@ -3788,7 +3788,7 @@ async function handlePostJob(btn) {
     render();
     
   } catch (e) {
-    console.error('Post job error:', e);
+    void 0;
     showToast('Error posting: ' + (e.message || 'Try again'));
     btn.disabled = false;
     btn.textContent = 'Post Job';
@@ -4034,7 +4034,7 @@ async function loadConversations() {
     };
   });
   } catch(e) {
-    console.error('loadConversations error:', e);
+    void 0;
     state.conversations = [];
   }
 }
@@ -4115,7 +4115,7 @@ async function searchCompanySignup(query) {
       `).join('');
       resultsDiv.style.display = 'block';
     } catch(e) {
-      console.log('Company search error:', e);
+      void 0;
       resultsDiv.style.display = 'none';
     }
   }, 300);
@@ -4299,7 +4299,7 @@ async function handleSignup() {
           }
         } catch(e) {
           // Auto-match failed silently — not critical, they just get a fresh profile
-          console.log('Auto-match check:', e.message);
+          void 0;
         }
       }
     }
@@ -4470,7 +4470,7 @@ async function nextProfileStep() {
         zip_code: zip || null,
         bio: bio 
       }).eq('id', state.user.id);
-      if (error) console.error('Step 1 save error:', error);
+      if (error) void 0;
       state.profile.name = name;
       state.profile.location_text = location;
       state.profile.zip_code = zip;
@@ -4487,7 +4487,7 @@ async function nextProfileStep() {
       }));
       await db.from('worker_skills').delete().eq('worker_id', state.user.id);
       const { error } = await db.from('worker_skills').insert(skills);
-      if (error) console.error('Step 2 save error:', error);
+      if (error) void 0;
       
     } else if (isWorker && state.profileStep === 3) {
       const minEl = document.getElementById('pay-min');
@@ -4496,13 +4496,13 @@ async function nextProfileStep() {
       const max = parseInt(maxEl ? maxEl.value : 35) * 100;
       const payType = state.profile.pay_type || 'hourly';
       const { error } = await db.from('profiles').update({ pay_min: min, pay_max: max, pay_type: payType }).eq('id', state.user.id);
-      if (error) console.error('Step 3 save error:', error);
+      if (error) void 0;
       state.profile.pay_min = min;
       state.profile.pay_max = max;
       
     } else if (isWorker && state.profileStep === 4) {
       const { error } = await db.from('profiles').update({ availability: state.profile.availability }).eq('id', state.user.id);
-      if (error) console.error('Step 4 save error:', error);
+      if (error) void 0;
       try {
         const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
         state.workPhotos = photos || [];
@@ -4517,7 +4517,7 @@ async function nextProfileStep() {
         const { error } = await db.from('profiles').update({ 
           insurance_expiry: expiry || null 
         }).eq('id', state.user.id);
-        if (error) console.error('Step 6 save error:', error);
+        if (error) void 0;
         state.profile.insurance_expiry = expiry;
       }
     }
@@ -4538,7 +4538,7 @@ async function nextProfileStep() {
         company_description: desc,
         phone: phone,
       }).eq('id', state.user.id);
-      if (error) console.error('Biz save error:', error);
+      if (error) void 0;
       state.profile.company_name = companyName;
       state.profile.location_text = location;
       state.profile.zip_code = zip;
@@ -4546,12 +4546,12 @@ async function nextProfileStep() {
       state.profile.phone = phone;
     }
   } catch (e) {
-    console.error('Profile step error:', e);
+    void 0;
     // Still advance even if save failed
   }
   
   if (state.profileStep >= totalSteps) {
-    try { await loadData(); } catch (e) { console.error('loadData error:', e); }
+    try { await loadData(); } catch (e) { void 0; }
     state.activeTab = isWorker ? 'feed' : 'search';
     state.currentScreen = 'main';
     showToast('Profile set up! You\'re ready to go.');
@@ -4607,7 +4607,7 @@ async function uploadAvatar(input) {
     if (preview) preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
     
   } catch (e) {
-    console.error('Avatar upload error:', e);
+    void 0;
     if (status) status.textContent = 'Upload failed — try again';
     showToast('Photo upload failed: ' + (e.message || 'Unknown error'));
   }
@@ -4647,7 +4647,7 @@ async function uploadWorkPhoto(input) {
     render();
     
   } catch (e) {
-    console.error('Work photo upload error:', e);
+    void 0;
     if (status) status.textContent = 'Upload failed — try again';
     showToast('Photo upload failed: ' + (e.message || 'Unknown error'));
   }
@@ -4701,7 +4701,7 @@ async function uploadInsurance(input) {
     render();
     
   } catch (e) {
-    console.error('Insurance upload error:', e);
+    void 0;
     if (status) status.textContent = 'Upload failed — try again';
     showToast('Upload failed: ' + (e.message || 'Unknown error'));
   }
@@ -4788,7 +4788,7 @@ async function loadData() {
       .eq('user_type', 'worker')
       .order('rating_avg', { ascending: false });
     state.workers = workers || [];
-  } catch (e) { console.error('Error loading workers:', e); state.workers = []; }
+  } catch (e) { void 0; state.workers = []; }
   
   try {
     // Load jobs (with business info and skills)
@@ -4798,7 +4798,7 @@ async function loadData() {
       .eq('is_active', true)
       .order('created_at', { ascending: false });
     state.jobs = jobs || [];
-  } catch (e) { console.error('Error loading jobs:', e); state.jobs = []; }
+  } catch (e) { void 0; state.jobs = []; }
   
   try {
     // Load businesses
@@ -4808,7 +4808,7 @@ async function loadData() {
       .eq('user_type', 'business')
       .order('biz_rating_avg', { ascending: false });
     state.businesses = businesses || [];
-  } catch (e) { console.error('Error loading businesses:', e); state.businesses = []; }
+  } catch (e) { void 0; state.businesses = []; }
   
   try {
     // Load unclaimed businesses for browse tab
@@ -4818,7 +4818,7 @@ async function loadData() {
       .eq('claimed', false)
       .order('created_at', { ascending: false });
     state.unclaimedBusinesses = unclaimed || [];
-  } catch (e) { console.error('Error loading unclaimed:', e); state.unclaimedBusinesses = []; }
+  } catch (e) { void 0; state.unclaimedBusinesses = []; }
   
   // Load worker's own job responses (for showing applied/hired status)
   if (state.profile?.user_type === 'worker') {
@@ -4833,7 +4833,7 @@ async function loadData() {
   try {
     // Load conversations
     await loadConversations();
-  } catch (e) { console.error('Error loading conversations:', e); state.conversations = []; }
+  } catch (e) { void 0; state.conversations = []; }
 }
 
 // ============================================
@@ -4878,7 +4878,7 @@ async function init() {
       state.currentScreen = 'splash';
     }
   } catch (e) {
-    console.error('Init error:', e);
+    void 0;
     try { await db.auth.signOut(); } catch (_) {}
     state.currentScreen = 'splash';
   }
@@ -4908,13 +4908,13 @@ const VAPID_PUBLIC_KEY = 'BDKjpMxX0K3plkADCR3vVKelt08Hiv6aJo2aIvfOgyiq8lY3vSY98o
 // Register service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').then((reg) => {
-    console.log('SW registered:', reg.scope);
+    void 0;
     // Try to subscribe to push after SW is ready
     if (state.user) {
       subscribeToPush(reg);
     }
   }).catch((err) => {
-    console.log('SW registration failed:', err);
+    void 0;
   });
 }
 
@@ -4954,7 +4954,7 @@ async function requestPushPermission() {
     render();
     
   } catch (e) {
-    console.error('Push subscription error:', e);
+    void 0;
     showToast('Could not enable notifications: ' + e.message);
   }
 }
@@ -4972,7 +4972,7 @@ async function savePushSubscription(subscription) {
       user_type: state.profile?.user_type || 'worker',
     }, { onConflict: 'user_id' });
   } catch (e) {
-    console.error('Error saving push subscription:', e);
+    void 0;
   }
 }
 
@@ -4987,7 +4987,7 @@ async function unsubscribeFromPush() {
     showToast('Notifications turned off');
     render();
   } catch (e) {
-    console.error('Unsubscribe error:', e);
+    void 0;
   }
 }
 
@@ -5025,10 +5025,10 @@ async function sendPushNotification(payload) {
     const { data, error } = await db.functions.invoke('send-push-notification', {
       body: payload,
     });
-    if (error) console.error('Push function error:', error);
-    else console.log('Push sent:', data);
+    if (error) void 0;
+    else void 0;
   } catch(e) {
-    console.error('Push notification error:', e);
+    void 0;
     // Non-blocking — don't show error to user
   }
 }
