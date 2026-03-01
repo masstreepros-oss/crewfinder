@@ -240,8 +240,8 @@ async function loadQueue() {
     if (S.stateFilter) q = q.ilike('location_text', `%${S.stateFilter}%`);
     const { data, error } = await q;
     if (error) { console.error('Queue:', error); S.queue = []; return; }
-    const called = new Set(S.callLog.map(l => l.company_id));
-    S.queue = (data||[]).filter(c => !called.has(c.id));
+    const called = new Set(S.callLog.map(l => String(l.company_id)));
+    S.queue = (data||[]).filter(c => !called.has(String(c.id)));
   } catch(e) { console.error(e); S.queue = []; }
 }
 
@@ -274,32 +274,37 @@ async function doLogout() { await db.auth.signOut(); S.screen='login'; S.caller=
 
 async function logCall(cid) {
   if (!S.outcome) { toast('⚠️ Select an outcome'); return; }
-  const co = S.queue.find(c => c.id === cid);
-  if (!co) return;
-  const btn = document.querySelector(`#f-${cid} .btn-save`);
+  const co = S.queue.find(c => String(c.id) === String(cid));
+  if (!co) { toast('⚠️ Company not found in queue'); return; }
+  const btn = document.querySelector(`[id="f-${cid}"] .btn-save`);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  const conEl = document.getElementById(`con-${cid}`);
+  const notEl = document.getElementById(`not-${cid}`);
+  const fuEl = document.getElementById(`fu-${cid}`);
   const entry = {
     caller_id: S.caller.id, caller_name: S.caller.name,
     company_id: cid, company_name: co.company_name, company_phone: co.phone,
     company_location: co.location_text, claim_code: co.claim_code,
-    contact_name: document.getElementById(`con-${cid}`)?.value?.trim() || '',
+    contact_name: conEl?.value?.trim() || '',
     outcome: S.outcome,
-    notes: document.getElementById(`not-${cid}`)?.value?.trim() || '',
-    follow_up_date: document.getElementById(`fu-${cid}`)?.value || null,
+    notes: notEl?.value?.trim() || '',
+    follow_up_date: fuEl?.value || null,
   };
   try {
-    const { data, error } = await db.from('call_log').insert(entry).select();
+    const { error } = await db.from('call_log').insert(entry);
     if (error) {
-      console.error('Log save error:', error);
-      toast(`❌ Save failed: ${error.message}`);
+      console.error('Log save error:', JSON.stringify(error));
+      toast(`❌ Save failed: ${error.message || error.details || 'Unknown error'}`);
       if (btn) { btn.disabled = false; btn.textContent = '✅ Save & Next'; }
       return;
     }
-    S.callLog.unshift(data?.[0] || { ...entry, created_at: new Date().toISOString() });
-    S.queue = S.queue.filter(c => c.id !== cid);
+    // Success — update local state
+    S.callLog.unshift({ ...entry, created_at: new Date().toISOString() });
+    S.queue = S.queue.filter(c => String(c.id) !== String(cid));
+    const savedOutcome = S.outcome;
     S.expanded = null; S.outcome = null;
-    toast(`✅ ${co.company_name} — ${entry.outcome}`);
-    render();
+    toast(`✅ ${co.company_name} — ${savedOutcome}`);
+    setTimeout(() => render(), 50);
   } catch(e) {
     console.error('Log save exception:', e);
     toast(`❌ Error: ${e.message}`);
@@ -307,9 +312,12 @@ async function logCall(cid) {
   }
 }
 
-function skip(cid) { S.queue = S.queue.filter(c => c.id !== cid); S.expanded = null; render(); }
+function skip(cid) { S.queue = S.queue.filter(c => String(c.id) !== String(cid)); S.expanded = null; render(); }
 function toggle(id) { S.expanded = S.expanded === id ? null : id; S.outcome = null; render(); }
-function pickOutcome(o) { S.outcome = o; document.querySelectorAll('.pill').forEach(p => p.classList.toggle('on', p.dataset.o === o)); }
+function pickOutcome(o) {
+  S.outcome = o;
+  document.querySelectorAll('.pill').forEach(p => p.classList.toggle('on', p.dataset.o === o));
+}
 async function filterState(st) { S.stateFilter = st; await loadQueue(); render(); }
 function doSearch(q) { S.search = q.toLowerCase(); render(); }
 function setTab(t) { S.tab = t; render(); }
