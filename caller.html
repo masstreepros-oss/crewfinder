@@ -276,6 +276,8 @@ async function logCall(cid) {
   if (!S.outcome) { toast('⚠️ Select an outcome'); return; }
   const co = S.queue.find(c => c.id === cid);
   if (!co) return;
+  const btn = document.querySelector(`#f-${cid} .btn-save`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
   const entry = {
     caller_id: S.caller.id, caller_name: S.caller.name,
     company_id: cid, company_name: co.company_name, company_phone: co.phone,
@@ -285,13 +287,24 @@ async function logCall(cid) {
     notes: document.getElementById(`not-${cid}`)?.value?.trim() || '',
     follow_up_date: document.getElementById(`fu-${cid}`)?.value || null,
   };
-  const { error } = await db.from('call_log').insert(entry);
-  if (error) console.error('Log save:', error);
-  S.callLog.unshift({ ...entry, created_at: new Date().toISOString() });
-  S.queue = S.queue.filter(c => c.id !== cid);
-  S.expanded = null; S.outcome = null;
-  toast(`✅ ${co.company_name} — ${entry.outcome}`);
-  render();
+  try {
+    const { data, error } = await db.from('call_log').insert(entry).select();
+    if (error) {
+      console.error('Log save error:', error);
+      toast(`❌ Save failed: ${error.message}`);
+      if (btn) { btn.disabled = false; btn.textContent = '✅ Save & Next'; }
+      return;
+    }
+    S.callLog.unshift(data?.[0] || { ...entry, created_at: new Date().toISOString() });
+    S.queue = S.queue.filter(c => c.id !== cid);
+    S.expanded = null; S.outcome = null;
+    toast(`✅ ${co.company_name} — ${entry.outcome}`);
+    render();
+  } catch(e) {
+    console.error('Log save exception:', e);
+    toast(`❌ Error: ${e.message}`);
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Save & Next'; }
+  }
 }
 
 function skip(cid) { S.queue = S.queue.filter(c => c.id !== cid); S.expanded = null; render(); }
