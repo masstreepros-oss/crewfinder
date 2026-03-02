@@ -8,6 +8,7 @@
 <title>CrewFinder · Caller Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://sdk.twilio.com/js/client/releases/1.14.3/twilio.min.js" async></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -191,6 +192,32 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1A3C2A; color: #fff; padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 600; z-index: 1000; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
 .content { flex: 1; overflow-y: auto; }
+
+/* CALL STATE */
+.call-bar {
+  background: linear-gradient(135deg, #1565C0, #0D47A1); color: #fff;
+  padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;
+  animation: callPulse 2s ease-in-out infinite;
+}
+.call-bar.ringing { background: linear-gradient(135deg, #E65100, #BF360C); }
+.call-bar.connected { background: linear-gradient(135deg, #2E7D32, #1B5E20); animation: none; }
+@keyframes callPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.85; } }
+.call-info { display: flex; flex-direction: column; gap: 2px; }
+.call-status { font-size: 13px; font-weight: 700; }
+.call-name { font-size: 11px; opacity: 0.8; }
+.call-timer { font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; }
+.btn-hangup {
+  background: #C62828; color: #fff; border: none; border-radius: 50%;
+  width: 44px; height: 44px; font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(198,40,40,0.4);
+}
+.btn-hangup:active { transform: scale(0.93); }
+.call-connecting { display: flex; align-items: center; gap: 8px; }
+.call-dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: dotBlink 1.2s infinite; }
+.call-dot:nth-child(2) { animation-delay: 0.2s; }
+.call-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dotBlink { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -200,9 +227,15 @@ body {
 <script>
 const SUPABASE_URL = 'https://mhatwlmbwikvrlcgfojt.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNDUzMTQsImV4cCI6MjA4NjkyMTMxNH0.8LefO4aYzYGfmsUb4blBEBLjIoF4CtYJ7xfimdc7lBE';
+const TWILIO_TOKEN_URL = SUPABASE_URL + '/functions/v1/twilio-token';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const S = { screen:'login', tab:'queue', caller:null, queue:[], callLog:[], stateFilter:'', search:'', expanded:null, outcome:null };
+let twilioDevice = null;
+let activeCall = null;
+let callTimer = null;
+let callSeconds = 0;
+
+const S = { screen:'login', tab:'queue', caller:null, queue:[], callLog:[], stateFilter:'', search:'', expanded:null, outcome:null, callState:null, callCompany:null };
 
 async function init() {
   try {
@@ -228,6 +261,39 @@ async function setupCaller(user) {
   }
   S.screen = 'main';
   await Promise.all([loadQueue(), loadLog()]);
+  initTwilio();
+}
+
+async function initTwilio() {
+  if (typeof Twilio === 'undefined') {
+    console.log('Twilio SDK not loaded yet, retrying in 2s...');
+    setTimeout(initTwilio, 2000);
+    return;
+  }
+  try {
+    const res = await fetch(TWILIO_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
+      body: JSON.stringify({ identity: S.caller?.email || 'caller' })
+    });
+    const data = await res.json();
+    if (data.error) { console.error('Token error:', data.error); toast('⚠️ Phone not available'); return; }
+
+    twilioDevice = new Twilio.Device(data.token, {
+      codecPreferences: ['opus', 'pcmu'],
+      closeProtection: true,
+      enableRingingState: true
+    });
+
+    twilioDevice.on('ready', () => { console.log('📞 Twilio ready'); toast('📞 Phone connected'); });
+    twilioDevice.on('error', (err) => { console.error('Twilio error:', err); toast('⚠️ Phone error: ' + (err.message || err)); });
+    twilioDevice.on('disconnect', onCallEnd);
+    twilioDevice.on('cancel', onCallEnd);
+
+  } catch(e) {
+    console.error('Twilio init failed:', e);
+    toast('⚠️ Phone setup failed — calls will use your phone');
+  }
 }
 
 async function loadQueue() {
@@ -312,6 +378,75 @@ async function logCall(cid) {
   }
 }
 
+function startCall(cid, phone) {
+  const co = S.queue.find(c => String(c.id) === String(cid));
+  if (!co) return;
+
+  if (twilioDevice && twilioDevice.status() === 'ready') {
+    const cleanNum = phone.replace(/[^\d]/g, '');
+    const e164 = cleanNum.startsWith('1') ? '+' + cleanNum : '+1' + cleanNum;
+
+    S.callState = 'ringing';
+    S.callCompany = co;
+    callSeconds = 0;
+    render();
+
+    activeCall = twilioDevice.connect({ To: e164 });
+
+    activeCall.on('ringing', () => { S.callState = 'ringing'; render(); });
+    activeCall.on('accept', () => {
+      S.callState = 'connected';
+      callSeconds = 0;
+      callTimer = setInterval(() => { callSeconds++; updateTimer(); }, 1000);
+      render();
+    });
+    activeCall.on('disconnect', onCallEnd);
+    activeCall.on('cancel', onCallEnd);
+    activeCall.on('error', (err) => {
+      console.error('Call error:', err);
+      toast('❌ Call failed: ' + (err.message || err));
+      onCallEnd();
+    });
+
+  } else {
+    window.open('tel:' + phone, '_self');
+    setTimeout(() => { toggle(cid); }, 1000);
+  }
+}
+
+function hangUp() {
+  if (activeCall) {
+    activeCall.disconnect();
+  }
+  twilioDevice?.disconnectAll();
+}
+
+function onCallEnd() {
+  if (callTimer) { clearInterval(callTimer); callTimer = null; }
+  const company = S.callCompany;
+  S.callState = null;
+  activeCall = null;
+
+  // Auto-expand the log form for the company we just called
+  if (company) {
+    S.expanded = company.id;
+    S.callCompany = null;
+    toast(`📝 Call ended (${formatDuration(callSeconds)}) — log the outcome`);
+  }
+  render();
+}
+
+function updateTimer() {
+  const el = document.getElementById('call-timer');
+  if (el) el.textContent = formatDuration(callSeconds);
+}
+
+function formatDuration(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 function skip(cid) { S.queue = S.queue.filter(c => String(c.id) !== String(cid)); S.expanded = null; render(); }
 function toggle(id) { S.expanded = S.expanded === id ? null : id; S.outcome = null; render(); }
 function pickOutcome(o) {
@@ -347,6 +482,7 @@ function rMain() {
     <div class="hdr-right"><div class="hdr-stat"><div class="hdr-stat-n">${mt.length}</div><div class="hdr-stat-l">Today</div></div>
     <div class="hdr-stat"><div class="hdr-stat-n">${su}</div><div class="hdr-stat-l">Signups</div></div>
     <button class="btn-out" onclick="doLogout()">Logout</button></div></div>
+    ${S.callState ? rCallBar() : ''}
     <div class="tabs">
       <div class="tab ${S.tab==='queue'?'on':''}" onclick="setTab('queue')">📞 Queue <span class="tbadge">${S.queue.length}</span></div>
       <div class="tab ${S.tab==='log'?'on':''}" onclick="setTab('log')">📋 Log</div>
@@ -375,7 +511,7 @@ function rCard(c) {
     ${c.phone?`<div class="cphone" style="margin-top:4px">📞 <a href="tel:${c.phone}">${c.phone}</a></div>`:'<div class="cdetail" style="color:#C62828">⚠️ No phone</div>'}
     </div><span class="ccode">${c.claim_code||'N/A'}</span></div>
     ${c.company_description?`<div class="cdesc">${c.company_description.slice(0,120)}${c.company_description.length>120?'...':''}</div>`:''}
-    <div class="cactions">${c.phone?`<a href="tel:${c.phone}" class="btn btn-g">📞 Call Now</a>`:''}
+    <div class="cactions">${c.phone?`<button class="btn btn-g" onclick="startCall('${c.id}','${c.phone}')" ${S.callState?'disabled style="opacity:0.5;pointer-events:none"':''}>📞 Call Now</button>`:''}
     <button class="btn btn-o" onclick="toggle('${c.id}')">${ex?'✕ Cancel':'📝 Log Outcome'}</button>
     <button class="btn btn-s" onclick="skip('${c.id}')">Skip →</button></div>
     <div class="lform ${ex?'open':''}" id="f-${c.id}"><label>Outcome</label>
@@ -434,6 +570,21 @@ function rScript() {
     <h3 style="font-size:15px;margin:20px 0 10px;color:#1A3C2A">✅ Signup Walkthrough</h3>
     <div class="sbox">"Just go to <strong>crewfinder.pages.dev</strong> on your phone or computer. Click <strong>'I'm a Business'</strong>, put in your name and company name — when you type <em>[COMPANY NAME]</em> it should pop right up. Tap it to claim it. Your claim code is <strong>[CODE]</strong>. That's it — you're set up!"</div>
   </div>`;
+}
+
+function rCallBar() {
+  const name = S.callCompany?.company_name || 'Unknown';
+  const phone = S.callCompany?.phone || '';
+  if (S.callState === 'ringing') {
+    return `<div class="call-bar ringing">
+      <div class="call-info"><div class="call-status">📞 Ringing...</div><div class="call-name">${name} · ${phone}</div></div>
+      <div class="call-connecting"><div class="call-dot"></div><div class="call-dot"></div><div class="call-dot"></div></div>
+      <button class="btn-hangup" onclick="hangUp()">✕</button></div>`;
+  }
+  return `<div class="call-bar connected">
+    <div class="call-info"><div class="call-status">🔊 Connected</div><div class="call-name">${name} · ${phone}</div></div>
+    <div class="call-timer" id="call-timer">${formatDuration(callSeconds)}</div>
+    <button class="btn-hangup" onclick="hangUp()">✕</button></div>`;
 }
 
 let tt;
