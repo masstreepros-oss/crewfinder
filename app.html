@@ -1383,7 +1383,7 @@ async function loadSplashCompanies() {
         ${shown.map(c => `
           <div class="splash-company-chip">
             ${c.logo ? `<img src="${c.logo}">` : `<span class="chip-dot">🏢</span>`}
-            ${c.name}
+            ${DOMPurify.sanitize(c.name)}
           </div>
         `).join('')}
       </div>
@@ -1797,7 +1797,7 @@ function renderSkillPicker() {
       <div class="skill-grid">
         ${skills.map(s => `
           <button class="skill-chip ${state.selectedSkills.has(s.id) ? 'selected' : ''}" onclick="toggleSkill(${s.id})">
-            ${s.name}
+            ${DOMPurify.sanitize(s.name)}
           </button>
         `).join('')}
       </div>
@@ -1992,8 +1992,8 @@ function renderWorkerCard(w) {
         <div class="avatar ${w.availability === 'storm_response' ? 'blue' : ''}" style="${avatarStyle}">${avatarContent}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span class="worker-name">${w.name}</span>
-            <span class="worker-dist">${state.zipFilter && getDistanceForProfile(w) !== null ? Math.round(getDistanceForProfile(w)) + ' mi' : (w.location_text || '')}</span>
+            <span class="worker-name">${DOMPurify.sanitize(w.name)}</span>
+            <span class="worker-dist">${state.zipFilter && getDistanceForProfile(w) !== null ? Math.round(getDistanceForProfile(w)) + ' mi' : DOMPurify.sanitize(w.location_text || '')}</span>
           </div>
           <div class="rating-row">
             <span class="star">★</span>
@@ -2029,8 +2029,8 @@ function renderWorkerProfile(w) {
       <div style="display:flex;gap:14px;align-items:center">
         <div style="width:60px;height:60px;border-radius:30px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarContent}</div>
         <div>
-          <div style="font-size:20px;font-weight:700">${w.name}</div>
-          <div style="font-size:13px;opacity:0.8;margin-top:2px">${w.location_text || 'Location not set'}</div>
+          <div style="font-size:20px;font-weight:700">${DOMPurify.sanitize(w.name)}</div>
+          <div style="font-size:13px;opacity:0.8;margin-top:2px">${DOMPurify.sanitize(w.location_text || 'Location not set')}</div>
           <div class="rating-row" style="margin-top:4px">
             <span class="star">★</span>
             <span style="font-weight:600">${w.rating_avg || 'New'}</span>
@@ -2047,7 +2047,7 @@ function renderWorkerProfile(w) {
       ${w.bio ? `
       <div class="profile-section">
         <div class="profile-section-title">About</div>
-        <p style="font-size:14px;color:var(--gray-700);line-height:1.5">${w.bio}</p>
+        <p style="font-size:14px;color:var(--gray-700);line-height:1.5">${DOMPurify.sanitize(w.bio)}</p>
       </div>
       ` : ''}
       <div class="profile-section">
@@ -2111,8 +2111,8 @@ function renderJobFeed() {
             <div class="card" style="padding:14px;margin-bottom:8px;border-left:3px solid var(--green)">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
                 <div>
-                  <div style="font-weight:700">${j.title}</div>
-                  <div style="font-size:13px;color:var(--gray-600)">${biz.company_name || biz.name || 'Company'} · ${j.location_text || ''}</div>
+                  <div style="font-weight:700">${DOMPurify.sanitize(j.title)}</div>
+                  <div style="font-size:13px;color:var(--gray-600)">${biz.company_name || biz.name || 'Company'} · ${DOMPurify.sanitize(j.location_text || '')}</div>
                 </div>
                 <span style="font-weight:700;color:var(--green);font-size:14px">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</span>
               </div>
@@ -2168,10 +2168,10 @@ function renderJobCard(j, applied, myStatus) {
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div style="display:flex;align-items:center;gap:6px">
-            <span class="job-title">${j.title}</span>
+            <span class="job-title">${DOMPurify.sanitize(j.title)}</span>
             ${j.is_urgent ? '<span class="badge badge-urgent">Urgent</span>' : ''}
           </div>
-          <div class="job-meta"><span style="color:var(--green);font-weight:600;cursor:pointer" onclick="event.stopPropagation();viewCompany('${j.business_id}')">${biz.company_name || biz.name || 'Company'}</span> · ${j.location_text || ''}</div>
+          <div class="job-meta"><span style="color:var(--green);font-weight:600;cursor:pointer" onclick="event.stopPropagation();viewCompany('${j.business_id}')">${biz.company_name || biz.name || 'Company'}</span> · ${DOMPurify.sanitize(j.location_text || '')}</div>
         </div>
         <span class="job-pay">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</span>
       </div>
@@ -2180,7 +2180,7 @@ function renderJobCard(j, applied, myStatus) {
         ${j.pay_type === 'day_rate' ? '<span class="badge badge-cert">Day Rate · Hours Negotiable</span>' : ''}
         ${jobSkills.map(s => `<span class="badge badge-skill">${s}</span>`).join('')}
       </div>
-      ${j.description ? `<p style="font-size:13px;color:var(--gray-600);margin-top:8px;line-height:1.4">${j.description}</p>` : ''}
+      ${j.description ? `<p style="font-size:13px;color:var(--gray-600);margin-top:8px;line-height:1.4">${DOMPurify.sanitize(j.description)}</p>` : ''}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
         <span class="job-posted">Posted ${timeAgo(j.created_at)}</span>
         <div style="display:flex;gap:6px;align-items:center">
@@ -2221,10 +2221,10 @@ function renderMyJobs() {
             <div style="display:flex;justify-content:space-between;align-items:flex-start">
               <div>
                 <div style="display:flex;align-items:center;gap:6px">
-                  <span class="job-title">${j.title}</span>
+                  <span class="job-title">${DOMPurify.sanitize(j.title)}</span>
                   <span class="badge" style="background:${statusColor};color:#fff;font-size:10px">${statusLabel}</span>
                 </div>
-                <div class="job-meta">${formatPay(j.pay_min, j.pay_max, j.pay_type)} · ${j.location_text || ''}</div>
+                <div class="job-meta">${formatPay(j.pay_min, j.pay_max, j.pay_type)} · ${DOMPurify.sanitize(j.location_text || '')}</div>
               </div>
             </div>
             <div style="display:flex;gap:12px;margin-top:8px;font-size:13px;color:var(--gray-600)">
@@ -2273,8 +2273,8 @@ function renderJobDetail(job) {
               <div style="display:flex;align-items:center;gap:10px">
                 <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(w.name)}</div>
                 <div>
-                  <div style="font-weight:600">${w.name || 'Worker'}</div>
-                  <div style="font-size:12px;color:var(--gray-500)">${w.location_text || ''}</div>
+                  <div style="font-weight:600">${DOMPurify.sanitize(w.name || 'Worker')}</div>
+                  <div style="font-size:12px;color:var(--gray-500)">${DOMPurify.sanitize(w.location_text || '')}</div>
                 </div>
               </div>
               <div style="display:flex;gap:6px">
@@ -2302,7 +2302,7 @@ function renderJobDetail(job) {
                 <div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="viewWorker('${w.id}')">
                   <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(w.name)}</div>
                   <div>
-                    <div style="font-weight:600">${w.name || 'Worker'}</div>
+                    <div style="font-weight:600">${DOMPurify.sanitize(w.name || 'Worker')}</div>
                     <div style="font-size:12px;color:var(--gray-500)">${w.location_text || ''} · ${formatPay(w.pay_min, w.pay_max, w.pay_type)}</div>
                     ${w.has_insurance ? '<div style="font-size:11px;color:var(--green);font-weight:600">🛡️ Insured</div>' : ''}
                   </div>
@@ -2330,7 +2330,7 @@ function renderJobDetail(job) {
               <div style="display:flex;align-items:center;gap:10px">
                 <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(w.name)}</div>
                 <div>
-                  <div style="font-weight:600">${w.name || 'Worker'}</div>
+                  <div style="font-weight:600">${DOMPurify.sanitize(w.name || 'Worker')}</div>
                   <div style="font-size:12px;color:var(--green)">✅ Completed</div>
                 </div>
               </div>
@@ -2452,7 +2452,7 @@ function renderMessages() {
             <div class="avatar" style="width:40px;height:40px;border-radius:20px;font-size:13px">${getInitials(c.name)}</div>
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:center">
-                <span class="msg-name">${c.name}</span>
+                <span class="msg-name">${DOMPurify.sanitize(c.name)}</span>
                 <span class="msg-time">${c.time}</span>
               </div>
               <div class="msg-preview">${c.preview}</div>
@@ -2479,14 +2479,14 @@ function renderChat() {
         <button style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px" onclick="closeChat()">←</button>
         <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(c.name)}</div>
         <div style="cursor:pointer" onclick="viewProfileFromChat('${c.userId}')">
-          <div style="font-weight:700;font-size:14px">${c.name} <span style="font-size:11px;color:var(--green);font-weight:500">View Profile →</span></div>
-          <div style="font-size:11px;color:var(--gray-500)">${c.location || 'CrewFinder'}</div>
+          <div style="font-weight:700;font-size:14px">${DOMPurify.sanitize(c.name)} <span style="font-size:11px;color:var(--green);font-weight:500">View Profile →</span></div>
+          <div style="font-size:11px;color:var(--gray-500)">${DOMPurify.sanitize(c.location || 'CrewFinder')}</div>
         </div>
       </div>
       <div class="chat-messages" id="chat-messages">
         ${state.chatMessages.length ? state.chatMessages.map(m => `
           <div class="chat-bubble ${m.sender_id === state.user.id ? 'sent' : 'received'}">
-            ${m.content}
+            ${DOMPurify.sanitize(m.content)}
           </div>
           <div style="font-size:10px;color:var(--gray-400);${m.sender_id === state.user.id ? 'text-align:right' : ''};margin-top:-4px;margin-bottom:4px">${timeAgo(m.created_at)}</div>
         `).join('') : `
@@ -2576,7 +2576,7 @@ function renderBrowseWorkers() {
             <div class="worker-card-row">
               <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
               <div class="worker-info">
-                <div class="worker-name">${w.name}</div>
+                <div class="worker-name">${DOMPurify.sanitize(w.name)}</div>
                 <div class="worker-location">${state.zipFilter && getDistanceForProfile(w) !== null ? Math.round(getDistanceForProfile(w)) + ' mi · ' : ''}${w.location_text || 'Location not set'}</div>
                 <div class="worker-pay">${formatPay(w.pay_min, w.pay_max, w.pay_type)}</div>
               </div>
@@ -2714,7 +2714,7 @@ function renderBrowseCompanies() {
         <div class="worker-card-row">
           <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
           <div class="worker-info">
-            <div class="worker-name">${b.company_name || b.name}</div>
+            <div class="worker-name">${DOMPurify.sanitize(b.company_name || b.name)}</div>
             <div class="worker-location">${b.location_text || 'Location not set'}${state.zipFilter && getDistanceForProfile(b) !== null ? ` · ${Math.round(getDistanceForProfile(b))} mi` : ''}</div>
             <div class="rating-row">
               <span class="star">★</span>
@@ -2725,7 +2725,7 @@ function renderBrowseCompanies() {
         </div>
         <div class="badge-wrap">
           ${jobCount > 0 ? `<span class="badge badge-avail">${jobCount} active job${jobCount > 1 ? 's' : ''}</span>` : ''}
-          ${b.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${b.company_description.slice(0, 100)}${b.company_description.length > 100 ? '...' : ''}</span>` : ''}
+          ${b.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${DOMPurify.sanitize(b.company_description.slice(0, 100))}${b.company_description.length > 100 ? '...' : ''}</span>` : ''}
         </div>
       </div>
     `;
@@ -2746,13 +2746,13 @@ function renderBrowseCompanies() {
         <div class="worker-card-row">
           <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
           <div class="worker-info">
-            <div class="worker-name">${u.company_name}</div>
-            <div class="worker-location">${u.location_text || 'Location not set'}</div>
+            <div class="worker-name">${DOMPurify.sanitize(u.company_name)}</div>
+            <div class="worker-location">${DOMPurify.sanitize(u.location_text || 'Location not set')}</div>
           </div>
         </div>
         <div class="badge-wrap">
           <span class="badge" style="background:#FFF3E0;color:#E65100">Unclaimed</span>
-          ${u.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${u.company_description.slice(0, 100)}${u.company_description.length > 100 ? '...' : ''}</span>` : ''}
+          ${u.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${DOMPurify.sanitize(u.company_description.slice(0, 100))}${u.company_description.length > 100 ? '...' : ''}</span>` : ''}
         </div>
       </div>
     `;
@@ -2861,8 +2861,8 @@ function renderWorkerProfileForWorker(w) {
       <div style="display:flex;gap:14px;align-items:center">
         <div style="width:60px;height:60px;border-radius:30px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarContent}</div>
         <div>
-          <div style="font-size:20px;font-weight:700">${w.name}</div>
-          <div style="font-size:13px;opacity:0.8;margin-top:2px">${w.location_text || ''}</div>
+          <div style="font-size:20px;font-weight:700">${DOMPurify.sanitize(w.name)}</div>
+          <div style="font-size:13px;opacity:0.8;margin-top:2px">${DOMPurify.sanitize(w.location_text || '')}</div>
           <div class="rating-row" style="margin-top:4px">
             <span class="star">★</span>
             <span style="font-weight:600">${w.rating_avg || 'New'}</span>
@@ -2943,10 +2943,10 @@ async function loadWorkerProfileData(id) {
         el.innerHTML = DOMPurify.sanitize(reviews.map(r => `
           <div style="padding:12px 0;border-bottom:1px solid var(--gray-200)">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-weight:600;font-size:14px">${r.profiles?.company_name || r.profiles?.name || 'User'}</span>
+              <span style="font-weight:600;font-size:14px">${DOMPurify.sanitize(r.profiles?.company_name || r.profiles?.name || 'User')}</span>
               <span style="color:#F59E0B;font-size:14px">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
             </div>
-            ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${r.comment}</p>` : ''}
+            ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${DOMPurify.sanitize(r.comment)}</p>` : ''}
           </div>
         `).join(''));
       } else {
@@ -2979,8 +2979,8 @@ function renderCompanies() {
             <div class="worker-card-row">
               <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
               <div class="worker-info">
-                <div class="worker-name">${b.company_name || b.name}</div>
-                <div class="worker-location">${b.location_text || 'Location not set'}</div>
+                <div class="worker-name">${DOMPurify.sanitize(b.company_name || b.name)}</div>
+                <div class="worker-location">${DOMPurify.sanitize(b.location_text || 'Location not set')}</div>
                 <div class="rating-row">
                   <span class="star">★</span>
                   <span>${b.biz_rating_avg || 'New'}</span>
@@ -2990,7 +2990,7 @@ function renderCompanies() {
             </div>
             <div class="badge-wrap">
               ${jobCount > 0 ? `<span class="badge badge-avail">${jobCount} active job${jobCount > 1 ? 's' : ''}</span>` : ''}
-              ${b.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${b.company_description.slice(0, 100)}${b.company_description.length > 100 ? '...' : ''}</span>` : ''}
+              ${b.company_description ? `<span style="font-size:13px;color:var(--gray-600);line-height:1.4;display:block;margin-top:4px">${DOMPurify.sanitize(b.company_description.slice(0, 100))}${b.company_description.length > 100 ? '...' : ''}</span>` : ''}
             </div>
           </div>
         `;
@@ -3019,8 +3019,8 @@ function renderCompanyProfile(b) {
       <div style="display:flex;gap:14px;align-items:center">
         <div style="width:60px;height:60px;border-radius:30px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarContent}</div>
         <div>
-          <div style="font-size:20px;font-weight:700">${b.company_name || b.name}</div>
-          <div style="font-size:13px;opacity:0.8;margin-top:2px">${b.location_text || 'Location not set'}</div>
+          <div style="font-size:20px;font-weight:700">${DOMPurify.sanitize(b.company_name || b.name)}</div>
+          <div style="font-size:13px;opacity:0.8;margin-top:2px">${DOMPurify.sanitize(b.location_text || 'Location not set')}</div>
           <div class="rating-row" style="margin-top:4px">
             <span class="star">★</span>
             <span style="font-weight:600">${b.biz_rating_avg || 'New'}</span>
@@ -3033,7 +3033,7 @@ function renderCompanyProfile(b) {
       ${b.company_description ? `
       <div class="profile-section">
         <div class="profile-section-title">About</div>
-        <p style="font-size:14px;color:var(--gray-700);line-height:1.5">${b.company_description}</p>
+        <p style="font-size:14px;color:var(--gray-700);line-height:1.5">${DOMPurify.sanitize(b.company_description)}</p>
       </div>
       ` : ''}
       ${b.phone ? `
@@ -3046,9 +3046,9 @@ function renderCompanyProfile(b) {
         <div class="profile-section-title">Active Jobs</div>
         ${companyJobs.map(j => `
           <div class="card" style="padding:12px;margin-bottom:8px">
-            <div style="font-weight:700">${j.title}</div>
+            <div style="font-weight:700">${DOMPurify.sanitize(j.title)}</div>
             <div style="font-size:13px;color:var(--green);font-weight:600;margin-top:2px">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</div>
-            ${j.description ? `<div style="font-size:13px;color:var(--gray-600);margin-top:4px">${j.description.slice(0, 120)}${j.description.length > 120 ? '...' : ''}</div>` : ''}
+            ${j.description ? `<div style="font-size:13px;color:var(--gray-600);margin-top:4px">${DOMPurify.sanitize(j.description.slice(0, 120))}${j.description.length > 120 ? '...' : ''}</div>` : ''}
           </div>
         `).join('')}
       </div>
@@ -3104,10 +3104,10 @@ async function viewCompany(id) {
         el.innerHTML = DOMPurify.sanitize(reviews.map(r => `
           <div style="padding:12px 0;border-bottom:1px solid var(--gray-200)">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-weight:600;font-size:14px">${r.profiles?.name || 'Worker'}</span>
+              <span style="font-weight:600;font-size:14px">${DOMPurify.sanitize(r.profiles?.name || 'Worker')}</span>
               <span style="color:var(--amber);font-size:14px">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
             </div>
-            ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${r.comment}</p>` : ''}
+            ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${DOMPurify.sanitize(r.comment)}</p>` : ''}
           </div>
         `).join(''));
       } else {
@@ -3256,8 +3256,8 @@ function renderCrewRoster() {
               <div style="flex:1;min-width:0">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start">
                   <div style="cursor:pointer" onclick="viewWorker('${w.id}')">
-                    <div style="font-weight:700;font-size:15px">${w.name || 'Worker'}</div>
-                    <div style="font-size:12px;color:var(--gray-500)">${w.location_text || ''}</div>
+                    <div style="font-weight:700;font-size:15px">${DOMPurify.sanitize(w.name || 'Worker')}</div>
+                    <div style="font-size:12px;color:var(--gray-500)">${DOMPurify.sanitize(w.location_text || '')}</div>
                   </div>
                   <div style="text-align:right">
                     <div class="rating-row" style="margin:0"><span class="star">★</span><span style="font-weight:600;font-size:13px">${w.rating_avg || 'New'}</span></div>
@@ -3269,7 +3269,7 @@ function renderCrewRoster() {
                   ${w.has_insurance ? '<span class="badge badge-cert" style="font-size:10px">🛡️ Insured</span>' : ''}
                   ${workerSkills.slice(0, 2).map(s => `<span class="badge badge-skill" style="font-size:10px">${s}</span>`).join('')}
                 </div>
-                ${c.note ? `<div style="font-size:12px;color:var(--gray-600);margin-top:6px;font-style:italic">"${c.note}"</div>` : ''}
+                ${c.note ? `<div style="font-size:12px;color:var(--gray-600);margin-top:6px;font-style:italic">"${DOMPurify.sanitize(c.note)}"</div>` : ''}
                 ${c.last_job_title ? `<div style="font-size:11px;color:var(--gray-400);margin-top:4px">Last job: ${c.last_job_title} · ${timeAgo(c.last_job_date)}</div>` : ''}
               </div>
             </div>
@@ -3408,8 +3408,8 @@ function renderMyProfile() {
       <div style="display:flex;gap:14px;align-items:center">
         <div style="width:60px;height:60px;border-radius:30px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarContent}</div>
         <div>
-          <div style="font-size:20px;font-weight:700">${isWorker ? p.name : (p.company_name || p.name)}</div>
-          <div style="font-size:13px;opacity:0.8;margin-top:2px">${p.location_text || 'Location not set'} · ${isWorker ? 'Worker' : 'Business'}</div>
+          <div style="font-size:20px;font-weight:700">${DOMPurify.sanitize(isWorker ? p.name : (p.company_name || p.name))}</div>
+          <div style="font-size:13px;opacity:0.8;margin-top:2px">${DOMPurify.sanitize(p.location_text || 'Location not set')} · ${isWorker ? 'Worker' : 'Business'}</div>
           <div class="rating-row" style="margin-top:4px">
             <span class="star">★</span>
             <span style="font-weight:600">${isWorker ? (p.rating_avg || 'New') : (p.biz_rating_avg || 'New')}</span>
@@ -3446,7 +3446,7 @@ function renderMyProfile() {
       ` : `
       <div class="profile-section">
         <div class="profile-section-title">About</div>
-        <p style="font-size:14px;color:var(--gray-700);line-height:1.5">${p.company_description || '<span style="color:var(--gray-500)">No description yet — add one in Edit Profile</span>'}</p>
+        <p style="font-size:14px;color:var(--gray-700);line-height:1.5">${DOMPurify.sanitize(p.company_description || 'No description yet — add one in Edit Profile')}</p>
       </div>
       <div class="profile-section" id="my-photos-section">
         <div class="profile-section-title">Company Photos</div>
@@ -3610,10 +3610,10 @@ async function viewWorker(id) {
         el.innerHTML = DOMPurify.sanitize(reviews.map(r => `
           <div style="padding:12px 0;border-bottom:1px solid var(--gray-200)">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-weight:600;font-size:14px">${r.profiles?.company_name || r.profiles?.name || 'Company'}</span>
+              <span style="font-weight:600;font-size:14px">${DOMPurify.sanitize(r.profiles?.company_name || r.profiles?.name || 'Company')}</span>
               <span style="color:#F59E0B;font-size:14px">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
             </div>
-            ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${r.comment}</p>` : ''}
+            ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${DOMPurify.sanitize(r.comment)}</p>` : ''}
           </div>
         `).join(''));
       } else {
@@ -3713,7 +3713,7 @@ function renderPostJob() {
             <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:6px">${trade}</div>
             <div class="skill-grid">
               ${skills.map(s => `
-                <button class="skill-chip ${d.selectedSkills.has(s.id) ? 'selected' : ''}" onclick="toggleJobSkill(${s.id})">${s.name}</button>
+                <button class="skill-chip ${d.selectedSkills.has(s.id) ? 'selected' : ''}" onclick="toggleJobSkill(${s.id})">${DOMPurify.sanitize(s.name)}</button>
               `).join('')}
             </div>
           </div>
@@ -4146,8 +4146,8 @@ async function searchCompanySignup(query) {
           onmouseover="this.style.background='var(--pale-green)'"
           onmouseout="this.style.background='#fff'"
           onclick="selectCompanyFromSearch(${JSON.stringify(c).replace(/"/g, '&quot;')})">
-          <div style="font-weight:600;font-size:14px">${c.company_name}</div>
-          <div style="font-size:12px;color:var(--gray-500)">${c.location_text || c.zip_code || 'Location not set'}</div>
+          <div style="font-weight:600;font-size:14px">${DOMPurify.sanitize(c.company_name)}</div>
+          <div style="font-size:12px;color:var(--gray-500)">${DOMPurify.sanitize(c.location_text || c.zip_code || 'Location not set')}</div>
         </div>
       `).join(''));
       resultsDiv.style.display = 'block';

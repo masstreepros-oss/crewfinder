@@ -116,7 +116,7 @@ const URG_LABELS = { emergency: '🔴 EMERGENCY', urgent: '🟠 URGENT', normal:
 function timeAgo(d) { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (m < 60) return m + 'm ago'; const h = Math.floor(m/60); if (h < 24) return h + 'h ago'; return Math.floor(h/24) + 'd ago'; }
 
 async function loadPosts() {
-  let q = sb.from('storm_board').select('*').eq('is_active', true).order('created_at', { ascending: false });
+  let q = sb.from('storm_board').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(200);
   if (filter === 'storm') q = q.in('post_type', ['storm_need', 'storm_available']);
   else if (filter === 'sub') q = q.in('post_type', ['subcontract_need', 'subcontract_available']);
   const { data, error } = await q;
@@ -144,15 +144,15 @@ function renderBoard() {
           <span class="badge ${URG_CLASSES[p.urgency]}">${URG_LABELS[p.urgency]}</span>
           <span class="badge ${TYPE_CLASSES[p.post_type]}">${TYPE_LABELS[p.post_type]}</span>
         </div>
-        <div class="card-title">${p.title}</div>
-        <div class="card-poster"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${p.poster_name}</div>
+        <div class="card-title">${DOMPurify.sanitize(p.title)}</div>
+        <div class="card-poster"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${DOMPurify.sanitize(p.poster_name)}</div>
         <div class="card-meta">
-          <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${p.location}</span>
+          <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${DOMPurify.sanitize(p.location)}</span>
           ${p.start_date ? `<span>📅 ${new Date(p.start_date + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'})}${p.end_date ? ' - ' + new Date(p.end_date + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'}) : ''}</span>` : ''}
           ${p.crew_needed ? `<span>👥 ${p.crew_needed} needed</span>` : ''}
         </div>
-        ${p.equipment_needed && p.equipment_needed.length ? `<div class="card-equip">${p.equipment_needed.map(eq => `<span class="badge badge-equip">${eq}</span>`).join('')}</div>` : ''}
-        ${p.description ? `<div style="font-size:13px;color:#5A6B5E;margin-bottom:8px;line-height:1.5">${p.description.substring(0, 150)}${p.description.length > 150 ? '...' : ''}</div>` : ''}
+        ${p.equipment_needed && p.equipment_needed.length ? `<div class="card-equip">${p.equipment_needed.map(eq => `<span class="badge badge-equip">${DOMPurify.sanitize(eq)}</span>`).join('')}</div>` : ''}
+        ${p.description ? `<div style="font-size:13px;color:#5A6B5E;margin-bottom:8px;line-height:1.5">${DOMPurify.sanitize(p.description.substring(0, 150))}${p.description.length > 150 ? '...' : ''}</div>` : ''}
         <div class="card-footer">
           <span class="card-pay">${p.pay_rate || 'Contact for rates'}</span>
           <div class="card-footer-right">

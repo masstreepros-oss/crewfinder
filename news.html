@@ -111,7 +111,7 @@ const CATEGORIES = [
 function timeAgo(d) { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (m < 60) return m + 'm ago'; const h = Math.floor(m/60); if (h < 24) return h + 'h ago'; const dy = Math.floor(h/24); if (dy < 7) return dy + 'd ago'; return Math.floor(dy/7) + 'w ago'; }
 
 async function loadNews() {
-  let q = sb.from('industry_news').select('*').order('published_at', { ascending: false });
+  let q = sb.from('industry_news').select('*').order('published_at', { ascending: false }).limit(100);
   if (category !== 'all') q = q.eq('category', category);
   const { data, error } = await q;
   articles = data || [];
@@ -129,9 +129,9 @@ function renderNews() {
           <span class="featured-badge">${CAT_ICONS[a.category] || '📰'} ${a.category || 'general'}</span>
           <span class="featured-badge">${timeAgo(a.published_at)}</span>
         </div>
-        <div class="featured-title">${a.title}</div>
-        <div class="featured-summary">${a.summary || ''}</div>
-        <div class="featured-source">Source: ${a.source_name || 'CrewFinder'}</div>
+        <div class="featured-title">${DOMPurify.sanitize(a.title)}</div>
+        <div class="featured-summary">${DOMPurify.sanitize(a.summary || '')}</div>
+        <div class="featured-source">Source: ${DOMPurify.sanitize(a.source_name || 'CrewFinder')}</div>
       </div>
     `).join('') : ''}
     <div class="filters">
@@ -150,9 +150,9 @@ function renderNews() {
               <span class="badge" style="color:${CAT_COLORS[a.category] || '#37474F'};background:${(CAT_COLORS[a.category] || '#37474F')}15">${a.category || 'general'}</span>
               <span class="news-time">${timeAgo(a.published_at)}</span>
             </div>
-            <div class="news-title">${a.title}</div>
-            <div class="news-summary">${a.summary || ''}</div>
-            <div class="news-source">${a.source_name || 'CrewFinder'}</div>
+            <div class="news-title">${DOMPurify.sanitize(a.title)}</div>
+            <div class="news-summary">${DOMPurify.sanitize(a.summary || '')}</div>
+            <div class="news-source">${DOMPurify.sanitize(a.source_name || 'CrewFinder')}</div>
           </div>
         </div>
       </div>
@@ -168,13 +168,13 @@ function showDetail(id) {
     <div class="detail-cat">
       <span class="badge" style="color:${CAT_COLORS[a.category] || '#37474F'};background:${(CAT_COLORS[a.category] || '#37474F')}15">${CAT_ICONS[a.category] || '📰'} ${a.category || 'general'}</span>
     </div>
-    <div class="detail-title">${a.title}</div>
+    <div class="detail-title">${DOMPurify.sanitize(a.title)}</div>
     <div class="detail-meta">
-      <span>${a.source_name || 'CrewFinder'}</span>
+      <span>${DOMPurify.sanitize(a.source_name || 'CrewFinder')}</span>
       <span>${timeAgo(a.published_at)}</span>
     </div>
-    <div class="detail-body">${a.content || a.summary || 'No content available.'}</div>
-    ${a.source_url ? `<a href="${a.source_url}" target="_blank" class="detail-link">Read full article →</a>` : ''}
+    <div class="detail-body">${DOMPurify.sanitize(a.content || a.summary || 'No content available.')}</div>
+    ${a.source_url && /^https?:\/\//i.test(a.source_url) ? `<a href="${DOMPurify.sanitize(a.source_url)}" target="_blank" rel="noopener noreferrer" class="detail-link">Read full article →</a>` : ''}
   `;
   content.scrollTop = 0;
 }

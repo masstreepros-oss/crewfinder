@@ -162,12 +162,12 @@ function renderCalendar() {
           <div style="flex:1">
             <div class="card-name-row">
               <span class="status-dot ${a.status}"></span>
-              <span class="card-name">${a.display_name}</span>
+              <span class="card-name">${DOMPurify.sanitize(a.display_name)}</span>
               <span class="badge ${a.user_type === 'worker' ? 'badge-worker' : 'badge-company'}">${a.user_type === 'worker' ? 'Worker' : 'Company'}</span>
             </div>
-            ${a.notes ? `<div class="card-role">${a.notes}</div>` : ''}
+            ${a.notes ? `<div class="card-role">${DOMPurify.sanitize(a.notes)}</div>` : ''}
             <div class="card-meta">
-              ${a.location ? `<span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${a.location}</span>` : ''}
+              ${a.location ? `<span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${DOMPurify.sanitize(a.location)}</span>` : ''}
               ${a.time_preference ? `<span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${timeLabels[a.time_preference] || a.time_preference}</span>` : ''}
               ${a.hourly_rate ? `<span class="card-rate">$${a.hourly_rate}/hr</span>` : ''}
             </div>

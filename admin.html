@@ -403,6 +403,15 @@ async function adminLogin() {
     const { data, error } = await db.auth.signInWithPassword({ email, password });
     if (error) throw error;
     adminUser = data.user;
+
+    // Admin role verification - only allow designated admin email
+    const ADMIN_EMAILS = ['masstp01@gmail.com', 'masstreepros@gmail.com'];
+    if (!ADMIN_EMAILS.includes(adminUser.email)) {
+      await db.auth.signOut();
+      adminUser = null;
+      throw new Error('Access denied — your account is not authorized for admin access.');
+    }
+
     document.getElementById('login-section').classList.add('hidden');
     document.getElementById('admin-panel').classList.remove('hidden');
     loadDashboard();

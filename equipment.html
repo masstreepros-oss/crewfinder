@@ -244,7 +244,7 @@ function timeAgo(dateStr) {
 }
 
 async function loadListings() {
-  let query = sb.from('equipment_listings').select('*').eq('is_sold', false).order('created_at', { ascending: false });
+  let query = sb.from('equipment_listings').select('*').eq('is_sold', false).order('created_at', { ascending: false }).limit(200);
   if (currentCategory !== 'all') query = query.eq('category', currentCategory);
   const { data, error } = await query;
   if (error) { console.error(error); listings = []; }
@@ -279,10 +279,10 @@ function renderList() {
             <div class="listing-badges">
               <span class="badge ${COND_CLASSES[e.condition] || 'badge-good'}">${COND_LABELS[e.condition] || e.condition}</span>
             </div>
-            <div class="listing-title">${e.title}</div>
+            <div class="listing-title">${DOMPurify.sanitize(e.title)}</div>
             <div class="listing-price">$${Number(e.price).toLocaleString()} ${e.price_type === 'obo' ? '<span class="obo">OBO</span>' : e.price_type === 'trade' ? '<span class="obo">Trade</span>' : e.price_type === 'free' ? '<span class="obo">FREE</span>' : ''}</div>
             <div class="listing-meta">
-              <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${e.location || 'N/A'}</span>
+              <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${DOMPurify.sanitize(e.location || 'N/A')}</span>
               <span>${timeAgo(e.created_at)}</span>
             </div>
           </div>
@@ -306,14 +306,14 @@ function showDetail(id) {
       <span class="badge ${COND_CLASSES[e.condition] || 'badge-good'}">${COND_LABELS[e.condition] || e.condition}</span>
       <span class="badge" style="color:#5A6B5E;background:#E8EDE9">${e.category.replace(/_/g, ' ')}</span>
     </div>
-    <div class="detail-title">${e.title}</div>
+    <div class="detail-title">${DOMPurify.sanitize(e.title)}</div>
     <div class="detail-price">$${Number(e.price).toLocaleString()} ${e.price_type === 'obo' ? '<span class="obo">OBO</span>' : ''}</div>
-    <div class="detail-desc">${e.description || 'No description provided.'}</div>
+    <div class="detail-desc">${DOMPurify.sanitize(e.description || 'No description provided.')}</div>
     <div class="seller-card">
       <div class="seller-row">
         <div class="seller-avatar" style="background:${e.seller_type === 'company' ? 'rgba(45,122,58,0.1)' : '#E3F2FD'}">${e.seller_type === 'company' ? '🏢' : '👷'}</div>
         <div style="flex:1">
-          <div class="seller-name">${e.seller_name}</div>
+          <div class="seller-name">${DOMPurify.sanitize(e.seller_name)}</div>
           <div class="seller-location"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${e.location || 'N/A'}</div>
         </div>
       </div>

@@ -151,8 +151,10 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
-  const url = event.notification.data?.url || '/app.html';
-  
+  const rawUrl = event.notification.data?.url || '/app.html';
+  // Validate URL - only allow same-origin or relative paths
+  const url = (rawUrl.startsWith('/') || rawUrl.startsWith(self.location.origin)) ? rawUrl : '/app.html';
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       // Focus existing window if open

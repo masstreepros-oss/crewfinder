@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CrewFinder · Caller Portal</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://sdk.twilio.com/js/client/releases/1.14.3/twilio.min.js"></script>
+<script src="https://sdk.twilio.com/js/client/releases/2.7.2/twilio.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -177,18 +177,20 @@ async function initTwilioDevice() {
     if (twilioState.token && twilioState.tokenExpiry && Date.now() < twilioState.tokenExpiry - 5 * 60 * 1000) {
       if (!twilioState.device) {
         twilioState.device = new Twilio.Device(twilioState.token, {
-          logLevel: 1,
-          codecPreferences: ['opus', 'pcmu'],
+          logLevel: 'warn',
+          codecPreferences: [Twilio.Device.Codec.Opus, Twilio.Device.Codec.PCMU],
         });
         setupDeviceListeners();
+        await twilioState.device.register();
       }
       return;
     }
 
-    // Fetch new token
+    // Fetch new token from edge function
     const session = await db.auth.getSession();
     if (!session.data.session) {
       console.error('No active session for Twilio token');
+      showToast('Please log in again to make calls');
       return;
     }
 
@@ -202,82 +204,64 @@ async function initTwilioDevice() {
     });
 
     if (!response.ok) {
-      const err = await response.json();
+      const err = await response.json().catch(() => ({ error: response.statusText }));
       console.error('Token fetch error:', err);
-      showToast('Failed to initialize calling - please try again');
+      showToast('Failed to initialize calling — check Twilio edge function deployment');
       return;
     }
 
     const data = await response.json();
     if (!data.token) {
-      console.error('No token in response');
-      showToast('Failed to initialize calling');
+      console.error('No token in response:', data);
+      showToast('Failed to initialize calling — no token returned');
       return;
     }
 
     twilioState.token = data.token;
     twilioState.tokenExpiry = Date.now() + 60 * 60 * 1000; // 1 hour
 
-    // Create or update device
+    // Destroy old device if any
     if (twilioState.device) {
       twilioState.device.destroy();
     }
 
+    // SDK v2: new Device(token, options) + device.register()
     twilioState.device = new Twilio.Device(twilioState.token, {
-      logLevel: 1,
-      codecPreferences: ['opus', 'pcmu'],
+      logLevel: 'warn',
+      codecPreferences: [Twilio.Device.Codec.Opus, Twilio.Device.Codec.PCMU],
     });
 
     setupDeviceListeners();
-    console.log('Twilio Device initialized');
+    await twilioState.device.register();
+    console.log('Twilio Device registered (SDK v2)');
   } catch (err) {
     console.error('Twilio init error:', err);
-    showToast('Failed to initialize calling');
+    showToast('Failed to initialize calling: ' + (err.message || err));
   }
 }
 
 function setupDeviceListeners() {
   if (!twilioState.device) return;
 
-  twilioState.device.on('ready', () => {
-    console.log('Twilio Device ready');
+  // SDK v2 events: 'registered', 'error', 'incoming'
+  twilioState.device.on('registered', () => {
+    console.log('Twilio Device registered and ready');
   });
 
   twilioState.device.on('error', (error) => {
     console.error('Device error:', error);
     showToast(`Call error: ${error.message || 'Unknown error'}`);
-    updateCallStatus(null);
+    updateCallStatus(twilioState.currentCallCompanyId, null);
   });
 
-  twilioState.device.on('connect', (connection) => {
-    console.log('Call connected');
-    twilioState.activeConnection = connection;
-    twilioState.callStartTime = Date.now();
-    updateCallStatus('connected');
-    startCallTimer();
-
-    connection.on('disconnect', () => {
-      console.log('Call disconnected');
-      endActiveCall();
-    });
-
-    connection.on('error', (error) => {
-      console.error('Connection error:', error);
-      showToast(`Connection error: ${error.message}`);
-      endActiveCall();
-    });
+  twilioState.device.on('incoming', (call) => {
+    console.log('Incoming call from:', call.parameters.From);
+    updateCallStatus(twilioState.currentCallCompanyId, 'ringing');
+    call.accept();
   });
 
-  twilioState.device.on('incoming', (connection) => {
-    console.log('Incoming call');
-    // Auto-accept incoming calls for testing, or show a dialog
-    updateCallStatus('ringing');
-    connection.accept();
-  });
-
-  twilioState.device.on('disconnect', () => {
-    console.log('Device disconnected');
-    endActiveCall();
+  twilioState.device.on('unregistered', () => {
+    console.log('Device unregistered');
   });
 }
 
@@ -302,37 +286,47 @@ function updateCallDurationUI() {
   });
 }
 
-function updateCallStatus(status) {
-  document.querySelectorAll('.call-status').forEach(el => {
-    el.classList.remove('show', 'connecting', 'connected', 'ringing', 'ended', 'error');
-    if (status) {
-      el.classList.add('show', status);
-      if (status === 'connected') {
-        el.textContent = '📞 Call Connected - 0:00';
-      } else if (status === 'ringing') {
-        el.textContent = '📞 Ringing...';
-      } else if (status === 'connecting') {
-        el.textContent = '🔄 Connecting...';
-      } else if (status === 'ended') {
-        el.textContent = '📞 Call Ended';
-      } else if (status === 'error') {
-        el.textContent = '❌ Call Error';
-      }
-    }
-  });
+function updateCallStatus(companyId, status) {
+  // Only update the status element for the SPECIFIC card being called
+  const el = companyId ? document.querySelector(`[data-call-status="${companyId}"]`) : null;
+  if (!el) return;
+
+  el.classList.remove('show', 'connecting', 'connected', 'ringing', 'ended', 'error');
+  if (status) {
+    el.classList.add('show', status);
+    const labels = {
+      connected: '📞 Call Connected - <span class="call-duration-display">0:00</span>',
+      ringing: '📞 Ringing...',
+      connecting: '🔄 Connecting...',
+      ended: '📞 Call Ended',
+      error: '❌ Call Failed — check console for details',
+    };
+    el.innerHTML = labels[status] || '';
+  }
 }
 
 function endActiveCall() {
+  const companyId = twilioState.currentCallCompanyId;
   if (twilioState.durationInterval) {
     clearInterval(twilioState.durationInterval);
     twilioState.durationInterval = null;
   }
   if (twilioState.activeConnection) {
-    twilioState.activeConnection.disconnect();
+    try { twilioState.activeConnection.disconnect(); } catch (e) { /* already disconnected */ }
     twilioState.activeConnection = null;
   }
-  updateCallStatus('ended');
-  setTimeout(() => updateCallStatus(null), 2000);
+  twilioState.callDuration = 0;
+  twilioState.callStartTime = null;
+
+  updateCallStatus(companyId, 'ended');
+  setTimeout(() => updateCallStatus(companyId, null), 2500);
+
+  // Re-enable call button
+  if (companyId) {
+    const callBtn = document.querySelector(`[data-call-btn="${companyId}"]`);
+    if (callBtn) callBtn.disabled = false;
+  }
+  twilioState.currentCallCompanyId = null;
 }
 
 async function initiateCall(companyId, phoneNumber) {
@@ -341,15 +335,18 @@ async function initiateCall(companyId, phoneNumber) {
   if (callBtn && callBtn.disabled) return;
   if (callBtn) callBtn.disabled = true;
 
+  twilioState.currentCallCompanyId = companyId;
+
   try {
     // Initialize device if needed
     if (!twilioState.device || !twilioState.token) {
-      updateCallStatus('connecting');
+      updateCallStatus(companyId, 'connecting');
       await initTwilioDevice();
     }
 
     if (!twilioState.device) {
-      showToast('Calling not available - microphone access may be needed');
+      showToast('Calling not available — check Twilio edge function deployment');
+      updateCallStatus(companyId, 'error');
       if (callBtn) callBtn.disabled = false;
       return;
     }
@@ -358,23 +355,61 @@ async function initiateCall(companyId, phoneNumber) {
     const cleanNumber = phoneNumber.replace(/[^\d+]/g, '');
     if (!cleanNumber) {
       showToast('Invalid phone number');
+      updateCallStatus(companyId, 'error');
       if (callBtn) callBtn.disabled = false;
       return;
     }
 
-    twilioState.currentCallCompanyId = companyId;
-    updateCallStatus('connecting');
+    updateCallStatus(companyId, 'connecting');
 
-    // Make the call using device.connect()
-    const connection = await twilioState.device.connect({
-      To: cleanNumber,
+    // SDK v2: device.connect() returns a Call object
+    const call = await twilioState.device.connect({
+      params: { To: cleanNumber },
     });
 
+    twilioState.activeConnection = call;
     console.log('Call initiated to:', cleanNumber);
+
+    // SDK v2 Call events
+    call.on('ringing', (hasEarlyMedia) => {
+      console.log('Ringing...', hasEarlyMedia ? '(early media)' : '');
+      updateCallStatus(companyId, 'ringing');
+    });
+
+    call.on('accept', () => {
+      console.log('Call accepted/connected');
+      twilioState.callStartTime = Date.now();
+      updateCallStatus(companyId, 'connected');
+      startCallTimer();
+    });
+
+    call.on('disconnect', () => {
+      console.log('Call disconnected');
+      endActiveCall();
+    });
+
+    call.on('cancel', () => {
+      console.log('Call cancelled');
+      endActiveCall();
+    });
+
+    call.on('reject', () => {
+      console.log('Call rejected');
+      showToast('Call was rejected');
+      endActiveCall();
+    });
+
+    call.on('error', (error) => {
+      console.error('Call error:', error);
+      showToast(`Call error: ${error.message || 'Unknown error'}`);
+      updateCallStatus(companyId, 'error');
+      if (callBtn) callBtn.disabled = false;
+    });
+
   } catch (err) {
     console.error('Call initiation error:', err);
     showToast(`Failed to make call: ${err.message || 'Unknown error'}`);
-    updateCallStatus('error');
+    updateCallStatus(companyId, 'error');
     if (callBtn) callBtn.disabled = false;
   }
 }
@@ -382,13 +417,8 @@ async function initiateCall(companyId, phoneNumber) {
 function hangupCall() {
   if (twilioState.activeConnection) {
     twilioState.activeConnection.disconnect();
-  }
-  endActiveCall();
-
-  // Re-enable call button
-  if (twilioState.currentCallCompanyId) {
-    const callBtn = document.querySelector(`[data-call-btn="${twilioState.currentCallCompanyId}"]`);
-    if (callBtn) callBtn.disabled = false;
+  } else {
+    endActiveCall();
   }
 }
 
@@ -714,7 +744,7 @@ function renderCallCard(c) {
           <button class="btn btn-call" onclick="hangupCall()" style="background:var(--red);width:100%">📞 End Call</button>
         </div>
       ` : `
-        <div class="call-status"></div>
+        <div class="call-status" data-call-status="${c.id}"></div>
         <div class="call-actions">
           ${c.phone ? `<button class="btn btn-call" data-call-btn="${c.id}" onclick="initiateCall('${c.id}', '${c.phone}')">📞 Call Now</button>` : ''}
           <button class="btn btn-outcome" onclick="toggleCard('${c.id}')">${isExpanded ? '✕ Cancel' : '📝 Log Outcome'}</button>
