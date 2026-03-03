@@ -199,6 +199,7 @@ const twilioState = {
   callDuration: 0,
   currentCallCompanyId: null,
   durationInterval: null,
+  isInitializing: false, // Guard against duplicate init
 };
 
 // ============================================
@@ -220,6 +221,9 @@ const state = {
 // TWILIO DEVICE INITIALIZATION
 // ============================================
 async function initTwilioDevice() {
+  // Guard against duplicate concurrent initialization
+  if (twilioState.isInitializing) return;
+  twilioState.isInitializing = true;
   try {
     // Check if token exists and is still valid (with 5 min buffer)
     if (twilioState.token && twilioState.tokenExpiry && Date.now() < twilioState.tokenExpiry - 5 * 60 * 1000) {
@@ -285,6 +289,8 @@ async function initTwilioDevice() {
   } catch (err) {
     console.error('Twilio init error:', err);
     showToast('Failed to initialize calling: ' + (err.message || err));
+  } finally {
+    twilioState.isInitializing = false;
   }
 }
 
@@ -421,17 +427,17 @@ async function initiateCall(companyId, phoneNumber) {
     twilioState.activeConnection = call;
     console.log('Call initiated to:', cleanNumber);
 
-    // SDK v2 Call events — re-render card on state changes so End Call button appears
+    // SDK v2 Call events — targeted card update (not full render) to preserve page state
     call.on('ringing', (hasEarlyMedia) => {
       console.log('Ringing...', hasEarlyMedia ? '(early media)' : '');
-      render(); // Re-render to show End Call button
+      updateActiveCallCard(); // Targeted update, not full render
     });
 
     call.on('accept', () => {
       console.log('Call accepted/connected');
       twilioState.callStartTime = Date.now();
       startCallTimer();
-      render(); // Re-render to show connected state + End Call
+      updateActiveCallCard(); // Targeted update, not full render
     });
 
     call.on('disconnect', () => {
@@ -469,6 +475,26 @@ function hangupCall() {
     twilioState.activeConnection.disconnect();
   } else {
     endActiveCall();
+  }
+}
+
+// Targeted update: only re-render the active call card without destroying the whole page
+function updateActiveCallCard() {
+  const companyId = twilioState.currentCallCompanyId;
+  if (!companyId) return;
+  const company = state.queue.find(c => c.id === companyId);
+  if (!company) return;
+
+  // Find the specific card by data attribute and replace just that card
+  const existingCard = document.querySelector(`[data-card-id="${companyId}"]`);
+  if (existingCard) {
+    const temp = document.createElement('div');
+    temp.innerHTML = renderCallCard(company);
+    const newCard = temp.firstElementChild;
+    existingCard.replaceWith(newCard);
+  } else {
+    // Card not visible (user scrolled away) — full render as fallback
+    render();
   }
 }
 
@@ -651,9 +677,35 @@ async function filterByState(st) {
   render();
 }
 
-async function handleSearch(q) {
+let searchDebounce;
+function handleSearch(q) {
   state.searchQuery = q.toLowerCase();
-  render();
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => renderQueueCards(), 150);
+}
+
+// Targeted re-render: only update the card list, not the whole page
+function renderQueueCards() {
+  const container = document.getElementById('queue-cards');
+  if (!container) return;
+  let filtered = state.queue;
+  if (state.searchQuery) {
+    filtered = filtered.filter(c =>
+      (c.company_name || '').toLowerCase().includes(state.searchQuery) ||
+      (c.location_text || '').toLowerCase().includes(state.searchQuery)
+    );
+  }
+  const countEl = document.getElementById('queue-count');
+  if (countEl) countEl.textContent = filtered.length + ' remaining';
+
+  container.innerHTML = (filtered.length === 0 ? `
+    <div class="empty">
+      <div class="empty-icon">✅</div>
+      <p>No companies left in queue!<br>Try a different state filter or check back later.</p>
+    </div>
+  ` : '') +
+  filtered.slice(0, 50).map(c => renderCallCard(c)).join('') +
+  (filtered.length > 50 ? `<div style="padding:20px;text-align:center;color:var(--gray-500);font-size:13px">Showing 50 of ${filtered.length} — filter by state to narrow down</div>` : '');
 }
 
 async function logout() {
@@ -672,11 +724,24 @@ async function logout() {
 // RENDER
 // ============================================
 function render() {
-  const app = document.getElementById('app');
-  if (state.screen === 'login') {
-    app.innerHTML = renderLogin();
-  } else {
-    app.innerHTML = renderMain();
+  try {
+    const app = document.getElementById('app');
+    if (state.screen === 'login') {
+      app.innerHTML = renderLogin();
+    } else {
+      app.innerHTML = renderMain();
+    }
+  } catch (err) {
+    console.error('Render error:', err);
+    // Don't leave a blank page — show recovery UI
+    const app = document.getElementById('app');
+    if (app) {
+      app.innerHTML = `<div style="padding:40px;text-align:center;">
+        <h2 style="color:#DC2626;">Something went wrong</h2>
+        <p style="margin:12px 0;color:#757575;">${DOMPurify.sanitize(err.message || 'Unknown error')}</p>
+        <button class="btn btn-call" onclick="location.reload()" style="margin-top:12px">🔄 Reload Page</button>
+      </div>`;
+    }
   }
 }
 
@@ -758,10 +823,11 @@ function renderQueue() {
         <option value="">All States</option>
         ${states.map(s => `<option value="${s}" ${state.stateFilter === s ? 'selected' : ''}>${s}</option>`).join('')}
       </select>
-      <input type="text" placeholder="Search companies..." style="flex:1" oninput="handleSearch(this.value)" value="${state.searchQuery}">
-      <span style="font-size:12px;color:var(--gray-500)">${filtered.length} remaining</span>
+      <input type="text" id="search-input" placeholder="Search companies..." style="flex:1" oninput="handleSearch(this.value)" value="${DOMPurify.sanitize(state.searchQuery)}">
+      <span id="queue-count" style="font-size:12px;color:var(--gray-500)">${filtered.length} remaining</span>
     </div>
 
+    <div id="queue-cards">
     ${filtered.length === 0 ? `
       <div class="empty">
         <div class="empty-icon">✅</div>
@@ -772,6 +838,7 @@ function renderQueue() {
     ${filtered.slice(0, 50).map(c => renderCallCard(c)).join('')}
 
     ${filtered.length > 50 ? `<div style="padding:20px;text-align:center;color:var(--gray-500);font-size:13px">Showing 50 of ${filtered.length} — filter by state to narrow down</div>` : ''}
+    </div>
   `;
 }
 
@@ -781,7 +848,7 @@ function renderCallCard(c) {
   const isCurrentCall = twilioState.currentCallCompanyId === c.id && twilioState.activeConnection;
 
   return `
-    <div class="call-card ${isCurrentCall ? 'current-call' : ''}">
+    <div class="call-card ${isCurrentCall ? 'current-call' : ''}" data-card-id="${c.id}">
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div>
           <div class="company-name">${DOMPurify.sanitize(c.company_name)}</div>
