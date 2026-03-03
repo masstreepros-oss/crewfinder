@@ -2,13 +2,24 @@
 // TwiML webhook — routes outbound browser calls to the actual phone number
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// TODO: Add rate limiting - consider using Supabase edge function rate limiter
+// or implement token bucket per IP/user to prevent abuse
+
+const ALLOWED_ORIGINS = ["https://crewfinder.pages.dev", "http://localhost:3000"];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  const corsOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": corsOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
 
 serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -46,7 +57,7 @@ serve(async (req: Request) => {
       else cleanNumber = "+" + cleanNumber;
     }
 
-    console.log(`Routing call to: ${cleanNumber}`);
+    console.log("Routing call");
 
     // XML escape helper for callerId
     const escapeXml = (str: string) => str

@@ -1,0 +1,8 @@
+node_modules/
+ios/
+android/
+www/
+.env
+.env.local
+supabase/.temp/
+*.log

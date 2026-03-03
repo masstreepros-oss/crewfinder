@@ -6,7 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CrewFinder">
-<meta name="theme-color" content="#1A3C2A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0B1F14">
+<meta name="author" content="CrewFinder">
+<meta name="keywords" content="tree service jobs, hire tree climber, arborist jobs, tree crew, landscaping work, outdoor trade marketplace">
+<meta name="robots" content="index, follow">
 <title>CrewFinder — On-Demand Skilled Labor for Outdoor Trades</title>
 <link rel="apple-touch-icon" href="/icon-192.png">
 <meta name="description" content="Find skilled tree service climbers, landscapers, CDL drivers, and outdoor trade workers for tomorrow's job. Or pick up work to fill your schedule. No resumes — just profiles, ratings, and real skills.">
@@ -19,11 +23,15 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="CrewFinder — On-Demand Skilled Labor for Outdoor Trades">
 <meta name="twitter:description" content="Find skilled tree service climbers, landscapers, and outdoor trade workers for tomorrow's job. No resumes — just skills, ratings, and real profiles.">
+<meta name="twitter:image" content="https://crewfinder.pages.dev/og-image.png">
+<meta property="og:locale" content="en_US">
 <link rel="canonical" href="https://crewfinder.pages.dev/">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="manifest" href="/manifest.json">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -136,7 +144,36 @@
     .nav-links { gap:6px; }
     .nav-cta { padding:8px 14px; font-size:12px; }
   }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "CrewFinder",
+  "url": "https://crewfinder.pages.dev",
+  "logo": "https://crewfinder.pages.dev/icon-512.png",
+  "description": "The on-demand marketplace connecting tree service professionals with local businesses.",
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "email": "masstreepros@gmail.com",
+    "contactType": "customer service"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "CrewFinder",
+  "url": "https://crewfinder.pages.dev",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://crewfinder.pages.dev/app.html?search={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
 </head>
 <body>
 <a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
@@ -224,6 +261,12 @@
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
 </script>
 
 <script type="application/ld+json">

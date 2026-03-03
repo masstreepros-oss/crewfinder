@@ -13,14 +13,26 @@
 <meta property="og:title" content="CrewFinder — Storm & Sub Board">
 <meta property="og:description" content="Storm damage response coordination - find emergency tree service crews and post urgent storm cleanup jobs.">
 <meta property="og:url" content="https://crewfinder.pages.dev/storm.html">
-<meta name="twitter:card" content="summary">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0B1F14">
+<meta name="author" content="CrewFinder">
+<meta name="keywords" content="storm damage tree service, emergency tree crew, subcontractor tree work, storm cleanup crew, tree service storm response">
+<meta name="robots" content="index, follow">
+<meta property="og:image" content="https://crewfinder.pages.dev/icon-512.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="CrewFinder — Storm & Sub Board">
 <meta name="twitter:description" content="Storm damage response coordination - find emergency tree service crews and post urgent storm cleanup jobs.">
+<meta name="twitter:image" content="https://crewfinder.pages.dev/icon-512.png">
 <link rel="canonical" href="https://crewfinder.pages.dev/storm.html">
+<link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://mhatwlmbwikvrlcgfojt.supabase.co">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" integrity="sha384-vdScihEZCfbPnBQf+lc7LgXUdJVYyhC3yWHUW5C5P5GpHRqVnaM6HJELJxT6IqwM" crossorigin="anonymous"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -104,11 +116,20 @@
   .nav-item span { font-size: 10px; font-weight: 500; }
   .nav-item.active span { font-weight: 700; }
   .nav-dot { width: 4px; height: 4px; border-radius: 50%; background: #2D7A3A; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
-<div id="app" id="main-content">
+<!-- Cookie Consent Banner -->
+<div id="cookie-consent" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0B1F14;color:#E8F5E9;padding:16px 24px;z-index:99999;font-family:sans-serif;font-size:14px;box-shadow:0 -2px 10px rgba(0,0,0,0.3);align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <p style="margin:0;flex:1;min-width:200px;">We use cookies for authentication and essential features. <a href="/privacy.html" style="color:#4CAF50;text-decoration:underline;">Privacy Policy</a></p>
+  <div style="display:flex;gap:8px;">
+    <button onclick="acceptCookies()" style="padding:8px 20px;background:#4CAF50;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Accept</button>
+    <button onclick="declineCookies()" style="padding:8px 20px;background:transparent;color:#E8F5E9;border:1px solid rgba(255,255,255,0.3);border-radius:8px;cursor:pointer;font-weight:600;">Decline</button>
+  </div>
+</div>
+<a href="#app" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
+<div id="app" role="main">
   <div class="header">
     <div class="header-logo">
       <svg viewBox="0 0 100 100" fill="none"><path d="M50 8 L30 40 L38 40 L22 65 L32 65 L18 90 L82 90 L68 65 L78 65 L62 40 L70 40 Z" fill="#2D7A3A" opacity="0.9"/><rect x="44" y="85" width="12" height="15" rx="2" fill="#5D4037"/></svg>
@@ -132,6 +153,12 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const content = document.getElementById('content');
 let filter = 'all';
 let posts = [];
+
+// Auth check - redirect to app if not logged in
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = '/app.html'; return; }
+})();
 
 const TYPE_LABELS = { storm_need: '🌧️ Need Crew', storm_available: '⚡ Available', subcontract_need: '🤝 Need Sub', subcontract_available: '💪 Sub Available' };
 const TYPE_CLASSES = { storm_need: 'badge-storm-need', storm_available: 'badge-storm-avail', subcontract_need: 'badge-sub-need', subcontract_available: 'badge-sub-avail' };
@@ -179,7 +206,7 @@ function renderBoard() {
         ${p.equipment_needed && p.equipment_needed.length ? `<div class="card-equip">${p.equipment_needed.map(eq => `<span class="badge badge-equip">${DOMPurify.sanitize(eq)}</span>`).join('')}</div>` : ''}
         ${p.description ? `<div style="font-size:13px;color:#5A6B5E;margin-bottom:8px;line-height:1.5">${DOMPurify.sanitize(p.description.substring(0, 150))}${p.description.length > 150 ? '...' : ''}</div>` : ''}
         <div class="card-footer">
-          <span class="card-pay">${p.pay_rate || 'Contact for rates'}</span>
+          <span class="card-pay">${DOMPurify.sanitize(p.pay_rate || 'Contact for rates')}</span>
           <div class="card-footer-right">
             <span class="card-responses">${p.responses_count || 0} responses</span>
             <button class="btn-respond" onclick="respondToPost('${p.id}')">Respond</button>
@@ -246,8 +273,8 @@ function respondToPost(postId) {
     <button class="detail-back" onclick="loadPosts()">← Back to board</button>
     <div style="font-size:20px;font-weight:800;color:#1A3C2A;margin-bottom:16px">Respond to Post</div>
     <div style="background:#E8F5E9;border-radius:12px;padding:12px;margin-bottom:16px;border-left:4px solid #2D7A3A">
-      <div style="font-weight:600;color:#2D7A3A;font-size:14px;margin-bottom:4px">${post.title}</div>
-      <div style="font-size:12px;color:#5A6B5E">Posted by ${post.poster_name} • ${post.location}</div>
+      <div style="font-weight:600;color:#2D7A3A;font-size:14px;margin-bottom:4px">${DOMPurify.sanitize(post.title)}</div>
+      <div style="font-size:12px;color:#5A6B5E">Posted by ${DOMPurify.sanitize(post.poster_name)} • ${DOMPurify.sanitize(post.location)}</div>
     </div>
     <form id="responseForm" onsubmit="submitResponse(event, '${postId}')">
       <div class="form-group"><label class="form-label">Your Name *</label><input class="form-input" name="responder_name" required></div>
@@ -297,6 +324,11 @@ loadPosts();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+</script>
+<script>
+function acceptCookies(){localStorage.setItem("cookie-consent","accepted");document.getElementById("cookie-consent").style.display="none";}
+function declineCookies(){localStorage.setItem("cookie-consent","declined");document.getElementById("cookie-consent").style.display="none";}
+if(!localStorage.getItem("cookie-consent")){document.getElementById("cookie-consent").style.display="flex";}
 </script>
 </body>
 </html>

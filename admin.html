@@ -16,10 +16,17 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="CrewFinder Admin">
 <meta name="twitter:description" content="CrewFinder admin dashboard for managing users, jobs, and platform settings.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0B1F14">
+<meta name="robots" content="noindex, nofollow">
+<meta name="author" content="CrewFinder">
 <link rel="canonical" href="https://crewfinder.pages.dev/admin.html">
+<link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" integrity="sha384-vdScihEZCfbPnBQf+lc7LgXUdJVYyhC3yWHUW5C5P5GpHRqVnaM6HJELJxT6IqwM" crossorigin="anonymous"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -128,9 +135,18 @@
   .company-item .meta { font-size: 12px; color: var(--gray-500); }
   .confirm-delete { background: #FFF5F5; border: 1px solid #FFCDD2; border-radius: 8px; padding: 12px; margin-top: 8px; }
   .confirm-delete p { font-size: 13px; color: var(--red); margin-bottom: 8px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
+<!-- Cookie Consent Banner -->
+<div id="cookie-consent" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0B1F14;color:#E8F5E9;padding:16px 24px;z-index:99999;font-family:sans-serif;font-size:14px;box-shadow:0 -2px 10px rgba(0,0,0,0.3);align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <p style="margin:0;flex:1;min-width:200px;">We use cookies for authentication and essential features. <a href="/privacy.html" style="color:#4CAF50;text-decoration:underline;">Privacy Policy</a></p>
+  <div style="display:flex;gap:8px;">
+    <button onclick="acceptCookies()" style="padding:8px 20px;background:#4CAF50;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Accept</button>
+    <button onclick="declineCookies()" style="padding:8px 20px;background:transparent;color:#E8F5E9;border:1px solid rgba(255,255,255,0.3);border-radius:8px;cursor:pointer;font-weight:600;">Decline</button>
+  </div>
+</div>
 <a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
 
 <!-- LOGIN -->
@@ -407,7 +423,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 <script>
 const SUPABASE_URL = 'https://mhatwlmbwikvrlcgfojt.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNDUzMTQsImV4cCI6MjA4NjkyMTMxNH0.8LefO4aYzYGfmsUb4blBEBLjIoF4CtYJ7xfimdc7lBE';
@@ -513,7 +529,7 @@ async function loadDashboard() {
     recentEl.innerHTML = DOMPurify.sanitize(fullProfiles.map(p => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-100)">
         <div style="display:flex;gap:8px;align-items:center">
-          <div class="user-avatar">${p.avatar_url ? `<img src="${p.avatar_url}">` : (p.user_type === 'worker' ? '👷' : '🏢')}</div>
+          <div class="user-avatar">${p.avatar_url ? `<img src="${DOMPurify.sanitize(p.avatar_url)}">` : (p.user_type === 'worker' ? '👷' : '🏢')}</div>
           <div>
             <div style="font-weight:600;font-size:13px">${p.name || p.company_name || 'Unnamed'}</div>
             <div style="font-size:11px;color:var(--gray-500)">${p.email || ''}</div>
@@ -553,7 +569,7 @@ async function loadUsers() {
     if (error) throw error;
     allUsers = data || [];
     renderUsers(allUsers);
-  } catch(e) { document.getElementById('users-list').innerHTML = `<div style="color:var(--red)">${e.message}</div>`; }
+  } catch(e) { document.getElementById('users-list').innerHTML = `<div style="color:var(--red)">${DOMPurify.sanitize(e.message)}</div>`; }
 }
 
 function filterUsers() {
@@ -579,7 +595,7 @@ function renderUsers(users) {
     <div class="user-item">
       <div class="user-item-header">
         <div class="user-info">
-          <div class="user-avatar">${u.avatar_url ? `<img src="${u.avatar_url}">` : (u.user_type === 'worker' ? '👷' : '🏢')}</div>
+          <div class="user-avatar">${u.avatar_url ? `<img src="${DOMPurify.sanitize(u.avatar_url)}">` : (u.user_type === 'worker' ? '👷' : '🏢')}</div>
           <div style="min-width:0">
             <div class="user-name">${u.name || u.company_name || 'Unnamed'}</div>
             <div class="user-meta">${u.email || 'No email'} · ${u.location_text || 'No location'}${u.phone ? ' · ' + u.phone : ''}</div>
@@ -594,7 +610,7 @@ function renderUsers(users) {
         </div>
         <div class="user-actions">
           <button class="btn btn-outline btn-sm" onclick="openEditModal('${u.id}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="confirmDeleteUser('${u.id}', '${displayName}')">Delete</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmDeleteUser('${u.id}', '${DOMPurify.sanitize(displayName)}')">Delete</button>
         </div>
       </div>
       <div id="delete-confirm-${u.id}" class="hidden"></div>
@@ -722,7 +738,7 @@ async function loadReviews() {
     if (error) throw error;
     allReviews = data || [];
     renderReviews(allReviews);
-  } catch(e) { document.getElementById('reviews-list').innerHTML = `<div style="color:var(--red)">${e.message}</div>`; }
+  } catch(e) { document.getElementById('reviews-list').innerHTML = `<div style="color:var(--red)">${DOMPurify.sanitize(e.message)}</div>`; }
 }
 
 function filterReviews() {
@@ -838,7 +854,7 @@ async function loadCompanies() {
       <div class="company-item">
         <div style="display:flex;gap:10px;align-items:center;flex:1">
           <div style="width:40px;height:40px;border-radius:8px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
-            ${c.logo_url ? `<img src="${c.logo_url}" style="width:100%;height:100%;object-fit:cover">` : '<span style="font-size:18px">🏢</span>'}
+            ${c.logo_url ? `<img src="${DOMPurify.sanitize(c.logo_url)}" style="width:100%;height:100%;object-fit:cover">` : '<span style="font-size:18px">🏢</span>'}
           </div>
           <div>
             <div class="name">${c.company_name}</div>
@@ -849,7 +865,7 @@ async function loadCompanies() {
         <span class="badge ${c.claimed ? 'badge-claimed' : 'badge-unclaimed'}">${c.claimed ? 'Claimed ✓' : 'Unclaimed'}</span>
       </div>
     `).join(''));
-  } catch(e) { container.innerHTML = `<div style="color:var(--red)">${e.message}</div>`; }
+  } catch(e) { container.innerHTML = `<div style="color:var(--red)">${DOMPurify.sanitize(e.message)}</div>`; }
 }
 
 // ===== ANNOUNCEMENTS =====
@@ -933,9 +949,14 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString();
 }
 
-// Auto-login
+// Auto-login with admin email whitelist check
 db.auth.getSession().then(({ data }) => {
   if (data.session) {
+    const ADMIN_EMAILS = ['masstp01@gmail.com', 'masstreepros@gmail.com'];
+    if (!ADMIN_EMAILS.includes(data.session.user.email)) {
+      db.auth.signOut();
+      return;
+    }
     adminUser = data.session.user;
     document.getElementById('login-section').classList.add('hidden');
     document.getElementById('admin-panel').classList.remove('hidden');
@@ -1167,6 +1188,11 @@ async function runImport() {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+</script>
+<script>
+function acceptCookies(){localStorage.setItem("cookie-consent","accepted");document.getElementById("cookie-consent").style.display="none";}
+function declineCookies(){localStorage.setItem("cookie-consent","declined");document.getElementById("cookie-consent").style.display="none";}
+if(!localStorage.getItem("cookie-consent")){document.getElementById("cookie-consent").style.display="flex";}
 </script>
 </body>
 </html>

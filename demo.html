@@ -6,6 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CrewFinder">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0B1F14">
+<meta name="author" content="CrewFinder">
+<meta name="keywords" content="CrewFinder demo, tree service app demo, hire tree climber demo, outdoor trade marketplace, arborist hiring app">
+<meta name="robots" content="index, follow">
 <title>CrewFinder — Interactive Demo</title>
 <link rel="apple-touch-icon" href="/icon-192.png">
 <meta name="description" content="Try CrewFinder's interactive demo. See how businesses find skilled outdoor trade workers and how workers pick up jobs — all from one app.">
@@ -13,11 +18,20 @@
 <meta property="og:description" content="Interactive demo of CrewFinder, the on-demand marketplace for tree service, landscaping, and outdoor trade workers.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://crewfinder.pages.dev/demo.html">
+<meta property="og:image" content="https://crewfinder.pages.dev/og-image.png">
+<meta property="og:site_name" content="CrewFinder">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CrewFinder Demo — Try It Now">
+<meta name="twitter:description" content="Interactive demo of CrewFinder, the on-demand marketplace for tree service, landscaping, and outdoor trade workers.">
+<meta name="twitter:image" content="https://crewfinder.pages.dev/og-image.png">
 <link rel="canonical" href="https://crewfinder.pages.dev/demo.html">
 <link rel="icon" type="image/png" href="/icon-192.png">
+<link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" integrity="sha384-vdScihEZCfbPnBQf+lc7LgXUdJVYyhC3yWHUW5C5P5GpHRqVnaM6HJELJxT6IqwM" crossorigin="anonymous"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   
@@ -588,9 +602,18 @@
   .demo-nav .btn-app { background: rgba(92,184,92,0.2); border: 1px solid rgba(92,184,92,0.4); color: #5CB85C; padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; }
   .demo-nav .btn-app:hover { background: rgba(92,184,92,0.3); color: #fff; }
   body { padding-top: 42px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
+<!-- Cookie Consent Banner -->
+<div id="cookie-consent" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0B1F14;color:#E8F5E9;padding:16px 24px;z-index:99999;font-family:sans-serif;font-size:14px;box-shadow:0 -2px 10px rgba(0,0,0,0.3);align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <p style="margin:0;flex:1;min-width:200px;">We use cookies for authentication and essential features. <a href="/privacy.html" style="color:#4CAF50;text-decoration:underline;">Privacy Policy</a></p>
+  <div style="display:flex;gap:8px;">
+    <button onclick="acceptCookies()" style="padding:8px 20px;background:#4CAF50;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Accept</button>
+    <button onclick="declineCookies()" style="padding:8px 20px;background:transparent;color:#E8F5E9;border:1px solid rgba(255,255,255,0.3);border-radius:8px;cursor:pointer;font-weight:600;">Decline</button>
+  </div>
+</div>
 <a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
 
 <div id="main-content">
@@ -1049,6 +1072,11 @@ function renderContent() {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+</script>
+<script>
+function acceptCookies(){localStorage.setItem("cookie-consent","accepted");document.getElementById("cookie-consent").style.display="none";}
+function declineCookies(){localStorage.setItem("cookie-consent","declined");document.getElementById("cookie-consent").style.display="none";}
+if(!localStorage.getItem("cookie-consent")){document.getElementById("cookie-consent").style.display="flex";}
 </script>
 </body>
 </html>

@@ -6,6 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CrewFinder">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0B1F14">
+<meta name="author" content="CrewFinder">
+<meta name="keywords" content="tree service news, arborist industry updates, tree care tips, outdoor trade news, landscaping news">
+<meta name="robots" content="index, follow">
 <title>CrewFinder — Industry News</title>
 <meta name="description" content="Latest tree service industry news, tips, and updates from CrewFinder.">
 <meta property="og:type" content="website">
@@ -13,14 +18,20 @@
 <meta property="og:title" content="CrewFinder — Industry News">
 <meta property="og:description" content="Latest tree service industry news, tips, and updates from CrewFinder.">
 <meta property="og:url" content="https://crewfinder.pages.dev/news.html">
+<meta property="og:image" content="https://crewfinder.pages.dev/og-image.png">
+<meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="CrewFinder — Industry News">
 <meta name="twitter:description" content="Latest tree service industry news, tips, and updates from CrewFinder.">
+<meta name="twitter:image" content="https://crewfinder.pages.dev/og-image.png">
 <link rel="canonical" href="https://crewfinder.pages.dev/news.html">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" integrity="sha384-vdScihEZCfbPnBQf+lc7LgXUdJVYyhC3yWHUW5C5P5GpHRqVnaM6HJELJxT6IqwM" crossorigin="anonymous"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -87,6 +98,7 @@
   .loading { text-align: center; padding: 32px; color: #8A9B8E; }
   .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #E2E8E4; border-top-color: #2D7A3A; border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
   .bottom-nav { background: #fff; border-top: 1px solid #E8E8E8; display: flex; padding: 6px 8px 10px; }
   .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; background: none; border: none; cursor: pointer; color: #8A9B8E; font-family: inherit; padding: 6px 0; text-decoration: none; }
@@ -97,8 +109,16 @@
 </style>
 </head>
 <body>
+<!-- Cookie Consent Banner -->
+<div id="cookie-consent" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0B1F14;color:#E8F5E9;padding:16px 24px;z-index:99999;font-family:sans-serif;font-size:14px;box-shadow:0 -2px 10px rgba(0,0,0,0.3);align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <p style="margin:0;flex:1;min-width:200px;">We use cookies for authentication and essential features. <a href="/privacy.html" style="color:#4CAF50;text-decoration:underline;">Privacy Policy</a></p>
+  <div style="display:flex;gap:8px;">
+    <button onclick="acceptCookies()" style="padding:8px 20px;background:#4CAF50;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Accept</button>
+    <button onclick="declineCookies()" style="padding:8px 20px;background:transparent;color:#E8F5E9;border:1px solid rgba(255,255,255,0.3);border-radius:8px;cursor:pointer;font-weight:600;">Decline</button>
+  </div>
+</div>
 <a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
-<div id="app" id="main-content">
+<div id="app" role="main">
   <div class="header">
     <div class="header-logo">
       <svg viewBox="0 0 100 100" fill="none"><path d="M50 8 L30 40 L38 40 L22 65 L32 65 L18 90 L82 90 L68 65 L78 65 L62 40 L70 40 Z" fill="#2D7A3A" opacity="0.9"/><rect x="44" y="85" width="12" height="15" rx="2" fill="#5D4037"/></svg>
@@ -119,6 +139,13 @@
 const SUPABASE_URL = 'https://mhatwlmbwikvrlcgfojt.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNDUzMTQsImV4cCI6MjA4NjkyMTMxNH0.8LefO4aYzYGfmsUb4blBEBLjIoF4CtYJ7xfimdc7lBE';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Auth check — redirect to app.html if no active session
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = '/app.html'; return; }
+})();
+
 const content = document.getElementById('content');
 let category = 'all';
 let articles = [];
@@ -213,6 +240,11 @@ loadNews();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+</script>
+<script>
+function acceptCookies(){localStorage.setItem("cookie-consent","accepted");document.getElementById("cookie-consent").style.display="none";}
+function declineCookies(){localStorage.setItem("cookie-consent","declined");document.getElementById("cookie-consent").style.display="none";}
+if(!localStorage.getItem("cookie-consent")){document.getElementById("cookie-consent").style.display="flex";}
 </script>
 </body>
 </html>

@@ -6,23 +6,33 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CrewFinder">
-<meta name="theme-color" content="#1A3C2A">
+<meta name="theme-color" content="#0B1F14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="robots" content="index, follow">
+<meta name="author" content="CrewFinder">
+<meta name="keywords" content="tree service jobs, arborist jobs, tree crew finder, landscaping jobs, outdoor trade workers, hire tree climber">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <title>CrewFinder</title>
 <meta name="description" content="Browse available tree service jobs, manage your crew, and connect with skilled workers on CrewFinder.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="CrewFinder">
 <meta property="og:title" content="CrewFinder">
-<meta property="og:description" content="Browse available tree service jobs, manage your crew, and connect with skilled workers on CrewFinder.">
+<meta property="og:description" content="Find skilled tree service professionals or pick up work. Browse jobs, message crews, and manage your outdoor trade business.">
+<meta property="og:image" content="https://crewfinder.pages.dev/icon-512.png">
+<meta property="og:locale" content="en_US">
 <meta property="og:url" content="https://crewfinder.pages.dev/app.html">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="CrewFinder">
-<meta name="twitter:description" content="Browse available tree service jobs, manage your crew, and connect with skilled workers on CrewFinder.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CrewFinder — Tree Service Jobs & Crews">
+<meta name="twitter:description" content="Find skilled tree service professionals or browse outdoor trade jobs.">
+<meta name="twitter:image" content="https://crewfinder.pages.dev/icon-512.png">
 <link rel="canonical" href="https://crewfinder.pages.dev/app.html">
-<link rel="manifest" href="manifest.json">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://mhatwlmbwikvrlcgfojt.supabase.co">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" integrity="sha384-vdScihEZCfbPnBQf+lc7LgXUdJVYyhC3yWHUW5C5P5GpHRqVnaM6HJELJxT6IqwM" crossorigin="anonymous"></script>
 <style>
 /* ============================================
    CSS RESET & VARIABLES
@@ -1057,13 +1067,22 @@ input, select, textarea { font-size: 16px !important; }
 .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
 .empty-state h3 { font-size: 17px; font-weight: 700; color: var(--gray-700); margin-bottom: 6px; }
 .empty-state p { font-size: 14px; line-height: 1.5; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
+<div id="cookie-consent" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0B1F14;color:#E8F5E9;padding:16px 24px;z-index:99999;font-family:'Outfit',sans-serif;font-size:14px;box-shadow:0 -2px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <p style="margin:0;flex:1;min-width:200px;">We use cookies for authentication and essential features. <a href="/privacy.html" style="color:#4CAF50;text-decoration:underline;">Privacy Policy</a></p>
+  <div style="display:flex;gap:8px;">
+    <button onclick="acceptCookies()" style="padding:8px 20px;background:#4CAF50;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit;">Accept</button>
+    <button onclick="declineCookies()" style="padding:8px 20px;background:transparent;color:#E8F5E9;border:1px solid rgba(255,255,255,0.3);border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit;">Decline</button>
+  </div>
+</div>
+<a href="#app" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
 
 
-<div id="app" id="main-content">
+<div id="app" role="main">
   <!-- All screens render here via JS -->
   <div class="loading-screen" id="loading-screen">
     <div class="spinner"></div>
@@ -1401,7 +1420,7 @@ async function loadSplashCompanies() {
       <div class="splash-companies-list">
         ${shown.map(c => `
           <div class="splash-company-chip">
-            ${c.logo ? `<img src="${c.logo}">` : `<span class="chip-dot">🏢</span>`}
+            ${c.logo ? `<img src="${safeUrl(c.logo)}">` : `<span class="chip-dot">🏢</span>`}
             ${DOMPurify.sanitize(c.name)}
           </div>
         `).join('')}
@@ -1562,7 +1581,7 @@ function renderProfileBuilder(app) {
       stepContent = `
         <div class="card" style="display:flex;flex-direction:column;align-items:center;padding:20px;margin-bottom:16px">
           <div id="avatar-preview" style="width:90px;height:90px;border-radius:45px;background:linear-gradient(135deg,var(--forest-mid),var(--green));display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;cursor:pointer;border:3px solid var(--gray-200)" onclick="document.getElementById('avatar-input').click()">
-            ${avatarUrl ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover">` : `<span style="color:#fff;font-size:30px;font-weight:700">${getInitials(state.profile.name)}</span>`}
+            ${avatarUrl ? `<img src="${safeUrl(avatarUrl)}" style="width:100%;height:100%;object-fit:cover">` : `<span style="color:#fff;font-size:30px;font-weight:700">${getInitials(state.profile.name)}</span>`}
           </div>
           <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
           <button class="btn btn-outline" style="width:auto;padding:8px 20px;font-size:13px" onclick="document.getElementById('avatar-input').click()">
@@ -1999,7 +2018,7 @@ function renderWorkerCard(w) {
   }).filter(Boolean);
   
   const avatarContent = w.avatar_url 
-    ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    ? `<img src="${safeUrl(w.avatar_url)}" style="width:100%;height:100%;object-fit:cover">`
     : getInitials(w.name);
   const avatarStyle = w.avatar_url 
     ? 'overflow:hidden' 
@@ -2039,7 +2058,7 @@ function renderWorkerProfile(w) {
   }).filter(Boolean);
   
   const avatarContent = w.avatar_url 
-    ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    ? `<img src="${safeUrl(w.avatar_url)}" style="width:100%;height:100%;object-fit:cover">`
     : `<span style="color:#fff;font-size:20px;font-weight:700">${getInitials(w.name)}</span>`;
   
   return `
@@ -2582,7 +2601,7 @@ function renderBrowseWorkers() {
     <div class="page-padding" style="padding-top:0">
       ${workers.length ? workers.map(w => {
         const avatarContent = w.avatar_url 
-          ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+          ? `<img src="${safeUrl(w.avatar_url)}" style="width:100%;height:100%;object-fit:cover">`
           : getInitials(w.name);
         const avatarStyle = w.avatar_url ? 'overflow:hidden' : '';
         const workerSkills = (w.worker_skills || []).map(ws => {
@@ -2723,7 +2742,7 @@ function renderBrowseCompanies() {
   // Render claimed businesses
   const claimedCards = businesses.map(b => {
     const avatarContent = b.avatar_url 
-      ? `<img src="${b.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+      ? `<img src="${safeUrl(b.avatar_url)}" style="width:100%;height:100%;object-fit:cover">`
       : getInitials(b.company_name || b.name);
     const avatarStyle = b.avatar_url ? 'overflow:hidden' : '';
     const jobCount = (state.jobs || []).filter(j => j.business_id === b.id && j.is_active).length;
@@ -2780,7 +2799,8 @@ function renderBrowseCompanies() {
   const totalCount = businesses.length + unclaimedFiltered.length;
 
   // Export button (only for admin — check if logged-in user is admin)
-  const isAdmin = state.user?.email === 'masstp01@gmail.com';
+  const ADMIN_EMAILS = ['masstp01@gmail.com', 'masstreepros@gmail.com'];
+  const isAdmin = ADMIN_EMAILS.includes(state.user?.email);
   const exportBtn = isAdmin ? `
     <button onclick="exportCallList()" style="font-size:12px;padding:4px 10px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;margin-left:8px">📋 Export Call List</button>
   ` : '';
@@ -2814,7 +2834,7 @@ async function exportCallList() {
       .order('company_name');
     
     // Apply current state filter if active
-    const stateFilter = state.locationFilter?.state;
+    const stateFilter = (state.locationFilter?.state || '').replace(/[^A-Za-z]/g, '').slice(0, 2);
     if (stateFilter) {
       query = query.or(`location_text.ilike.%${stateFilter}%,location_text.ilike.%${stateFilter}%`);
     }
@@ -2871,7 +2891,7 @@ function renderWorkerProfileForWorker(w) {
   }).filter(Boolean);
   
   const avatarContent = w.avatar_url 
-    ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    ? `<img src="${safeUrl(w.avatar_url)}" style="width:100%;height:100%;object-fit:cover">`
     : `<span style="color:#fff;font-size:20px;font-weight:700">${getInitials(w.name)}</span>`;
   
   return `
@@ -2988,7 +3008,7 @@ function renderCompanies() {
       <div class="page-sub">Browse tree service companies hiring in your area</div>
       ${businesses.length ? businesses.map(b => {
         const avatarContent = b.avatar_url 
-          ? `<img src="${b.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+          ? `<img src="${safeUrl(b.avatar_url)}" style="width:100%;height:100%;object-fit:cover">`
           : getInitials(b.company_name || b.name);
         const avatarStyle = b.avatar_url ? 'overflow:hidden' : '';
         const jobCount = (state.jobs || []).filter(j => j.business_id === b.id && j.is_active).length;
@@ -3026,7 +3046,7 @@ function renderCompanies() {
 
 function renderCompanyProfile(b) {
   const avatarContent = b.avatar_url 
-    ? `<img src="${b.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+    ? `<img src="${safeUrl(b.avatar_url)}" style="width:100%;height:100%;object-fit:cover">`
     : `<span style="color:#fff;font-size:20px;font-weight:700">${getInitials(b.company_name || b.name)}</span>`;
   
   const companyJobs = (state.jobs || []).filter(j => j.business_id === b.id && j.is_active);
@@ -3260,7 +3280,7 @@ function renderCrewRoster() {
       ${crew.length ? crew.map(c => {
         const w = c.worker || {};
         const avatarContent = w.avatar_url 
-          ? `<img src="${w.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+          ? `<img src="${safeUrl(w.avatar_url)}" style="width:100%;height:100%;object-fit:cover">`
           : getInitials(w.name);
         const avatarStyle = w.avatar_url ? 'overflow:hidden' : '';
         const workerSkills = (w.worker_skills || []).map(ws => {
@@ -3418,8 +3438,8 @@ function renderMyProfile() {
     }
   }
   
-  const avatarContent = p.avatar_url 
-    ? `<img src="${p.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+  const avatarContent = p.avatar_url
+    ? `<img src="${safeUrl(p.avatar_url)}" style="width:100%;height:100%;object-fit:cover">`
     : `<span style="color:#fff;font-size:20px;font-weight:700">${getInitials(p.name)}</span>`;
   
   return `
@@ -3475,13 +3495,40 @@ function renderMyProfile() {
       </div>
       <div class="profile-section">
         <div class="profile-section-title">Subscription</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--light-green);border-radius:var(--radius-sm)">
-          <div>
-            <div style="font-weight:700;color:var(--green)">Free Plan</div>
-            <div style="font-size:12px;color:var(--gray-600)">2 active jobs, 5 messages/month</div>
-          </div>
-          <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:12px">Upgrade</button>
-        </div>
+        ${(() => {
+          const sub = checkSubscription(p);
+          if (sub.active) {
+            return `
+            <div style="padding:10px 14px;background:var(--light-green);border-radius:var(--radius-sm);border:1px solid var(--green)">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-weight:700;color:var(--green)">${DOMPurify.sanitize(sub.label)}</div>
+                  <div style="font-size:12px;color:var(--gray-600)">Unlimited jobs & messages</div>
+                  ${sub.periodEnd ? `<div style="font-size:11px;color:var(--gray-500);margin-top:2px">Renews ${sub.periodEnd.toLocaleDateString()}</div>` : ''}
+                </div>
+                <span style="font-size:24px">&#9989;</span>
+              </div>
+              <button class="btn btn-outline" style="margin-top:10px;font-size:12px;padding:8px 16px" onclick="openBillingPortal()">Manage Subscription</button>
+            </div>`;
+          } else {
+            return `
+            <div style="padding:14px;background:var(--gray-50);border-radius:var(--radius-sm);border:1px solid var(--gray-200)">
+              <div style="font-weight:700;color:var(--forest-mid);margin-bottom:4px">Free Plan</div>
+              <div style="font-size:12px;color:var(--gray-600);margin-bottom:12px">2 active jobs, 5 messages/month</div>
+              <div style="font-weight:700;font-size:13px;color:var(--forest-mid);margin-bottom:8px">Upgrade to Pro</div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:10px 8px;margin:0" onclick="startCheckout('monthly')">
+                  <div style="font-weight:700">Monthly</div>
+                  <div style="font-size:11px;opacity:0.85;margin-top:2px">$29/mo</div>
+                </button>
+                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:10px 8px;margin:0;background:var(--forest-mid)" onclick="startCheckout('annual')">
+                  <div style="font-weight:700">Annual</div>
+                  <div style="font-size:11px;opacity:0.85;margin-top:2px">$249/yr (save 28%)</div>
+                </button>
+              </div>
+            </div>`;
+          }
+        })()}
       </div>
       `}
       <div style="padding:0 16px 16px">
@@ -3503,6 +3550,7 @@ function renderMyProfile() {
         </button>
         ` : ''}
         <button class="btn btn-outline" onclick="handleLogout()">Log Out</button>
+        <button class="btn btn-outline" style="margin-top:16px;color:var(--red);border-color:var(--red);font-size:12px" onclick="deleteMyAccount()">Delete My Account</button>
       </div>
     </div>
   `;
@@ -4501,6 +4549,116 @@ async function handleLogout() {
 }
 
 // ============================================
+// SUBSCRIPTION & BILLING
+// ============================================
+function checkSubscription(profile) {
+  if (!profile) return { active: false, label: 'Free', canPost: true, jobLimit: 2, msgLimit: 5 };
+  const status = profile.subscription_status;
+  const isActive = status === 'active' || status === 'trialing';
+  const periodEnd = profile.current_period_end ? new Date(profile.current_period_end) : null;
+  const isExpired = periodEnd && periodEnd < new Date();
+  if (isActive && !isExpired) {
+    return {
+      active: true,
+      label: profile.plan_type === 'annual' ? 'Pro (Annual)' : 'Pro (Monthly)',
+      plan: profile.plan_type || 'monthly',
+      canPost: true,
+      jobLimit: 999,
+      msgLimit: 999,
+      periodEnd: periodEnd
+    };
+  }
+  return { active: false, label: 'Free', canPost: true, jobLimit: 2, msgLimit: 5 };
+}
+
+async function startCheckout(plan) {
+  try {
+    showToast('Opening checkout...');
+    const session = await db.auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) { showToast('Please log in first'); return; }
+    const res = await fetch(SUPABASE_URL + '/functions/v1/stripe-checkout', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ plan: plan })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      showToast(data.error || 'Checkout failed');
+    }
+  } catch (e) {
+    showToast('Error starting checkout');
+  }
+}
+
+async function openBillingPortal() {
+  try {
+    showToast('Opening billing portal...');
+    const session = await db.auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) { showToast('Please log in first'); return; }
+    const res = await fetch(SUPABASE_URL + '/functions/v1/stripe-portal', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      }
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      showToast(data.error || 'Could not open billing portal');
+    }
+  } catch (e) {
+    showToast('Error opening billing portal');
+  }
+}
+
+// ============================================
+// ACCOUNT DELETION
+// ============================================
+async function deleteMyAccount() {
+  const step1 = confirm('Are you sure you want to delete your account? This will permanently remove ALL your data including profile, messages, jobs, reviews, and photos. This cannot be undone.');
+  if (!step1) return;
+  const typed = prompt('Type DELETE to confirm account deletion:');
+  if (typed !== 'DELETE') {
+    showToast('Account deletion cancelled');
+    return;
+  }
+  try {
+    showToast('Deleting account...');
+    const session = await db.auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) { showToast('Please log in first'); return; }
+    const res = await fetch(SUPABASE_URL + '/functions/v1/delete-account', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Account deleted successfully');
+      state.user = null;
+      state.profile = null;
+      state.currentScreen = 'splash';
+      render();
+    } else {
+      showToast(data.error || 'Deletion failed — contact support');
+    }
+  } catch (e) {
+    showToast('Error deleting account — contact support');
+  }
+}
+
+// ============================================
 // PROFILE BUILDER STEPS
 // ============================================
 async function nextProfileStep() {
@@ -4955,6 +5113,26 @@ db.auth.onAuthStateChange((event, session) => {
 // Start the app
 init();
 
+// Handle Stripe payment redirect params
+(function handlePaymentRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const payment = params.get('payment');
+  if (payment === 'success') {
+    setTimeout(() => showToast('Subscription activated! Welcome to Pro.'), 1500);
+    window.history.replaceState({}, '', '/app.html');
+    // Reload profile to get updated subscription status
+    setTimeout(async () => {
+      if (state.user) {
+        await loadProfile();
+        render();
+      }
+    }, 2000);
+  } else if (payment === 'cancelled') {
+    setTimeout(() => showToast('Payment cancelled — no charges applied.'), 1500);
+    window.history.replaceState({}, '', '/app.html');
+  }
+})();
+
 // ============================================
 // PWA: Service Worker + Install Prompt
 // ============================================
@@ -5262,7 +5440,7 @@ render = function() {
 // Safe URL helper for img src validation
 const safeUrl = (url) => {
   if (!url) return '/default-avatar.png';
-  if (url.startsWith('https://') || url.startsWith('data:')) return url;
+  if (url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/')) return url;
   return '/default-avatar.png';
 };
 
@@ -5362,5 +5540,10 @@ document.addEventListener('click', (e) => {
   </div>
 </div>
 
+<script>
+function acceptCookies() { localStorage.setItem('cookie-consent', 'accepted'); document.getElementById('cookie-consent').style.display = 'none'; }
+function declineCookies() { localStorage.setItem('cookie-consent', 'declined'); document.getElementById('cookie-consent').style.display = 'none'; }
+if (!localStorage.getItem('cookie-consent')) { document.getElementById('cookie-consent').style.display = 'flex'; }
+</script>
 </body>
 </html>

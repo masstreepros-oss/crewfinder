@@ -1,12 +1,14 @@
 {
-  "name": "CrewFinder",
+  "name": "CrewFinder - Tree Service Jobs",
   "short_name": "CrewFinder",
-  "description": "On-demand skilled labor for outdoor trades",
+  "description": "Connect tree service professionals with local businesses. Find crews, post jobs, and grow your business.",
   "start_url": "/app.html",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0B1F14",
-  "theme_color": "#1A3C2A",
-  "orientation": "portrait",
+  "theme_color": "#0B1F14",
+  "orientation": "any",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -31,6 +33,38 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "CrewFinder - Find Tree Service Jobs"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Find Jobs",
+      "short_name": "Jobs",
+      "description": "Browse tree service jobs in your area",
+      "url": "/app.html?tab=jobs",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Post a Job",
+      "short_name": "Post",
+      "description": "Post a new tree service job",
+      "url": "/app.html?tab=post",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Messages",
+      "short_name": "Messages",
+      "description": "View your messages",
+      "url": "/app.html?tab=messages",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

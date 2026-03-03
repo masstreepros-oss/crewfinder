@@ -13,14 +13,26 @@
 <meta property="og:title" content="CrewFinder · Caller Portal">
 <meta property="og:description" content="Make voice calls to tree service professionals directly through CrewFinder.">
 <meta property="og:url" content="https://crewfinder.pages.dev/caller.html">
-<meta name="twitter:card" content="summary">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0B1F14">
+<meta name="author" content="CrewFinder">
+<meta name="keywords" content="tree service caller portal, crew outreach, cold calling tree companies, CrewFinder caller, tree care sales">
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:image" content="https://crewfinder.pages.dev/icon-512.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="CrewFinder · Caller Portal">
 <meta name="twitter:description" content="Make voice calls to tree service professionals directly through CrewFinder.">
+<meta name="twitter:image" content="https://crewfinder.pages.dev/icon-512.png">
 <link rel="canonical" href="https://crewfinder.pages.dev/caller.html">
+<link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://mhatwlmbwikvrlcgfojt.supabase.co">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 <script src="/twilio.min.js"></script><!-- @twilio/voice-sdk v2, self-hosted (CDN deprecated) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" integrity="sha384-vdScihEZCfbPnBQf+lc7LgXUdJVYyhC3yWHUW5C5P5GpHRqVnaM6HJELJxT6IqwM" crossorigin="anonymous"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -148,11 +160,20 @@ input, select, textarea { font-size: 16px !important; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .filter-bar { flex-direction: column; }
 }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
-<div class="app" id="app" id="main-content"></div>
+<!-- Cookie Consent Banner -->
+<div id="cookie-consent" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0B1F14;color:#E8F5E9;padding:16px 24px;z-index:99999;font-family:sans-serif;font-size:14px;box-shadow:0 -2px 10px rgba(0,0,0,0.3);align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <p style="margin:0;flex:1;min-width:200px;">We use cookies for authentication and essential features. <a href="/privacy.html" style="color:#4CAF50;text-decoration:underline;">Privacy Policy</a></p>
+  <div style="display:flex;gap:8px;">
+    <button onclick="acceptCookies()" style="padding:8px 20px;background:#4CAF50;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Accept</button>
+    <button onclick="declineCookies()" style="padding:8px 20px;background:transparent;color:#E8F5E9;border:1px solid rgba(255,255,255,0.3);border-radius:8px;cursor:pointer;font-weight:600;">Decline</button>
+  </div>
+</div>
+<a href="#app" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
+<div class="app" id="app" role="main"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -484,7 +505,7 @@ async function loadCallerProfile(user) {
       name: profile.name || user.email,
       email: user.email,
       assigned_states: [], // admin sees all
-      isAdmin: user.email === 'masstp01@gmail.com',
+      isAdmin: ['masstp01@gmail.com', 'masstreepros@gmail.com'].includes(user.email),
     };
     state.screen = 'main';
     await loadQueue();
@@ -507,8 +528,9 @@ async function loadQueue() {
     .order('company_name')
     .limit(500);
 
-  if (state.stateFilter) {
-    query = query.ilike('location_text', `%${state.stateFilter}%`);
+  const safeStateFilter = (state.stateFilter || '').replace(/[^A-Za-z]/g, '').slice(0, 2);
+  if (safeStateFilter) {
+    query = query.ilike('location_text', `%${safeStateFilter}%`);
   }
 
   const { data } = await query;
@@ -677,7 +699,7 @@ function renderMain() {
     <div class="header">
       <div>
         <h1>🌲 CrewFinder Caller</h1>
-        <div class="header-sub">${state.caller?.name || 'Caller'}</div>
+        <div class="header-sub">${DOMPurify.sanitize(state.caller?.name || 'Caller')}</div>
       </div>
       <div class="header-right">
         <div class="header-stat">
@@ -752,13 +774,13 @@ function renderCallCard(c) {
     <div class="call-card ${isCurrentCall ? 'current-call' : ''}">
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div>
-          <div class="company-name">${c.company_name}</div>
-          <div class="company-detail">${c.location_text || 'Location not set'}${c.zip_code ? ' · ' + c.zip_code : ''}</div>
-          ${c.phone ? `<div class="company-detail" style="margin-top:4px">📞 ${c.phone}</div>` : '<div class="company-detail" style="color:var(--red)">⚠️ No phone number</div>'}
+          <div class="company-name">${DOMPurify.sanitize(c.company_name)}</div>
+          <div class="company-detail">${DOMPurify.sanitize(c.location_text || 'Location not set')}${c.zip_code ? ' · ' + DOMPurify.sanitize(c.zip_code) : ''}</div>
+          ${c.phone ? `<div class="company-detail" style="margin-top:4px">📞 ${DOMPurify.sanitize(c.phone)}</div>` : '<div class="company-detail" style="color:var(--red)">⚠️ No phone number</div>'}
         </div>
-        <span class="claim-code">${c.claim_code || 'N/A'}</span>
+        <span class="claim-code">${DOMPurify.sanitize(c.claim_code || 'N/A')}</span>
       </div>
-      ${c.company_description ? `<div style="font-size:12px;color:var(--gray-500);margin-top:6px;line-height:1.4">${c.company_description.slice(0, 120)}${c.company_description.length > 120 ? '...' : ''}</div>` : ''}
+      ${c.company_description ? `<div style="font-size:12px;color:var(--gray-500);margin-top:6px;line-height:1.4">${DOMPurify.sanitize(c.company_description.slice(0, 120))}${c.company_description.length > 120 ? '...' : ''}</div>` : ''}
 
       ${isCurrentCall ? `
         <div class="call-status show connected" style="margin-top:12px">
@@ -816,16 +838,16 @@ function renderLog() {
     ${state.callLog.map(l => `
       <div class="log-entry">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="log-company">${l.company_name}</div>
-          <span class="log-outcome ${outcomeClass[l.outcome] || ''}">${l.outcome}</span>
+          <div class="log-company">${DOMPurify.sanitize(l.company_name)}</div>
+          <span class="log-outcome ${outcomeClass[l.outcome] || ''}">${DOMPurify.sanitize(l.outcome)}</span>
         </div>
         <div class="log-meta">
-          ${l.company_location || ''} · ${l.company_phone || ''}
-          ${l.contact_name ? ' · Spoke to: ' + l.contact_name : ''}
-          ${l.caller_name && state.caller?.isAdmin ? ' · Caller: ' + l.caller_name : ''}
+          ${DOMPurify.sanitize(l.company_location || '')} · ${DOMPurify.sanitize(l.company_phone || '')}
+          ${l.contact_name ? ' · Spoke to: ' + DOMPurify.sanitize(l.contact_name) : ''}
+          ${l.caller_name && state.caller?.isAdmin ? ' · Caller: ' + DOMPurify.sanitize(l.caller_name) : ''}
           ${l.call_duration ? ' · Duration: ' + Math.floor(l.call_duration / 60) + ':' + (l.call_duration % 60).toString().padStart(2, '0') : ''}
         </div>
-        ${l.notes ? `<div style="font-size:12px;color:var(--gray-600);margin-top:4px;background:var(--gray-100);padding:6px 10px;border-radius:6px">${l.notes}</div>` : ''}
+        ${l.notes ? `<div style="font-size:12px;color:var(--gray-600);margin-top:4px;background:var(--gray-100);padding:6px 10px;border-radius:6px">${DOMPurify.sanitize(l.notes)}</div>` : ''}
         <div class="log-meta" style="margin-top:4px">${new Date(l.created_at).toLocaleString()}</div>
       </div>
     `).join('')}
@@ -1055,6 +1077,11 @@ document.addEventListener('click', (e) => {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+</script>
+<script>
+function acceptCookies(){localStorage.setItem("cookie-consent","accepted");document.getElementById("cookie-consent").style.display="none";}
+function declineCookies(){localStorage.setItem("cookie-consent","declined");document.getElementById("cookie-consent").style.display="none";}
+if(!localStorage.getItem("cookie-consent")){document.getElementById("cookie-consent").style.display="flex";}
 </script>
 </body>
 </html>
