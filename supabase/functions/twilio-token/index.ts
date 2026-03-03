@@ -25,7 +25,7 @@ function base64url(source: ArrayBuffer): string {
 }
 
 async function signJwt(payload: Record<string, unknown>, secret: string): Promise<string> {
-  const header = { alg: "HS256", typ: "JWT" };
+  const header = { alg: "HS256", typ: "JWT", cty: "twilio-fpa;v=1" };
   const enc = new TextEncoder();
   const hB64 = base64url(enc.encode(JSON.stringify(header)));
   const pB64 = base64url(enc.encode(JSON.stringify(payload)));
