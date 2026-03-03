@@ -2,12 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CrewFinder">
 <meta name="theme-color" content="#1A3C2A">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <title>CrewFinder</title>
+<meta name="description" content="Browse available tree service jobs, manage your crew, and connect with skilled workers on CrewFinder.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="CrewFinder">
+<meta property="og:title" content="CrewFinder">
+<meta property="og:description" content="Browse available tree service jobs, manage your crew, and connect with skilled workers on CrewFinder.">
+<meta property="og:url" content="https://crewfinder.pages.dev/app.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CrewFinder">
+<meta name="twitter:description" content="Browse available tree service jobs, manage your crew, and connect with skilled workers on CrewFinder.">
+<link rel="canonical" href="https://crewfinder.pages.dev/app.html">
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -59,7 +70,13 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
+
+input, select, textarea { font-size: 16px !important; }
 
 #app {
   max-width: 430px;
@@ -1043,8 +1060,10 @@ body {
 </style>
 </head>
 <body>
+<a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
 
-<div id="app">
+
+<div id="app" id="main-content">
   <!-- All screens render here via JS -->
   <div class="loading-screen" id="loading-screen">
     <div class="spinner"></div>
@@ -1610,7 +1629,7 @@ function renderProfileBuilder(app) {
             { val: 'storm_response', label: 'Storm Response Only', desc: 'Call me when a storm hits' },
             { val: 'not_available', label: 'Not Available Right Now', desc: 'Just setting up my profile' },
           ].map(o => `
-            <button class="avail-option ${avail === o.val ? 'selected' : ''}" onclick="selectAvailability('${o.val}')">
+            <button class="avail-option ${avail === o.val ? 'selected' : ''}" data-action="selectAvailability" data-value="${o.val}">
               <div class="avail-radio"></div>
               <div>
                 <div class="avail-label">${o.label}</div>
@@ -1628,8 +1647,8 @@ function renderProfileBuilder(app) {
         <div class="photo-grid" id="photo-grid">
           ${photos.map(p => `
             <div class="photo-item">
-              <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
-              <button class="photo-delete" onclick="deleteWorkPhoto(${p.id})">&times;</button>
+              <img src="${safeUrl(p.photo_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+              <button class="photo-delete" data-action="deletePhoto" data-job-id="${p.id}">&times;</button>
             </div>
           `).join('')}
           ${photos.length < 6 ? `
@@ -1719,8 +1738,8 @@ function renderProfileBuilder(app) {
         <div class="photo-grid" id="photo-grid">
           ${bizPhotos.map(p => `
             <div class="photo-item">
-              <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
-              <button class="photo-delete" onclick="deleteWorkPhoto(${p.id})">&times;</button>
+              <img src="${safeUrl(p.photo_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+              <button class="photo-delete" data-action="deletePhoto" data-job-id="${p.id}">&times;</button>
             </div>
           `).join('')}
           ${bizPhotos.length < 6 ? `
@@ -1796,7 +1815,7 @@ function renderSkillPicker() {
       <div class="skill-section-title">${trade}</div>
       <div class="skill-grid">
         ${skills.map(s => `
-          <button class="skill-chip ${state.selectedSkills.has(s.id) ? 'selected' : ''}" onclick="toggleSkill(${s.id})">
+          <button class="skill-chip ${state.selectedSkills.has(s.id) ? 'selected' : ''}" data-action="toggleSkill" data-skill-id="${s.id}">
             ${DOMPurify.sanitize(s.name)}
           </button>
         `).join('')}
@@ -1883,7 +1902,7 @@ function renderBottomNav(isBiz) {
   return `
     <div class="bottom-nav">
       ${tabs.map(t => `
-        <button class="nav-item ${state.activeTab === t.id ? 'active' : ''}" onclick="switchTab('${t.id}')">
+        <button class="nav-item ${state.activeTab === t.id ? 'active' : ''}" data-action="switchTab" data-tab-id="${t.id}">
           ${icon(t.icon)}
           <span>${t.label}</span>
           ${t.badge ? '<div class="nav-badge"></div>' : ''}
@@ -1955,7 +1974,7 @@ function renderWorkerSearch() {
     </div>
     <div class="filter-row">
       ${trades.map(t => `
-        <button class="filter-chip ${(state.tradeFilter === t || (!state.tradeFilter && t === 'All')) ? 'active' : ''}" onclick="setTradeFilter('${t}')">${t}</button>
+        <button class="filter-chip ${(state.tradeFilter === t || (!state.tradeFilter && t === 'All')) ? 'active' : ''}" data-action="setTradeFilter" data-trade-filter="${t}">${t}</button>
       `).join('')}
     </div>
     <div style="padding: 4px 16px 8px; font-size: 13px; color: var(--gray-500);">
@@ -1987,7 +2006,7 @@ function renderWorkerCard(w) {
     : '';
   
   return `
-    <div class="worker-card" onclick="viewWorker('${w.id}')">
+    <div class="worker-card" data-action="viewWorker" data-worker-id="${w.id}" style="cursor:pointer">
       <div class="worker-card-row">
         <div class="avatar ${w.availability === 'storm_response' ? 'blue' : ''}" style="${avatarStyle}">${avatarContent}</div>
         <div style="flex:1;min-width:0">
@@ -2080,9 +2099,9 @@ function renderWorkerProfile(w) {
         </div>
       </div>
       <div style="padding:0 16px 16px">
-        <button class="btn btn-primary" style="margin-bottom:8px" onclick="startChat('${w.id}')">Send Message</button>
-        <button class="btn btn-secondary" style="margin-bottom:8px" onclick="saveWorker('${w.id}')">Save to Crew List</button>
-        <button class="btn btn-outline" onclick="showRateWorker('${w.id}')">Leave a Review</button>
+        <button class="btn btn-primary" style="margin-bottom:8px" data-action="startChat" data-worker-id="${w.id}">Send Message</button>
+        <button class="btn btn-secondary" style="margin-bottom:8px" data-action="saveWorker" data-worker-id="${w.id}">Save to Crew List</button>
+        <button class="btn btn-outline" data-action="showRateWorker" data-worker-id="${w.id}">Leave a Review</button>
       </div>
     </div>
   `;
@@ -2117,8 +2136,8 @@ function renderJobFeed() {
                 <span style="font-weight:700;color:var(--green);font-size:14px">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</span>
               </div>
               <div style="display:flex;gap:6px;margin-top:8px">
-                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:8px" onclick="event.stopPropagation();startChatWithBiz('${j.business_id}')">Message Company</button>
-                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="event.stopPropagation();showRateCompany('${j.business_id}')">Leave Review</button>
+                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:8px" onclick="event.stopPropagation()" data-action="startChatWithBiz" data-company-id="${j.business_id}">Message Company</button>
+                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="event.stopPropagation()" data-action="showRateCompany" data-company-id="${j.business_id}">Leave Review</button>
               </div>
             </div>
           `;
@@ -2160,7 +2179,7 @@ function renderJobCard(j, applied, myStatus) {
   } else if (applied) {
     actionBtn = '<span class="badge" style="background:var(--amber);color:#fff;font-size:12px;padding:6px 12px">Applied ✓</span>';
   } else {
-    actionBtn = `<button class="btn btn-primary" style="width:auto;padding:8px 20px;font-size:13px" onclick="event.stopPropagation();respondToJob(${j.id})">I'm Interested</button>`;
+    actionBtn = `<button class="btn btn-primary" style="width:auto;padding:8px 20px;font-size:13px" onclick="event.stopPropagation()" data-action="respondToJob" data-job-id="${j.id}">I'm Interested</button>`;
   }
   
   return `
@@ -2171,7 +2190,7 @@ function renderJobCard(j, applied, myStatus) {
             <span class="job-title">${DOMPurify.sanitize(j.title)}</span>
             ${j.is_urgent ? '<span class="badge badge-urgent">Urgent</span>' : ''}
           </div>
-          <div class="job-meta"><span style="color:var(--green);font-weight:600;cursor:pointer" onclick="event.stopPropagation();viewCompany('${j.business_id}')">${biz.company_name || biz.name || 'Company'}</span> · ${DOMPurify.sanitize(j.location_text || '')}</div>
+          <div class="job-meta"><span style="color:var(--green);font-weight:600;cursor:pointer" onclick="event.stopPropagation()" data-action="viewCompany" data-company-id="${j.business_id}">${biz.company_name || biz.name || 'Company'}</span> · ${DOMPurify.sanitize(j.location_text || '')}</div>
         </div>
         <span class="job-pay">${formatPay(j.pay_min, j.pay_max, j.pay_type)}</span>
       </div>
@@ -2217,7 +2236,7 @@ function renderMyJobs() {
         const statusColor = !j.is_active ? 'var(--gray-500)' : accepted.length ? 'var(--green)' : 'var(--amber)';
         
         return `
-          <div class="job-card" onclick="viewJobDetail(${j.id})" style="cursor:pointer">
+          <div class="job-card" data-action="viewJobDetail" data-job-id="${j.id}" style="cursor:pointer" style="cursor:pointer">
             <div style="display:flex;justify-content:space-between;align-items:flex-start">
               <div>
                 <div style="display:flex;align-items:center;gap:6px">
@@ -2278,8 +2297,8 @@ function renderJobDetail(job) {
                 </div>
               </div>
               <div style="display:flex;gap:6px">
-                <button class="btn btn-primary" style="width:auto;padding:6px 12px;font-size:12px" onclick="completeWorker(${job.id}, '${r.worker_id}')">Complete</button>
-                <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="event.stopPropagation();startChat('${r.worker_id}')">Message</button>
+                <button class="btn btn-primary" style="width:auto;padding:6px 12px;font-size:12px" data-action="completeWorker" data-job-id="${job.id}" data-worker-id="${r.worker_id}">Complete</button>
+                <button class="btn btn-outline" style="width:auto;padding:6px 12px;font-size:12px" onclick="event.stopPropagation()" data-action="startChat" data-worker-id="${r.worker_id}">Message</button>
               </div>
             </div>
           `;
@@ -2299,7 +2318,7 @@ function renderJobDetail(job) {
           return `
             <div class="card" style="padding:12px;margin-bottom:8px">
               <div style="display:flex;justify-content:space-between;align-items:center">
-                <div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="viewWorker('${w.id}')">
+                <div style="display:flex;align-items:center;gap:10px;cursor:pointer" data-action="viewWorker" data-worker-id="${w.id}" style="cursor:pointer">
                   <div class="avatar" style="width:36px;height:36px;border-radius:18px;font-size:12px">${getInitials(w.name)}</div>
                   <div>
                     <div style="font-weight:600">${DOMPurify.sanitize(w.name || 'Worker')}</div>
@@ -2310,9 +2329,9 @@ function renderJobDetail(job) {
               </div>
               ${workerSkills.length ? `<div class="badge-wrap" style="margin-top:6px">${workerSkills.slice(0, 4).map(s => `<span class="badge badge-skill">${s}</span>`).join('')}</div>` : ''}
               <div style="display:flex;gap:6px;margin-top:8px">
-                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:8px" onclick="acceptWorker(${job.id}, '${r.worker_id}')">Hire</button>
-                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="declineWorker(${job.id}, '${r.worker_id}')">Decline</button>
-                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="event.stopPropagation();startChat('${r.worker_id}')">Message</button>
+                <button class="btn btn-primary" style="flex:1;font-size:12px;padding:8px" data-action="acceptWorker" data-job-id="${job.id}" data-worker-id="${r.worker_id}">Hire</button>
+                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" data-action="declineWorker" data-job-id="${job.id}" data-worker-id="${r.worker_id}">Decline</button>
+                <button class="btn btn-outline" style="flex:1;font-size:12px;padding:8px" onclick="event.stopPropagation()" data-action="startChat" data-worker-id="${r.worker_id}">Message</button>
               </div>
             </div>
           `;
@@ -2351,7 +2370,7 @@ function renderJobDetail(job) {
       
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-200)">
         ${job.is_active ? `
-          <button class="btn btn-outline" style="color:var(--red);border-color:var(--red)" onclick="closeJob(${job.id})">Close Job Posting</button>
+          <button class="btn btn-outline" style="color:var(--red);border-color:var(--red)" data-action="closeJob" data-job-id="${job.id}">Close Job Posting</button>
         ` : `
           <div style="text-align:center;color:var(--gray-500);font-size:13px">This job posting is closed</div>
         `}
@@ -2447,7 +2466,7 @@ function renderMessages() {
     </div>
     <div id="conversations-list">
       ${state.conversations.length ? state.conversations.map(c => `
-        <div class="msg-item ${c.unread ? 'unread' : ''}" onclick="openChat('${c.userId}', '${c.name.replace(/'/g, "\\'")}')">
+        <div class="msg-item ${c.unread ? 'unread' : ''}" data-action="openChat" data-user-id="${c.userId}" data-user-name="${c.name.replace(/'/g, '')}" style="cursor:pointer">
           <div style="display:flex;gap:10px;align-items:center">
             <div class="avatar" style="width:40px;height:40px;border-radius:20px;font-size:13px">${getInitials(c.name)}</div>
             <div style="flex:1;min-width:0">
@@ -2910,7 +2929,7 @@ function renderWorkerProfileForWorker(w) {
         </div>
       </div>
       <div style="padding:0 16px 16px">
-        <button class="btn btn-primary" onclick="startChat('${w.id}')">Send Message</button>
+        <button class="btn btn-primary" data-action="startChat" data-worker-id="${w.id}">Send Message</button>
       </div>
     </div>
   `;
@@ -2925,7 +2944,7 @@ async function loadWorkerProfileData(id) {
       if (photos && photos.length > 0) {
         grid.innerHTML = DOMPurify.sanitize(photos.map(p => `
           <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
-            <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open('${p.photo_url}','_blank')">
+            <img src="${safeUrl(p.photo_url)}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" data-photo-url="${safeUrl(p.photo_url)}" data-action="openPhoto">
           </div>
         `).join(''));
       } else {
@@ -3086,7 +3105,7 @@ async function viewCompany(id) {
       if (photos && photos.length > 0) {
         grid.innerHTML = DOMPurify.sanitize(photos.map(p => `
           <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
-            <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open('${p.photo_url}','_blank')">
+            <img src="${safeUrl(p.photo_url)}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" data-photo-url="${safeUrl(p.photo_url)}" data-action="openPhoto">
           </div>
         `).join(''));
       } else {
@@ -3252,10 +3271,10 @@ function renderCrewRoster() {
         return `
           <div class="card" style="padding:14px;margin-bottom:10px">
             <div style="display:flex;gap:12px;align-items:flex-start">
-              <div class="avatar" style="width:44px;height:44px;border-radius:22px;font-size:14px;flex-shrink:0;${avatarStyle};cursor:pointer" onclick="viewWorker('${w.id}')">${avatarContent}</div>
+              <div class="avatar" style="width:44px;height:44px;border-radius:22px;font-size:14px;flex-shrink:0;${avatarStyle};cursor:pointer" data-action="viewWorker" data-worker-id="${w.id}" style="cursor:pointer">${avatarContent}</div>
               <div style="flex:1;min-width:0">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                  <div style="cursor:pointer" onclick="viewWorker('${w.id}')">
+                  <div style="cursor:pointer" data-action="viewWorker" data-worker-id="${w.id}" style="cursor:pointer">
                     <div style="font-weight:700;font-size:15px">${DOMPurify.sanitize(w.name || 'Worker')}</div>
                     <div style="font-size:12px;color:var(--gray-500)">${DOMPurify.sanitize(w.location_text || '')}</div>
                   </div>
@@ -3532,7 +3551,7 @@ async function loadMyPhotos() {
       if (photos && photos.length > 0) {
         grid.innerHTML = DOMPurify.sanitize(photos.map(p => `
           <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
-            <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">
+            <img src="${safeUrl(p.photo_url)}" style="width:100%;height:100%;object-fit:cover">
           </div>
         `).join(''));
       } else {
@@ -3592,7 +3611,7 @@ async function viewWorker(id) {
       if (photos && photos.length > 0) {
         grid.innerHTML = DOMPurify.sanitize(photos.map(p => `
           <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
-            <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open('${p.photo_url}','_blank')">
+            <img src="${safeUrl(p.photo_url)}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" data-photo-url="${safeUrl(p.photo_url)}" data-action="openPhoto">
           </div>
         `).join(''));
       } else {
@@ -5239,6 +5258,88 @@ render = function() {
     }, 2000);
   }
 };
+
+// Safe URL helper for img src validation
+const safeUrl = (url) => {
+  if (!url) return '/default-avatar.png';
+  if (url.startsWith('https://') || url.startsWith('data:')) return url;
+  return '/default-avatar.png';
+};
+
+// Event delegation for dynamic onclick handlers
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+
+  const action = btn.dataset.action;
+  const workerId = btn.dataset.workerId;
+  const jobId = btn.dataset.jobId;
+  const responseId = btn.dataset.responseId;
+  const companyId = btn.dataset.companyId;
+  const tabId = btn.dataset.tabId;
+  const skillId = btn.dataset.skillId;
+  const tradeFilter = btn.dataset.tradeFilter;
+
+  switch (action) {
+    case 'selectAvailability':
+      selectAvailability(btn.dataset.value);
+      break;
+    case 'deletePhoto':
+      deleteWorkPhoto(parseInt(jobId));
+      break;
+    case 'toggleSkill':
+      toggleSkill(parseInt(skillId));
+      break;
+    case 'switchTab':
+      switchTab(tabId);
+      break;
+    case 'setTradeFilter':
+      setTradeFilter(tradeFilter);
+      break;
+    case 'viewWorker':
+      viewWorker(workerId);
+      break;
+    case 'startChat':
+      startChat(workerId);
+      break;
+    case 'saveWorker':
+      saveWorker(workerId);
+      break;
+    case 'showRateWorker':
+      showRateWorker(workerId);
+      break;
+    case 'startChatWithBiz':
+      startChatWithBiz(companyId);
+      break;
+    case 'showRateCompany':
+      showRateCompany(companyId);
+      break;
+    case 'respondToJob':
+      respondToJob(parseInt(jobId));
+      break;
+    case 'viewCompany':
+      viewCompany(companyId);
+      break;
+    case 'viewJobDetail':
+      viewJobDetail(parseInt(jobId));
+      break;
+    case 'completeWorker':
+      completeWorker(parseInt(jobId), btn.dataset.workerId);
+      break;
+    case 'acceptWorker':
+      acceptWorker(parseInt(jobId), btn.dataset.workerId);
+      break;
+    case 'declineWorker':
+      declineWorker(parseInt(jobId), btn.dataset.workerId);
+      break;
+    case 'closeJob':
+      closeJob(parseInt(jobId));
+      break;
+    case 'openChat':
+      openChat(btn.dataset.userId, btn.dataset.userName);
+      break;
+  }
+});
 </script>
 
 <!-- Install Banner (outside #app so it persists) -->

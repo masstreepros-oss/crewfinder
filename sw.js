@@ -9,7 +9,11 @@ const HTML_PAGES = [
   '/equipment.html',
   '/news.html',
   '/admin.html',
-  '/index.html'
+  '/index.html',
+  '/caller.html',
+  '/waitlist.html',
+  '/404.html',
+  '/offline.html'
 ];
 
 // Static assets to cache

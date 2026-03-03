@@ -2,8 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CrewFinder">
 <title>Page Not Found — CrewFinder</title>
+<meta name="description" content="Page not found - return to CrewFinder to find tree service jobs and crews.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="CrewFinder">
+<meta property="og:title" content="Page Not Found — CrewFinder">
+<meta property="og:description" content="Page not found - return to CrewFinder to find tree service jobs and crews.">
+<meta property="og:url" content="https://crewfinder.pages.dev/404.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Page Not Found — CrewFinder">
+<meta name="twitter:description" content="Page not found - return to CrewFinder to find tree service jobs and crews.">
+<link rel="canonical" href="https://crewfinder.pages.dev/404.html">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -17,7 +31,12 @@
     justify-content: center;
     text-align: center;
     padding: 40px 20px;
+    padding-top: max(40px, env(safe-area-inset-top));
+    padding-bottom: max(40px, env(safe-area-inset-bottom));
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
   }
+  input, select, textarea { font-size: 16px !important; }
   .container { max-width: 480px; }
   .code { font-size: 120px; font-weight: 800; letter-spacing: -4px; opacity: 0.15; line-height: 1; }
   h1 { font-size: 28px; font-weight: 800; margin: -20px 0 12px; }
@@ -35,7 +54,8 @@
 </style>
 </head>
 <body>
-  <div class="container">
+<a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
+  <div class="container" id="main-content">
     <div class="code">404</div>
     <h1>Wrong trail, boss.</h1>
     <p>This page doesn't exist — but CrewFinder does. Find skilled crew for tree service, landscaping, hardscaping, and irrigation.</p>
@@ -44,5 +64,11 @@
       <a href="/app.html" class="btn-secondary">Open App →</a>
     </div>
   </div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
 </body>
 </html>

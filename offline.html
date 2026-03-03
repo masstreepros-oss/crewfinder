@@ -2,9 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CrewFinder">
 <title>CrewFinder — Offline</title>
+<meta name="description" content="You're offline - CrewFinder will reconnect when your internet is available.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="CrewFinder">
+<meta property="og:title" content="CrewFinder — Offline">
+<meta property="og:description" content="You're offline - CrewFinder will reconnect when your internet is available.">
+<meta property="og:url" content="https://crewfinder.pages.dev/offline.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CrewFinder — Offline">
+<meta name="twitter:description" content="You're offline - CrewFinder will reconnect when your internet is available.">
+<link rel="canonical" href="https://crewfinder.pages.dev/offline.html">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,7 +29,12 @@
     align-items: center;
     min-height: 100vh;
     padding: 20px;
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
   }
+  input, select, textarea { font-size: 16px !important; }
   #app {
     width: 100%;
     max-width: 430px;
@@ -162,7 +180,8 @@
 </style>
 </head>
 <body>
-<div id="app">
+<a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
+<div id="app" id="main-content">
   <div class="header">
     <div class="header-logo">
       <svg viewBox="0 0 100 100" fill="none"><path d="M50 8 L30 40 L38 40 L22 65 L32 65 L18 90 L82 90 L68 65 L78 65 L62 40 L70 40 Z" fill="#2D7A3A" opacity="0.9"/><rect x="44" y="85" width="12" height="15" rx="2" fill="#5D4037"/></svg>
@@ -255,6 +274,12 @@
       second: '2-digit'
     });
   }
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>

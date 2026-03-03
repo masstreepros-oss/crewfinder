@@ -2,14 +2,30 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CrewFinder">
 <title>Terms of Service — CrewFinder</title>
+<link rel="apple-touch-icon" href="/icon-192.png">
 <meta name="description" content="CrewFinder terms of service. Rules and guidelines for using the platform.">
+<meta property="og:title" content="CrewFinder — Terms of Service">
+<link rel="canonical" href="https://crewfinder.pages.dev/terms.html">
 <link rel="icon" type="image/png" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Outfit', -apple-system, sans-serif; color: #1A1A1A; background: #fff; line-height: 1.7; }
+  body {
+    font-family: 'Outfit', -apple-system, sans-serif;
+    color: #1A1A1A;
+    background: #fff;
+    line-height: 1.7;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  input, select, textarea { font-size: 16px !important; }
   .header { background: #0B1F14; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; }
   .header a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500; }
   .header a:hover { color: #fff; }
@@ -24,7 +40,9 @@
 </style>
 </head>
 <body>
+<a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
 <div class="header">
+<div id="main-content">
   <a href="/" class="logo">CrewFinder</a>
   <a href="/">← Back to Home</a>
 </div>
@@ -62,5 +80,11 @@
 <div class="footer">
   <p>&copy; 2026 CrewFinder &nbsp;&bull;&nbsp; <a href="/">Home</a> &nbsp;&bull;&nbsp; <a href="/privacy.html">Privacy</a></p>
 </div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
 </body>
 </html>

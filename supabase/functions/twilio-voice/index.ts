@@ -28,6 +28,15 @@ serve(async (req: Request) => {
       return new Response(twiml, { headers: { ...corsHeaders, "Content-Type": "text/xml" } });
     }
 
+    // Validate To parameter against E.164 format
+    const e164Regex = /^\+?[1-9]\d{1,14}$/;
+    if (!e164Regex.test(to)) {
+      return new Response(JSON.stringify({ error: "Invalid phone number format" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     // Clean the number — ensure E.164 format
     let cleanNumber = to.replace(/[^\d+]/g, "");
     if (!cleanNumber.startsWith("+")) {
@@ -39,10 +48,18 @@ serve(async (req: Request) => {
 
     console.log(`Routing call to: ${cleanNumber}`);
 
+    // XML escape helper for callerId
+    const escapeXml = (str: string) => str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
+
     // Generate TwiML to dial the number
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial callerId="${callerId}" timeout="30" action="/functions/v1/twilio-voice?status=complete">
+  <Dial callerId="${escapeXml(callerId)}" timeout="30" action="/functions/v1/twilio-voice?status=complete">
     <Number>${cleanNumber}</Number>
   </Dial>
 </Response>`;

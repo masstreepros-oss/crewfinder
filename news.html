@@ -2,15 +2,39 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CrewFinder">
 <title>CrewFinder — Industry News</title>
+<meta name="description" content="Latest tree service industry news, tips, and updates from CrewFinder.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="CrewFinder">
+<meta property="og:title" content="CrewFinder — Industry News">
+<meta property="og:description" content="Latest tree service industry news, tips, and updates from CrewFinder.">
+<meta property="og:url" content="https://crewfinder.pages.dev/news.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CrewFinder — Industry News">
+<meta name="twitter:description" content="Latest tree service industry news, tips, and updates from CrewFinder.">
+<link rel="canonical" href="https://crewfinder.pages.dev/news.html">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Outfit', -apple-system, sans-serif; background: #E8E8E8; display: flex; justify-content: center; min-height: 100vh; }
+  body {
+    font-family: 'Outfit', -apple-system, sans-serif;
+    background: #E8E8E8;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  input, select, textarea { font-size: 16px !important; }
   #app { width: 100%; max-width: 430px; min-height: 100vh; background: #F7FAF7; display: flex; flex-direction: column; }
   @media (min-width: 431px) { body { padding: 20px; align-items: center; } #app { min-height: 85vh; max-height: 90vh; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; } }
   .header { background: #fff; padding: 12px 16px; border-bottom: 1px solid #E8E8E8; display: flex; justify-content: space-between; align-items: center; }
@@ -73,7 +97,8 @@
 </style>
 </head>
 <body>
-<div id="app">
+<a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px;background:#1A3C2A;color:#fff;text-decoration:none;font-size:14px;" onfocus="this.style.left='0';this.style.width='auto';this.style.height='auto'" onblur="this.style.left='-9999px';this.style.width='1px';this.style.height='1px'">Skip to main content</a>
+<div id="app" id="main-content">
   <div class="header">
     <div class="header-logo">
       <svg viewBox="0 0 100 100" fill="none"><path d="M50 8 L30 40 L38 40 L22 65 L32 65 L18 90 L82 90 L68 65 L78 65 L62 40 L70 40 Z" fill="#2D7A3A" opacity="0.9"/><rect x="44" y="85" width="12" height="15" rx="2" fill="#5D4037"/></svg>
@@ -182,6 +207,12 @@ function showDetail(id) {
 function setCat(c) { category = c; loadNews(); }
 
 loadNews();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
