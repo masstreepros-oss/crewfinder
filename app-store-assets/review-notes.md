@@ -3,7 +3,7 @@
 ## Demo Account for Reviewers
 
 **Email:** reviewer@crewfinder.com
-**Password:** Cr3wF!nder_Rev2026
+**Password:** Cr3wFnder_Rev2026
 
 This account has pre-populated data for testing all features:
 - Worker and business profiles with sample data
