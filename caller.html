@@ -223,7 +223,7 @@ async function initTwilioDevice() {
       if (!twilioState.device) {
         twilioState.device = new Twilio.Device(twilioState.token, {
           logLevel: 'warn',
-          codecPreferences: [Twilio.Device.Codec.Opus, Twilio.Device.Codec.PCMU],
+          codecPreferences: [Twilio.Call.Codec.Opus, Twilio.Call.Codec.PCMU],
         });
         setupDeviceListeners();
         await twilioState.device.register();
