@@ -4,6 +4,7 @@
   "description": "CrewFinder - Connect tree service professionals with local businesses",
   "main": "index.html",
   "scripts": {
+    "build": "echo 'Static site — no build needed'",
     "cap:sync": "npx cap sync",
     "cap:open:ios": "npx cap open ios",
     "cap:open:android": "npx cap open android",
