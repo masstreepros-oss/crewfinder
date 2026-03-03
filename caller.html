@@ -100,6 +100,9 @@ input, select, textarea { font-size: 16px !important; }
 .call-status.ended { background: #FEE2E2; color: #991B1B; }
 .call-status.error { background: #FEE2E2; color: #991B1B; }
 
+/* Active call highlight */
+.call-card.current-call { border: 2px solid #DC2626; background: #FEF2F2; }
+
 /* Log form */
 .log-form { background: var(--light-green); border-radius: 10px; padding: 14px; margin-top: 12px; display: none; }
 .log-form.open { display: block; }
@@ -351,7 +354,6 @@ function updateCallStatus(companyId, status) {
 }
 
 function endActiveCall() {
-  const companyId = twilioState.currentCallCompanyId;
   if (twilioState.durationInterval) {
     clearInterval(twilioState.durationInterval);
     twilioState.durationInterval = null;
@@ -360,27 +362,31 @@ function endActiveCall() {
     try { twilioState.activeConnection.disconnect(); } catch (e) { /* already disconnected */ }
     twilioState.activeConnection = null;
   }
+  // Auto-expand the log form for this company so caller can log the outcome
+  const companyId = twilioState.currentCallCompanyId;
   twilioState.callDuration = 0;
   twilioState.callStartTime = null;
-
-  updateCallStatus(companyId, 'ended');
-  setTimeout(() => updateCallStatus(companyId, null), 2500);
-
-  // Re-enable call button
-  if (companyId) {
-    const callBtn = document.querySelector(`[data-call-btn="${companyId}"]`);
-    if (callBtn) callBtn.disabled = false;
-  }
   twilioState.currentCallCompanyId = null;
+
+  // Expand the log form for the company that was just called
+  if (companyId) {
+    state.expandedCard = companyId;
+  }
+
+  showToast('Call ended — log the outcome below');
+  render();
 }
 
 async function initiateCall(companyId, phoneNumber) {
+  // Coerce string ID from DOM to match Supabase number IDs
+  const numId = isNaN(companyId) ? companyId : Number(companyId);
+
   // Prevent double-clicking
   const callBtn = document.querySelector(`[data-call-btn="${companyId}"]`);
   if (callBtn && callBtn.disabled) return;
   if (callBtn) callBtn.disabled = true;
 
-  twilioState.currentCallCompanyId = companyId;
+  twilioState.currentCallCompanyId = numId;
 
   try {
     // Initialize device if needed
@@ -415,17 +421,17 @@ async function initiateCall(companyId, phoneNumber) {
     twilioState.activeConnection = call;
     console.log('Call initiated to:', cleanNumber);
 
-    // SDK v2 Call events
+    // SDK v2 Call events — re-render card on state changes so End Call button appears
     call.on('ringing', (hasEarlyMedia) => {
       console.log('Ringing...', hasEarlyMedia ? '(early media)' : '');
-      updateCallStatus(companyId, 'ringing');
+      render(); // Re-render to show End Call button
     });
 
     call.on('accept', () => {
       console.log('Call accepted/connected');
       twilioState.callStartTime = Date.now();
-      updateCallStatus(companyId, 'connected');
       startCallTimer();
+      render(); // Re-render to show connected state + End Call
     });
 
     call.on('disconnect', () => {
@@ -447,8 +453,7 @@ async function initiateCall(companyId, phoneNumber) {
     call.on('error', (error) => {
       console.error('Call error:', error);
       showToast(`Call error: ${error.message || 'Unknown error'}`);
-      updateCallStatus(companyId, 'error');
-      if (callBtn) callBtn.disabled = false;
+      endActiveCall();
     });
 
   } catch (err) {
@@ -572,6 +577,8 @@ async function handleLogin() {
 }
 
 async function logCall(companyId) {
+  // Coerce string ID from DOM to match Supabase number IDs
+  const numId = isNaN(companyId) ? companyId : Number(companyId);
   const form = document.getElementById(`form-${companyId}`);
   const outcome = state.selectedOutcome;
   const contactName = document.getElementById(`contact-${companyId}`)?.value?.trim() || '';
@@ -580,13 +587,13 @@ async function logCall(companyId) {
 
   if (!outcome) { showToast('Select an outcome'); return; }
 
-  const company = state.queue.find(c => c.id === companyId);
+  const company = state.queue.find(c => c.id === numId);
   if (!company) return;
 
   const entry = {
     caller_id: state.caller.id,
     caller_name: state.caller.name,
-    company_id: companyId,
+    company_id: numId,
     company_name: company.company_name,
     company_phone: company.phone,
     company_location: company.location_text,
@@ -595,7 +602,7 @@ async function logCall(companyId) {
     outcome: outcome,
     notes: notes,
     follow_up_date: followUp || null,
-    call_duration: twilioState.currentCallCompanyId === companyId ? twilioState.callDuration : 0,
+    call_duration: twilioState.currentCallCompanyId === numId ? twilioState.callDuration : 0,
   };
 
   const { error } = await db.from('call_log').insert(entry);
@@ -607,7 +614,7 @@ async function logCall(companyId) {
 
   // Update local state
   state.callLog.unshift({ ...entry, created_at: new Date().toISOString() });
-  state.queue = state.queue.filter(c => c.id !== companyId);
+  state.queue = state.queue.filter(c => c.id !== numId);
   state.expandedCard = null;
   state.selectedOutcome = null;
 
@@ -616,13 +623,16 @@ async function logCall(companyId) {
 }
 
 async function skipCompany(companyId) {
-  state.queue = state.queue.filter(c => c.id !== companyId);
+  const numId = isNaN(companyId) ? companyId : Number(companyId);
+  state.queue = state.queue.filter(c => c.id !== numId);
   state.expandedCard = null;
   render();
 }
 
 function toggleCard(id) {
-  state.expandedCard = state.expandedCard === id ? null : id;
+  // dataset values are strings but Supabase IDs may be numbers — coerce to match
+  const numId = isNaN(id) ? id : Number(id);
+  state.expandedCard = state.expandedCard === numId ? null : numId;
   state.selectedOutcome = null;
   render();
 }
@@ -784,10 +794,11 @@ function renderCallCard(c) {
 
       ${isCurrentCall ? `
         <div class="call-status show connected" style="margin-top:12px">
-          📞 Call Connected - <span class="call-duration-display">0:00</span>
+          📞 Call in Progress - <span class="call-duration-display">0:00</span>
         </div>
-        <div style="margin-top:8px">
-          <button class="btn btn-call" onclick="hangupCall()" style="background:var(--red);width:100%">📞 End Call</button>
+        <div class="call-actions" style="margin-top:8px">
+          <button class="btn btn-call" onclick="hangupCall()" style="background:#DC2626;color:white">🔴 End Call</button>
+          <button class="btn btn-outcome" data-action="toggleCard" data-company-id="${c.id}">${isExpanded ? '✕ Cancel' : '📝 Log Outcome'}</button>
         </div>
       ` : `
         <div class="call-status" data-call-status="${c.id}"></div>
