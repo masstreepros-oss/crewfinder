@@ -2,594 +2,966 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1A3C2A">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CrewFinder · Caller Portal</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://sdk.twilio.com/js/client/releases/1.14.3/twilio.min.js" async></script>
+<script src="https://sdk.twilio.com/js/client/releases/1.14.3/twilio.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #E8E8E8; color: #1A1A1A; line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --green: #1A3C2A; --lime: #4ade80; --light-green: #E8F5E9;
+  --gray-100: #F5F5F5; --gray-200: #E0E0E0; --gray-400: #BDBDBD;
+  --gray-500: #9E9E9E; --gray-600: #757575; --gray-800: #424242;
+  --red: #EF4444; --orange: #F59E0B; --blue: #3B82F6;
 }
-#app {
-  max-width: 900px; margin: 0 auto; min-height: 100vh;
-  background: #F5F5F5; display: flex; flex-direction: column;
-}
-@media (min-width: 901px) {
-  body { display: flex; justify-content: center; padding: 20px 0; }
-  #app { border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; min-height: 90vh; }
-}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-100); color: var(--gray-800); }
 
-/* LOGIN */
-.login-wrap {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
-  background: linear-gradient(145deg, #0B1F14, #1A3C2A 50%, #2D7A3A);
-}
-.login-box {
-  background: #fff; border-radius: 20px; padding: 32px 28px; width: 100%; max-width: 380px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-.login-box h2 { font-size: 22px; font-weight: 800; color: #1A3C2A; margin-bottom: 4px; }
-.login-box .sub { font-size: 13px; color: #888; margin-bottom: 20px; }
-.login-box label { font-size: 13px; font-weight: 600; color: #666; display: block; margin-top: 14px; margin-bottom: 5px; }
-.login-box input {
-  width: 100%; padding: 12px 14px; border: 1.5px solid #E8E8E8; border-radius: 10px;
-  font-size: 14px; font-family: inherit; background: #FAFAFA; outline: none;
-}
-.login-box input:focus { border-color: #2D7A3A; box-shadow: 0 0 0 3px rgba(45,122,58,0.1); }
-.login-err { color: #C62828; font-size: 13px; margin-top: 10px; text-align: center; min-height: 20px; }
-.btn-login {
-  width: 100%; margin-top: 14px; padding: 14px; font-size: 15px; font-weight: 700;
-  background: #2D7A3A; color: #fff; border: none; border-radius: 12px;
-  cursor: pointer; font-family: inherit;
-}
-.btn-login:disabled { opacity: 0.5; }
+/* Layout */
+.app { max-width: 900px; margin: 0 auto; min-height: 100vh; background: #fff; }
+.header { background: var(--green); color: white; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 18px; font-weight: 700; }
+.header-sub { font-size: 12px; opacity: 0.7; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.header-stat { text-align: center; }
+.header-stat-num { font-size: 20px; font-weight: 700; color: var(--lime); }
+.header-stat-label { font-size: 10px; opacity: 0.7; text-transform: uppercase; }
 
-/* HEADER */
-.hdr {
-  background: linear-gradient(135deg, #1A3C2A, #2D7A3A); color: #fff;
-  padding: 14px 18px; display: flex; align-items: center; justify-content: space-between;
-  position: sticky; top: 0; z-index: 100;
-}
-.hdr-left h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
-.hdr-left .hdr-sub { font-size: 11px; opacity: 0.6; }
-.hdr-right { display: flex; align-items: center; gap: 14px; }
-.hdr-stat { text-align: center; }
-.hdr-stat-n { font-size: 20px; font-weight: 800; color: #4ade80; }
-.hdr-stat-l { font-size: 9px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.5px; }
-.btn-out {
-  background: rgba(255,255,255,0.12); color: #fff; border: none; border-radius: 8px;
-  padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;
-}
+/* Tabs */
+.tabs { display: flex; border-bottom: 2px solid var(--gray-200); background: #fff; position: sticky; top: 56px; z-index: 99; }
+.tab { flex: 1; padding: 12px; text-align: center; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--gray-500); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+.tab.active { color: var(--green); border-bottom-color: var(--green); }
 
-/* TABS */
-.tabs {
-  display: flex; background: #fff; border-bottom: 2px solid #E8E8E8;
-  position: sticky; top: 55px; z-index: 99;
-}
-.tab {
-  flex: 1; padding: 11px 4px; text-align: center; font-size: 12px; font-weight: 600;
-  cursor: pointer; color: #BBB; border-bottom: 2.5px solid transparent;
-  margin-bottom: -2px; white-space: nowrap;
-}
-.tab.on { color: #2D7A3A; border-bottom-color: #2D7A3A; }
-.tbadge {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 18px; height: 18px; border-radius: 9px;
-  background: #2D7A3A; color: #fff; font-size: 10px; font-weight: 700;
-  margin-left: 3px; padding: 0 5px;
-}
+/* Cards */
+.call-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 12px; padding: 16px; margin: 8px 16px; transition: all 0.2s; }
+.call-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.call-card.done { opacity: 0.5; }
+.company-name { font-size: 16px; font-weight: 700; color: var(--gray-800); }
+.company-detail { font-size: 13px; color: var(--gray-500); margin-top: 2px; }
+.claim-code { font-family: monospace; background: var(--light-green); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--green); font-weight: 600; }
+.call-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; }
+.btn-call { background: var(--green); color: white; }
+.btn-call:hover:not(:disabled) { background: #2D7A3A; }
+.btn-call:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-outcome { background: var(--gray-100); color: var(--gray-600); font-size: 12px; padding: 6px 12px; }
+.btn-outcome:hover { background: var(--gray-200); }
+.btn-outcome.selected { background: var(--lime); color: var(--green); }
+.btn-sm { font-size: 11px; padding: 4px 10px; }
 
-/* FILTER BAR */
-.fbar {
-  padding: 10px 16px; background: #fff; border-bottom: 1px solid #E8E8E8;
-  display: flex; gap: 8px; align-items: center;
+/* Call Status */
+.call-status {
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  display: none;
 }
-.fbar select, .fbar input {
-  padding: 9px 12px; border: 1.5px solid #E8E8E8; border-radius: 8px;
-  font-size: 13px; font-family: inherit; background: #FAFAFA; outline: none;
-}
-.fbar select { min-width: 80px; }
-.fbar input { flex: 1; min-width: 0; }
-.fbar input:focus, .fbar select:focus { border-color: #2D7A3A; }
-.fcount { font-size: 12px; color: #888; white-space: nowrap; }
+.call-status.show { display: block; }
+.call-status.connecting { background: #FEF3C7; color: #92400E; }
+.call-status.connected { background: #DCFCE7; color: #166534; }
+.call-status.ringing { background: #DBEAFE; color: #1E40AF; }
+.call-status.ended { background: #FEE2E2; color: #991B1B; }
+.call-status.error { background: #FEE2E2; color: #991B1B; }
 
-/* CARDS */
-.ccard {
-  background: #fff; border: 1px solid #E8E8E8; border-radius: 14px;
-  padding: 16px; margin: 8px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-.ccard-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-.cname { font-size: 16px; font-weight: 700; }
-.cdetail { font-size: 13px; color: #888; margin-top: 2px; }
-.cphone a { color: #1565C0; text-decoration: none; font-weight: 600; font-size: 14px; }
-.ccode {
-  font-family: 'Courier New', monospace; background: #D4EDDA;
-  padding: 3px 10px; border-radius: 6px; font-size: 12px; color: #2D7A3A;
-  font-weight: 700; white-space: nowrap; flex-shrink: 0;
-}
-.cdesc { font-size: 12px; color: #888; margin-top: 6px; line-height: 1.4; }
-.cactions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.btn {
-  padding: 9px 16px; border-radius: 10px; font-size: 13px; font-weight: 600;
-  border: none; cursor: pointer; font-family: inherit; display: inline-flex;
-  align-items: center; gap: 5px; text-decoration: none;
-}
-.btn-g { background: #2D7A3A; color: #fff; }
-.btn-g:active { transform: scale(0.97); }
-.btn-o { background: #fff; color: #666; border: 1.5px solid #E8E8E8; }
-.btn-s { font-size: 12px; padding: 7px 12px; color: #888; background: transparent; border: 1px solid #E8E8E8; }
+/* Log form */
+.log-form { background: var(--light-green); border-radius: 10px; padding: 14px; margin-top: 12px; display: none; }
+.log-form.open { display: block; }
+.log-form label { font-size: 12px; font-weight: 600; color: var(--gray-600); display: block; margin-top: 8px; }
+.log-form input, .log-form textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 13px; margin-top: 4px; font-family: inherit; }
+.log-form textarea { resize: vertical; min-height: 60px; }
+.outcome-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.pill { padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid var(--gray-200); background: white; transition: all 0.15s; }
+.pill:hover { border-color: var(--lime); }
+.pill.active { background: var(--lime); color: var(--green); border-color: var(--lime); font-weight: 600; }
 
-/* LOG FORM */
-.lform {
-  background: #F0FAF0; border-radius: 12px; padding: 16px;
-  margin-top: 14px; display: none; border: 1px solid rgba(45,122,58,0.12);
-}
-.lform.open { display: block; }
-.lform label { font-size: 12px; font-weight: 600; color: #666; display: block; margin-top: 10px; margin-bottom: 4px; }
-.lform label:first-child { margin-top: 0; }
-.lform input, .lform textarea {
-  width: 100%; padding: 10px 12px; border: 1.5px solid rgba(45,122,58,0.15);
-  border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; outline: none;
-}
-.lform input:focus, .lform textarea:focus { border-color: #2D7A3A; }
-.lform textarea { resize: vertical; min-height: 60px; }
-.pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.pill {
-  padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer;
-  border: 1.5px solid #E8E8E8; background: #fff; font-family: inherit; font-weight: 500;
-}
-.pill:hover { border-color: #5CB85C; }
-.pill.on { background: #5CB85C; color: #1A3C2A; border-color: #5CB85C; font-weight: 700; }
-.btn-save {
-  width: 100%; margin-top: 14px; padding: 13px; font-size: 14px; font-weight: 700;
-  background: #2D7A3A; color: #fff; border: none; border-radius: 10px;
-  cursor: pointer; font-family: inherit;
-}
-.btn-save:disabled { opacity: 0.5; }
+/* Stats */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px; }
+.stat-card { background: var(--gray-100); border-radius: 10px; padding: 16px; text-align: center; }
+.stat-num { font-size: 28px; font-weight: 800; color: var(--green); }
+.stat-label { font-size: 11px; color: var(--gray-500); text-transform: uppercase; margin-top: 4px; }
 
-/* LOG */
-.lentry { padding: 14px 16px; border-bottom: 1px solid #F5F5F5; }
-.lentry:last-child { border-bottom: none; }
-.ltop { display: flex; justify-content: space-between; align-items: center; }
-.lcomp { font-weight: 700; font-size: 14px; }
-.lmeta { font-size: 12px; color: #888; margin-top: 3px; }
-.lnotes { font-size: 12px; color: #666; margin-top: 6px; background: #F5F5F5; padding: 8px 12px; border-radius: 8px; }
-.ltime { font-size: 11px; color: #BBB; margin-top: 4px; }
-.obadge { display: inline-flex; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
-.o-su { background: #DCFCE7; color: #166534; }
-.o-in { background: #FEF3C7; color: #92400E; }
-.o-vm { background: #DBEAFE; color: #1E40AF; }
-.o-na { background: #F5F5F5; color: #888; }
-.o-ni { background: #FEE2E2; color: #991B1B; }
-.o-wn { background: #F5F5F5; color: #888; }
+/* Filter bar */
+.filter-bar { padding: 12px 16px; background: var(--gray-100); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.filter-bar select, .filter-bar input { padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 13px; background: white; }
+.filter-bar select { min-width: 80px; }
 
-/* STATS */
-.sgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 16px; }
-@media (max-width: 500px) { .sgrid { grid-template-columns: repeat(2, 1fr); } }
-.scard { background: #fff; border-radius: 14px; padding: 16px; text-align: center; border: 1px solid #E8E8E8; }
-.snum { font-size: 28px; font-weight: 800; color: #2D7A3A; }
-.slbl { font-size: 11px; color: #888; text-transform: uppercase; margin-top: 4px; }
-.sbar { display: flex; justify-content: space-between; padding: 8px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 6px; }
+/* Log history */
+.log-entry { padding: 12px 16px; border-bottom: 1px solid var(--gray-100); }
+.log-entry:last-child { border-bottom: none; }
+.log-company { font-weight: 600; font-size: 14px; }
+.log-meta { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+.log-outcome { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.outcome-signup { background: #DCFCE7; color: #166534; }
+.outcome-interested { background: #FEF3C7; color: #92400E; }
+.outcome-voicemail { background: #DBEAFE; color: #1E40AF; }
+.outcome-noanswer { background: var(--gray-100); color: var(--gray-500); }
+.outcome-notinterested { background: #FEE2E2; color: #991B1B; }
 
-/* SCRIPT */
-.sbox {
-  background: #F0FAF0; border-left: 4px solid #2D7A3A; padding: 16px;
-  margin: 8px 16px; border-radius: 0 12px 12px 0; font-size: 14px; line-height: 1.6;
-}
-.sbox strong { color: #1A3C2A; }
+/* Login */
+.login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: var(--green); }
+.login-box { background: white; border-radius: 16px; padding: 32px; width: 100%; max-width: 380px; }
+.login-box h2 { color: var(--green); font-size: 22px; margin-bottom: 4px; }
+.login-box p { color: var(--gray-500); font-size: 13px; margin-bottom: 20px; }
+.login-box label { font-size: 13px; font-weight: 600; color: var(--gray-600); display: block; margin-top: 12px; }
+.login-box input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; margin-top: 4px; }
+.login-box .btn { width: 100%; margin-top: 16px; padding: 12px; font-size: 15px; }
+.login-error { color: var(--red); font-size: 13px; margin-top: 8px; text-align: center; }
 
-/* MISC */
-.empty { text-align: center; padding: 60px 20px; color: #BBB; }
+/* Toast */
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--green); color: white; padding: 10px 20px; border-radius: 10px; font-size: 14px; z-index: 1000; display: none; }
+
+/* Script */
+.script-box { background: var(--light-green); border-left: 4px solid var(--green); padding: 16px; margin: 12px 16px; border-radius: 0 10px 10px 0; font-size: 14px; line-height: 1.6; }
+.script-box strong { color: var(--green); }
+.script-toggle { padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--green); cursor: pointer; }
+
+/* Empty state */
+.empty { text-align: center; padding: 60px 20px; color: var(--gray-400); }
 .empty-icon { font-size: 48px; margin-bottom: 12px; }
-.loading { text-align: center; padding: 40px; color: #888; }
-.spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #E8E8E8; border-top-color: #2D7A3A; border-radius: 50%; animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1A3C2A; color: #fff; padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 600; z-index: 1000; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
-.content { flex: 1; overflow-y: auto; }
 
-/* CALL STATE */
-.call-bar {
-  background: linear-gradient(135deg, #1565C0, #0D47A1); color: #fff;
-  padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;
-  animation: callPulse 2s ease-in-out infinite;
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .filter-bar { flex-direction: column; }
 }
-.call-bar.ringing { background: linear-gradient(135deg, #E65100, #BF360C); }
-.call-bar.connected { background: linear-gradient(135deg, #2E7D32, #1B5E20); animation: none; }
-@keyframes callPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.85; } }
-.call-info { display: flex; flex-direction: column; gap: 2px; }
-.call-status { font-size: 13px; font-weight: 700; }
-.call-name { font-size: 11px; opacity: 0.8; }
-.call-timer { font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; }
-.btn-hangup {
-  background: #C62828; color: #fff; border: none; border-radius: 50%;
-  width: 44px; height: 44px; font-size: 20px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(198,40,40,0.4);
-}
-.btn-hangup:active { transform: scale(0.93); }
-.call-connecting { display: flex; align-items: center; gap: 8px; }
-.call-dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: dotBlink 1.2s infinite; }
-.call-dot:nth-child(2) { animation-delay: 0.2s; }
-.call-dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes dotBlink { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
 </style>
 </head>
 <body>
-<div id="app"><div class="loading" style="min-height:100vh;display:flex;align-items:center;justify-content:center"><div><div class="spinner"></div><div style="margin-top:10px">Loading...</div></div></div></div>
+<div class="app" id="app"></div>
 <div class="toast" id="toast"></div>
 
 <script>
+// ============================================
+// SUPABASE (same backend as CrewFinder)
+// ============================================
 const SUPABASE_URL = 'https://mhatwlmbwikvrlcgfojt.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNDUzMTQsImV4cCI6MjA4NjkyMTMxNH0.8LefO4aYzYGfmsUb4blBEBLjIoF4CtYJ7xfimdc7lBE';
-const TWILIO_TOKEN_URL = SUPABASE_URL + '/functions/v1/twilio-token';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let twilioDevice = null;
-let activeCall = null;
-let callTimer = null;
-let callSeconds = 0;
+// ============================================
+// TWILIO STATE
+// ============================================
+const twilioState = {
+  device: null,
+  token: null,
+  tokenExpiry: null,
+  activeConnection: null,
+  callStartTime: null,
+  callDuration: 0,
+  currentCallCompanyId: null,
+  durationInterval: null,
+};
 
-const S = { screen:'login', tab:'queue', caller:null, queue:[], callLog:[], stateFilter:'', search:'', expanded:null, outcome:null, callState:null, callCompany:null };
+// ============================================
+// STATE
+// ============================================
+const state = {
+  screen: 'login', // login, main
+  tab: 'queue',    // queue, log, stats, script
+  caller: null,    // { id, name, email, assigned_states }
+  queue: [],       // companies to call
+  callLog: [],     // completed calls
+  stateFilter: '',
+  searchQuery: '',
+  expandedCard: null,
+  selectedOutcome: null,
+};
 
-async function init() {
+// ============================================
+// TWILIO DEVICE INITIALIZATION
+// ============================================
+async function initTwilioDevice() {
   try {
-    const { data:{ session } } = await db.auth.getSession();
-    if (session) await setupCaller(session.user);
-  } catch(e) { console.error('Init:', e); }
-  render();
+    // Check if token exists and is still valid (with 5 min buffer)
+    if (twilioState.token && twilioState.tokenExpiry && Date.now() < twilioState.tokenExpiry - 5 * 60 * 1000) {
+      if (!twilioState.device) {
+        twilioState.device = new Twilio.Device(twilioState.token, {
+          logLevel: 1,
+          codecPreferences: ['opus', 'pcmu'],
+        });
+        setupDeviceListeners();
+      }
+      return;
+    }
+
+    // Fetch new token
+    const session = await db.auth.getSession();
+    if (!session.data.session) {
+      console.error('No active session for Twilio token');
+      return;
+    }
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/twilio-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.data.session.access_token}`,
+      },
+      body: JSON.stringify({ identity: state.caller?.id || 'caller' }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      console.error('Token fetch error:', err);
+      showToast('Failed to initialize calling - please try again');
+      return;
+    }
+
+    const data = await response.json();
+    if (!data.token) {
+      console.error('No token in response');
+      showToast('Failed to initialize calling');
+      return;
+    }
+
+    twilioState.token = data.token;
+    twilioState.tokenExpiry = Date.now() + 60 * 60 * 1000; // 1 hour
+
+    // Create or update device
+    if (twilioState.device) {
+      twilioState.device.destroy();
+    }
+
+    twilioState.device = new Twilio.Device(twilioState.token, {
+      logLevel: 1,
+      codecPreferences: ['opus', 'pcmu'],
+    });
+
+    setupDeviceListeners();
+    console.log('Twilio Device initialized');
+  } catch (err) {
+    console.error('Twilio init error:', err);
+    showToast('Failed to initialize calling');
+  }
 }
 
-async function setupCaller(user) {
-  const { data: profile, error } = await db.from('profiles').select('*').eq('id', user.id).single();
-  if (error) {
-    console.error('Profile lookup error:', error);
-    S.caller = { id: user.id, name: user.email.split('@')[0], email: user.email, isAdmin: false, states: [] };
+function setupDeviceListeners() {
+  if (!twilioState.device) return;
+
+  twilioState.device.on('ready', () => {
+    console.log('Twilio Device ready');
+  });
+
+  twilioState.device.on('error', (error) => {
+    console.error('Device error:', error);
+    showToast(`Call error: ${error.message || 'Unknown error'}`);
+    updateCallStatus(null);
+  });
+
+  twilioState.device.on('connect', (connection) => {
+    console.log('Call connected');
+    twilioState.activeConnection = connection;
+    twilioState.callStartTime = Date.now();
+    updateCallStatus('connected');
+    startCallTimer();
+
+    connection.on('disconnect', () => {
+      console.log('Call disconnected');
+      endActiveCall();
+    });
+
+    connection.on('error', (error) => {
+      console.error('Connection error:', error);
+      showToast(`Connection error: ${error.message}`);
+      endActiveCall();
+    });
+  });
+
+  twilioState.device.on('incoming', (connection) => {
+    console.log('Incoming call');
+    // Auto-accept incoming calls for testing, or show a dialog
+    updateCallStatus('ringing');
+    connection.accept();
+  });
+
+  twilioState.device.on('disconnect', () => {
+    console.log('Device disconnected');
+    endActiveCall();
+  });
+}
+
+function startCallTimer() {
+  if (twilioState.durationInterval) clearInterval(twilioState.durationInterval);
+  twilioState.durationInterval = setInterval(() => {
+    if (twilioState.callStartTime) {
+      twilioState.callDuration = Math.floor((Date.now() - twilioState.callStartTime) / 1000);
+      updateCallDurationUI();
+    }
+  }, 1000);
+}
+
+function updateCallDurationUI() {
+  const minutes = Math.floor(twilioState.callDuration / 60);
+  const seconds = twilioState.callDuration % 60;
+  const durationStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+  // Update all duration displays
+  document.querySelectorAll('.call-duration-display').forEach(el => {
+    el.textContent = durationStr;
+  });
+}
+
+function updateCallStatus(status) {
+  document.querySelectorAll('.call-status').forEach(el => {
+    el.classList.remove('show', 'connecting', 'connected', 'ringing', 'ended', 'error');
+    if (status) {
+      el.classList.add('show', status);
+      if (status === 'connected') {
+        el.textContent = '📞 Call Connected - 0:00';
+      } else if (status === 'ringing') {
+        el.textContent = '📞 Ringing...';
+      } else if (status === 'connecting') {
+        el.textContent = '🔄 Connecting...';
+      } else if (status === 'ended') {
+        el.textContent = '📞 Call Ended';
+      } else if (status === 'error') {
+        el.textContent = '❌ Call Error';
+      }
+    }
+  });
+}
+
+function endActiveCall() {
+  if (twilioState.durationInterval) {
+    clearInterval(twilioState.durationInterval);
+    twilioState.durationInterval = null;
+  }
+  if (twilioState.activeConnection) {
+    twilioState.activeConnection.disconnect();
+    twilioState.activeConnection = null;
+  }
+  updateCallStatus('ended');
+  setTimeout(() => updateCallStatus(null), 2000);
+}
+
+async function initiateCall(companyId, phoneNumber) {
+  // Prevent double-clicking
+  const callBtn = document.querySelector(`[data-call-btn="${companyId}"]`);
+  if (callBtn && callBtn.disabled) return;
+  if (callBtn) callBtn.disabled = true;
+
+  try {
+    // Initialize device if needed
+    if (!twilioState.device || !twilioState.token) {
+      updateCallStatus('connecting');
+      await initTwilioDevice();
+    }
+
+    if (!twilioState.device) {
+      showToast('Calling not available - microphone access may be needed');
+      if (callBtn) callBtn.disabled = false;
+      return;
+    }
+
+    // Clean phone number
+    const cleanNumber = phoneNumber.replace(/[^\d+]/g, '');
+    if (!cleanNumber) {
+      showToast('Invalid phone number');
+      if (callBtn) callBtn.disabled = false;
+      return;
+    }
+
+    twilioState.currentCallCompanyId = companyId;
+    updateCallStatus('connecting');
+
+    // Make the call using device.connect()
+    const connection = await twilioState.device.connect({
+      To: cleanNumber,
+    });
+
+    console.log('Call initiated to:', cleanNumber);
+  } catch (err) {
+    console.error('Call initiation error:', err);
+    showToast(`Failed to make call: ${err.message || 'Unknown error'}`);
+    updateCallStatus('error');
+    if (callBtn) callBtn.disabled = false;
+  }
+}
+
+function hangupCall() {
+  if (twilioState.activeConnection) {
+    twilioState.activeConnection.disconnect();
+  }
+  endActiveCall();
+
+  // Re-enable call button
+  if (twilioState.currentCallCompanyId) {
+    const callBtn = document.querySelector(`[data-call-btn="${twilioState.currentCallCompanyId}"]`);
+    if (callBtn) callBtn.disabled = false;
+  }
+}
+
+// ============================================
+// INIT
+// ============================================
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    await loadCallerProfile(session.user);
   } else {
-    S.caller = {
+    render();
+  }
+}
+
+async function loadCallerProfile(user) {
+  // Check if user has a caller profile
+  const { data: profile } = await db.from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (profile && profile.user_type === 'caller') {
+    state.caller = {
+      id: user.id,
+      name: profile.name,
+      email: user.email,
+      assigned_states: profile.assigned_states ? profile.assigned_states.split(',') : [],
+    };
+    state.screen = 'main';
+    await loadQueue();
+    await loadCallLog();
+    // Initialize Twilio after profile is loaded
+    initTwilioDevice();
+  } else if (profile) {
+    // Regular user — check if admin
+    state.caller = {
       id: user.id,
       name: profile.name || user.email,
       email: user.email,
+      assigned_states: [], // admin sees all
       isAdmin: user.email === 'masstp01@gmail.com',
-      states: profile.assigned_states ? profile.assigned_states.split(',').map(s=>s.trim()) : [],
     };
-  }
-  S.screen = 'main';
-  await Promise.all([loadQueue(), loadLog()]);
-  initTwilio();
-}
-
-async function initTwilio() {
-  if (typeof Twilio === 'undefined') {
-    console.log('Twilio SDK not loaded yet, retrying in 2s...');
-    setTimeout(initTwilio, 2000);
-    return;
-  }
-  try {
-    const res = await fetch(TWILIO_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
-      body: JSON.stringify({ identity: S.caller?.email || 'caller' })
-    });
-    const data = await res.json();
-    if (data.error) { console.error('Token error:', data.error); toast('⚠️ Phone not available'); return; }
-
-    twilioDevice = new Twilio.Device(data.token, {
-      codecPreferences: ['opus', 'pcmu'],
-      closeProtection: true,
-      enableRingingState: true
-    });
-
-    twilioDevice.on('ready', () => { console.log('📞 Twilio ready'); toast('📞 Phone connected'); });
-    twilioDevice.on('error', (err) => { console.error('Twilio error:', err); toast('⚠️ Phone error: ' + (err.message || err)); });
-    twilioDevice.on('disconnect', onCallEnd);
-    twilioDevice.on('cancel', onCallEnd);
-
-  } catch(e) {
-    console.error('Twilio init failed:', e);
-    toast('⚠️ Phone setup failed — calls will use your phone');
-  }
-}
-
-async function loadQueue() {
-  try {
-    let q = db.from('unclaimed_businesses')
-      .select('id, company_name, phone, location_text, zip_code, claim_code, company_description')
-      .eq('claimed', false)
-      .not('phone', 'is', null).neq('phone', '')
-      .order('company_name').limit(500);
-    if (S.stateFilter) q = q.ilike('location_text', `%${S.stateFilter}%`);
-    const { data, error } = await q;
-    if (error) { console.error('Queue:', error); S.queue = []; return; }
-    const called = new Set(S.callLog.map(l => String(l.company_id)));
-    S.queue = (data||[]).filter(c => !called.has(String(c.id)));
-  } catch(e) { console.error(e); S.queue = []; }
-}
-
-async function loadLog() {
-  try {
-    let q = db.from('call_log').select('*').order('created_at', { ascending: false }).limit(500);
-    if (S.caller && !S.caller.isAdmin) q = q.eq('caller_id', S.caller.id);
-    const { data, error } = await q;
-    if (error) { console.error('Log:', error); S.callLog = []; return; }
-    S.callLog = data || [];
-  } catch(e) { console.error(e); S.callLog = []; }
-}
-
-async function doLogin() {
-  const email = document.getElementById('l-email').value.trim();
-  const pw = document.getElementById('l-pw').value;
-  const err = document.getElementById('l-err');
-  if (!email || !pw) { err.textContent = 'Enter email and password'; return; }
-  const btn = document.querySelector('.btn-login');
-  btn.disabled = true; btn.textContent = 'Logging in...'; err.textContent = '';
-  try {
-    const { data, error } = await db.auth.signInWithPassword({ email, password: pw });
-    if (error) { err.textContent = error.message; btn.disabled = false; btn.textContent = 'Log In'; return; }
-    await setupCaller(data.user);
-    render();
-  } catch(e) { err.textContent = 'Connection error'; btn.disabled = false; btn.textContent = 'Log In'; }
-}
-
-async function doLogout() { await db.auth.signOut(); S.screen='login'; S.caller=null; S.callLog=[]; S.queue=[]; render(); }
-
-async function logCall(cid) {
-  if (!S.outcome) { toast('⚠️ Select an outcome'); return; }
-  const co = S.queue.find(c => String(c.id) === String(cid));
-  if (!co) { toast('⚠️ Company not found in queue'); return; }
-  const btn = document.querySelector(`[id="f-${cid}"] .btn-save`);
-  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
-  const conEl = document.getElementById(`con-${cid}`);
-  const notEl = document.getElementById(`not-${cid}`);
-  const fuEl = document.getElementById(`fu-${cid}`);
-  const entry = {
-    caller_id: S.caller.id, caller_name: S.caller.name,
-    company_id: cid, company_name: co.company_name, company_phone: co.phone,
-    company_location: co.location_text, claim_code: co.claim_code,
-    contact_name: conEl?.value?.trim() || '',
-    outcome: S.outcome,
-    notes: notEl?.value?.trim() || '',
-    follow_up_date: fuEl?.value || null,
-  };
-  try {
-    const { error } = await db.from('call_log').insert(entry);
-    if (error) {
-      console.error('Log save error:', JSON.stringify(error));
-      toast(`❌ Save failed: ${error.message || error.details || 'Unknown error'}`);
-      if (btn) { btn.disabled = false; btn.textContent = '✅ Save & Next'; }
-      return;
-    }
-    // Success — update local state
-    S.callLog.unshift({ ...entry, created_at: new Date().toISOString() });
-    S.queue = S.queue.filter(c => String(c.id) !== String(cid));
-    const savedOutcome = S.outcome;
-    S.expanded = null; S.outcome = null;
-    toast(`✅ ${co.company_name} — ${savedOutcome}`);
-    setTimeout(() => render(), 50);
-  } catch(e) {
-    console.error('Log save exception:', e);
-    toast(`❌ Error: ${e.message}`);
-    if (btn) { btn.disabled = false; btn.textContent = '✅ Save & Next'; }
-  }
-}
-
-function startCall(cid, phone) {
-  const co = S.queue.find(c => String(c.id) === String(cid));
-  if (!co) return;
-
-  if (twilioDevice && twilioDevice.status() === 'ready') {
-    const cleanNum = phone.replace(/[^\d]/g, '');
-    const e164 = cleanNum.startsWith('1') ? '+' + cleanNum : '+1' + cleanNum;
-
-    S.callState = 'ringing';
-    S.callCompany = co;
-    callSeconds = 0;
-    render();
-
-    activeCall = twilioDevice.connect({ To: e164 });
-
-    activeCall.on('ringing', () => { S.callState = 'ringing'; render(); });
-    activeCall.on('accept', () => {
-      S.callState = 'connected';
-      callSeconds = 0;
-      callTimer = setInterval(() => { callSeconds++; updateTimer(); }, 1000);
-      render();
-    });
-    activeCall.on('disconnect', onCallEnd);
-    activeCall.on('cancel', onCallEnd);
-    activeCall.on('error', (err) => {
-      console.error('Call error:', err);
-      toast('❌ Call failed: ' + (err.message || err));
-      onCallEnd();
-    });
-
-  } else {
-    window.open('tel:' + phone, '_self');
-    setTimeout(() => { toggle(cid); }, 1000);
-  }
-}
-
-function hangUp() {
-  if (activeCall) {
-    activeCall.disconnect();
-  }
-  twilioDevice?.disconnectAll();
-}
-
-function onCallEnd() {
-  if (callTimer) { clearInterval(callTimer); callTimer = null; }
-  const company = S.callCompany;
-  S.callState = null;
-  activeCall = null;
-
-  // Auto-expand the log form for the company we just called
-  if (company) {
-    S.expanded = company.id;
-    S.callCompany = null;
-    toast(`📝 Call ended (${formatDuration(callSeconds)}) — log the outcome`);
+    state.screen = 'main';
+    await loadQueue();
+    await loadCallLog();
+    // Initialize Twilio after profile is loaded
+    initTwilioDevice();
   }
   render();
 }
 
-function updateTimer() {
-  const el = document.getElementById('call-timer');
-  if (el) el.textContent = formatDuration(callSeconds);
-}
+// ============================================
+// DATA LOADING
+// ============================================
+async function loadQueue() {
+  let query = db.from('unclaimed_businesses')
+    .select('id, company_name, phone, location_text, zip_code, claim_code, company_description')
+    .eq('claimed', false)
+    .not('phone', 'is', null)
+    .neq('phone', '')
+    .order('company_name')
+    .limit(500);
 
-function formatDuration(secs) {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function skip(cid) { S.queue = S.queue.filter(c => String(c.id) !== String(cid)); S.expanded = null; render(); }
-function toggle(id) { S.expanded = S.expanded === id ? null : id; S.outcome = null; render(); }
-function pickOutcome(o) {
-  S.outcome = o;
-  document.querySelectorAll('.pill').forEach(p => p.classList.toggle('on', p.dataset.o === o));
-}
-async function filterState(st) { S.stateFilter = st; await loadQueue(); render(); }
-function doSearch(q) { S.search = q.toLowerCase(); render(); }
-function setTab(t) { S.tab = t; render(); }
-
-function render() {
-  document.getElementById('app').innerHTML = S.screen === 'login' ? rLogin() : rMain();
-}
-
-function rLogin() {
-  return `<div class="login-wrap"><div class="login-box">
-    <div style="text-align:center;margin-bottom:20px"><svg width="48" height="48" viewBox="0 0 100 100" fill="none"><path d="M50 8 L30 40 L38 40 L22 65 L32 65 L18 90 L82 90 L68 65 L78 65 L62 40 L70 40 Z" fill="#2D7A3A" opacity="0.9"/><rect x="44" y="85" width="12" height="15" rx="2" fill="#5D4037"/></svg></div>
-    <h2>CrewFinder Caller Portal</h2>
-    <div class="sub">Log in to start calling companies</div>
-    <label>Email</label><input type="email" id="l-email" placeholder="you@email.com" autocomplete="email">
-    <label>Password</label><input type="password" id="l-pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-    <div class="login-err" id="l-err"></div>
-    <button class="btn-login" onclick="doLogin()">Log In</button>
-  </div></div>`;
-}
-
-function rMain() {
-  const today = new Date().toDateString();
-  const mt = S.callLog.filter(l => new Date(l.created_at).toDateString()===today && l.caller_id===S.caller?.id);
-  const su = mt.filter(l => l.outcome==='Signed Up').length;
-  return `
-    <div class="hdr"><div class="hdr-left"><h1>🌲 CrewFinder Caller</h1><div class="hdr-sub">${S.caller?.name||'Caller'}</div></div>
-    <div class="hdr-right"><div class="hdr-stat"><div class="hdr-stat-n">${mt.length}</div><div class="hdr-stat-l">Today</div></div>
-    <div class="hdr-stat"><div class="hdr-stat-n">${su}</div><div class="hdr-stat-l">Signups</div></div>
-    <button class="btn-out" onclick="doLogout()">Logout</button></div></div>
-    ${S.callState ? rCallBar() : ''}
-    <div class="tabs">
-      <div class="tab ${S.tab==='queue'?'on':''}" onclick="setTab('queue')">📞 Queue <span class="tbadge">${S.queue.length}</span></div>
-      <div class="tab ${S.tab==='log'?'on':''}" onclick="setTab('log')">📋 Log</div>
-      <div class="tab ${S.tab==='stats'?'on':''}" onclick="setTab('stats')">📊 Stats</div>
-      <div class="tab ${S.tab==='script'?'on':''}" onclick="setTab('script')">📝 Script</div>
-    </div>
-    <div class="content">${S.tab==='queue'?rQueue():S.tab==='log'?rLog():S.tab==='stats'?rStats():rScript()}</div>`;
-}
-
-function rQueue() {
-  let list = S.queue;
-  if (S.search) list = list.filter(c => (c.company_name||'').toLowerCase().includes(S.search)||(c.location_text||'').toLowerCase().includes(S.search));
-  const sts = [...new Set(S.queue.map(c => { const m=(c.location_text||'').match(/\b([A-Z]{2})\b/); return m?m[1]:null; }).filter(Boolean))].sort();
-  return `<div class="fbar"><select onchange="filterState(this.value)"><option value="">All States</option>${sts.map(s=>`<option value="${s}" ${S.stateFilter===s?'selected':''}>${s}</option>`).join('')}</select>
-    <input type="text" placeholder="Search..." oninput="doSearch(this.value)" value="${S.search}"><span class="fcount">${list.length} left</span></div>
-    ${list.length===0?'<div class="empty"><div class="empty-icon">✅</div><p>No companies in queue!<br>Try a different state.</p></div>':''}
-    ${list.slice(0,50).map(c=>rCard(c)).join('')}
-    ${list.length>50?`<div style="padding:20px;text-align:center;color:#888;font-size:13px">Showing 50 of ${list.length}</div>`:''}`;
-}
-
-function rCard(c) {
-  const ex = S.expanded===c.id;
-  const oc = ['Signed Up','Interested - Follow Up','Left Voicemail','No Answer','Not Interested','Wrong Number'];
-  return `<div class="ccard"><div class="ccard-top"><div><div class="cname">${c.company_name}</div>
-    <div class="cdetail">${c.location_text||'No location'}${c.zip_code?' · '+c.zip_code:''}</div>
-    ${c.phone?`<div class="cphone" style="margin-top:4px">📞 <a href="tel:${c.phone}">${c.phone}</a></div>`:'<div class="cdetail" style="color:#C62828">⚠️ No phone</div>'}
-    </div><span class="ccode">${c.claim_code||'N/A'}</span></div>
-    ${c.company_description?`<div class="cdesc">${c.company_description.slice(0,120)}${c.company_description.length>120?'...':''}</div>`:''}
-    <div class="cactions">${c.phone?`<button class="btn btn-g" onclick="startCall('${c.id}','${c.phone}')" ${S.callState?'disabled style="opacity:0.5;pointer-events:none"':''}>📞 Call Now</button>`:''}
-    <button class="btn btn-o" onclick="toggle('${c.id}')">${ex?'✕ Cancel':'📝 Log Outcome'}</button>
-    <button class="btn btn-s" onclick="skip('${c.id}')">Skip →</button></div>
-    <div class="lform ${ex?'open':''}" id="f-${c.id}"><label>Outcome</label>
-    <div class="pills">${oc.map(o=>`<div class="pill ${S.outcome===o?'on':''}" data-o="${o}" onclick="pickOutcome('${o}')">${o}</div>`).join('')}</div>
-    <label>Contact Name</label><input type="text" id="con-${c.id}" placeholder="Who did you speak to?">
-    <label>Notes</label><textarea id="not-${c.id}" placeholder="What happened?"></textarea>
-    <label>Follow-Up Date</label><input type="date" id="fu-${c.id}">
-    <button class="btn-save" onclick="logCall('${c.id}')">✅ Save & Next</button></div></div>`;
-}
-
-function rLog() {
-  const cl = {'Signed Up':'o-su','Interested - Follow Up':'o-in','Left Voicemail':'o-vm','No Answer':'o-na','Not Interested':'o-ni','Wrong Number':'o-wn'};
-  return `<div style="padding:14px 16px 8px;font-size:13px;color:#888">${S.callLog.length} calls logged</div>
-    ${S.callLog.length===0?'<div class="empty"><div class="empty-icon">📋</div><p>No calls yet. Start calling!</p></div>':''}
-    ${S.callLog.map(l=>`<div class="lentry"><div class="ltop"><div class="lcomp">${l.company_name}</div>
-    <span class="obadge ${cl[l.outcome]||'o-na'}">${l.outcome}</span></div>
-    <div class="lmeta">${l.company_location||''} · ${l.company_phone||''}${l.contact_name?' · Spoke to: '+l.contact_name:''}${l.caller_name&&S.caller?.isAdmin?' · Caller: '+l.caller_name:''}</div>
-    ${l.notes?`<div class="lnotes">${l.notes}</div>`:''}
-    <div class="ltime">${new Date(l.created_at).toLocaleString()}</div></div>`).join('')}`;
-}
-
-function rStats() {
-  const my = S.caller?.isAdmin ? S.callLog : S.callLog.filter(l=>l.caller_id===S.caller?.id);
-  const t=my.length, su=my.filter(l=>l.outcome==='Signed Up').length, int=my.filter(l=>l.outcome==='Interested - Follow Up').length;
-  const vm=my.filter(l=>l.outcome==='Left Voicemail').length, na=my.filter(l=>l.outcome==='No Answer').length, ni=my.filter(l=>l.outcome==='Not Interested').length;
-  const r = t>0?((su/t)*100).toFixed(1):'0.0';
-  const td=new Date().toDateString(), tdc=my.filter(l=>new Date(l.created_at).toDateString()===td), tds=tdc.filter(l=>l.outcome==='Signed Up').length;
-  const bs={};
-  my.forEach(l=>{ const m=(l.company_location||'').match(/\b([A-Z]{2})\b/); const st=m?m[1]:'??'; if(!bs[st])bs[st]={c:0,s:0}; bs[st].c++; if(l.outcome==='Signed Up')bs[st].s++; });
-  return `<div class="sgrid">
-    <div class="scard"><div class="snum">${tdc.length}</div><div class="slbl">Calls Today</div></div>
-    <div class="scard"><div class="snum">${tds}</div><div class="slbl">Signups Today</div></div>
-    <div class="scard"><div class="snum">${t}</div><div class="slbl">Total Calls</div></div>
-    <div class="scard"><div class="snum" style="color:${parseFloat(r)>=5?'#2D7A3A':'#D4900E'}">${r}%</div><div class="slbl">Conversion</div></div>
-    <div class="scard"><div class="snum">${su}</div><div class="slbl">Total Signups</div></div>
-    <div class="scard"><div class="snum">${int}</div><div class="slbl">Follow-Ups</div></div></div>
-    <div style="padding:0 16px 16px"><h3 style="font-size:15px;margin-bottom:10px">By Outcome</h3>
-    ${[['✅ Signed Up',su,'#DCFCE7','#166534'],['🔄 Interested',int,'#FEF3C7','#92400E'],['📞 Voicemail',vm,'#DBEAFE','#1E40AF'],['⬜ No Answer',na,'#F5F5F5','#888'],['❌ Not Interested',ni,'#FEE2E2','#991B1B']].map(([l,n,bg,c])=>`<div class="sbar" style="background:${bg}"><span style="color:${c}">${l}</span><span style="font-weight:700;color:${c}">${n}</span></div>`).join('')}
-    ${Object.keys(bs).length>0?`<h3 style="font-size:15px;margin:20px 0 10px">By State</h3>${Object.entries(bs).sort((a,b)=>b[1].c-a[1].c).map(([st,d])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F5F5F5;font-size:13px"><span style="font-weight:600">${st}</span><span>${d.c} calls · ${d.s} signups · ${d.c>0?((d.s/d.c)*100).toFixed(0):0}%</span></div>`).join('')}`:''}</div>`;
-}
-
-function rScript() {
-  return `<div style="padding:16px">
-    <h3 style="font-size:16px;margin-bottom:12px;color:#1A3C2A">📞 Call Script</h3>
-    <div class="sbox"><strong>Opening:</strong><br>"Hi, this is <em>[YOUR NAME]</em> calling from CrewFinder — we're a free platform that helps tree service companies find climbers and ground crew when they need them. Is this the owner or manager?"</div>
-    <div class="sbox" style="margin-top:8px"><strong>If yes:</strong><br>"Great — I'm reaching out because <em>[COMPANY NAME]</em> already has a profile page on our platform. I wanted to let you know so you can claim it for free and start getting matched with skilled workers in your area. It takes about 2 minutes."</div>
-    <div class="sbox" style="margin-top:8px"><strong>If gatekeeper:</strong><br>"No worries — could I get the best email to send them the info? We have a free profile set up for <em>[COMPANY NAME]</em> that they can claim."</div>
-    <h3 style="font-size:15px;margin:20px 0 10px;color:#1A3C2A">Objection Handling</h3>
-    <div class="sbox"><strong>"What is this exactly?"</strong><br>"CrewFinder is like an Indeed but specifically for the tree care industry. Companies post when they need a climber or ground guy, and workers in the area get notified. It's free to sign up."</div>
-    <div class="sbox" style="margin-top:8px"><strong>"We're not hiring right now"</strong><br>"Totally understand — most companies use it for those last-minute situations. A climber calls out sick on Monday morning, you need a sub by 7 AM. That's when CrewFinder saves the day."</div>
-    <div class="sbox" style="margin-top:8px"><strong>"How much does it cost?"</strong><br>"It's completely free right now. We're building up the network in <em>[STATE]</em> so there's no charge to sign up or claim your page."</div>
-    <div class="sbox" style="margin-top:8px"><strong>"Send me an email"</strong><br>"Absolutely — what's the best email? I'll send over a direct link to your company page."</div>
-    <div class="sbox" style="margin-top:8px"><strong>"Not interested"</strong><br>"No problem at all. If things change, your page will be there at crewfinder.pages.dev. Have a great day."</div>
-    <h3 style="font-size:15px;margin:20px 0 10px;color:#1A3C2A">🎙️ Voicemail Script</h3>
-    <div class="sbox">"Hi, this is <em>[NAME]</em> from CrewFinder. We have a free company profile set up for <em>[COMPANY NAME]</em> on our platform — it's a network for finding tree climbers and ground crew. Visit crewfinder.pages.dev to claim your page. Thanks!"</div>
-    <h3 style="font-size:15px;margin:20px 0 10px;color:#1A3C2A">✅ Signup Walkthrough</h3>
-    <div class="sbox">"Just go to <strong>crewfinder.pages.dev</strong> on your phone or computer. Click <strong>'I'm a Business'</strong>, put in your name and company name — when you type <em>[COMPANY NAME]</em> it should pop right up. Tap it to claim it. Your claim code is <strong>[CODE]</strong>. That's it — you're set up!"</div>
-  </div>`;
-}
-
-function rCallBar() {
-  const name = S.callCompany?.company_name || 'Unknown';
-  const phone = S.callCompany?.phone || '';
-  if (S.callState === 'ringing') {
-    return `<div class="call-bar ringing">
-      <div class="call-info"><div class="call-status">📞 Ringing...</div><div class="call-name">${name} · ${phone}</div></div>
-      <div class="call-connecting"><div class="call-dot"></div><div class="call-dot"></div><div class="call-dot"></div></div>
-      <button class="btn-hangup" onclick="hangUp()">✕</button></div>`;
+  if (state.stateFilter) {
+    query = query.ilike('location_text', `%${state.stateFilter}%`);
   }
-  return `<div class="call-bar connected">
-    <div class="call-info"><div class="call-status">🔊 Connected</div><div class="call-name">${name} · ${phone}</div></div>
-    <div class="call-timer" id="call-timer">${formatDuration(callSeconds)}</div>
-    <button class="btn-hangup" onclick="hangUp()">✕</button></div>`;
+
+  const { data } = await query;
+
+  // Filter out already-called companies
+  const calledIds = new Set(state.callLog.map(l => l.company_id));
+  state.queue = (data || []).filter(c => !calledIds.has(c.id));
 }
 
-let tt;
-function toast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(tt); tt=setTimeout(()=>t.style.display='none',3000); }
+async function loadCallLog() {
+  let query = db.from('call_log')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(500);
 
+  // Non-admin callers only see their own calls
+  if (state.caller && !state.caller.isAdmin) {
+    query = query.eq('caller_id', state.caller.id);
+  }
+
+  const { data } = await query;
+  state.callLog = data || [];
+}
+
+// ============================================
+// ACTIONS
+// ============================================
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error');
+
+  if (!email || !password) { errorEl.textContent = 'Enter email and password'; return; }
+
+  const { data, error } = await db.auth.signInWithPassword({ email, password });
+  if (error) { errorEl.textContent = error.message; return; }
+
+  await loadCallerProfile(data.user);
+}
+
+async function logCall(companyId) {
+  const form = document.getElementById(`form-${companyId}`);
+  const outcome = state.selectedOutcome;
+  const contactName = document.getElementById(`contact-${companyId}`)?.value?.trim() || '';
+  const notes = document.getElementById(`notes-${companyId}`)?.value?.trim() || '';
+  const followUp = document.getElementById(`followup-${companyId}`)?.value || '';
+
+  if (!outcome) { showToast('Select an outcome'); return; }
+
+  const company = state.queue.find(c => c.id === companyId);
+  if (!company) return;
+
+  const entry = {
+    caller_id: state.caller.id,
+    caller_name: state.caller.name,
+    company_id: companyId,
+    company_name: company.company_name,
+    company_phone: company.phone,
+    company_location: company.location_text,
+    claim_code: company.claim_code,
+    contact_name: contactName,
+    outcome: outcome,
+    notes: notes,
+    follow_up_date: followUp || null,
+    call_duration: twilioState.currentCallCompanyId === companyId ? twilioState.callDuration : 0,
+  };
+
+  const { error } = await db.from('call_log').insert(entry);
+  if (error) {
+    // Table might not exist yet — create it
+    showToast('Logging call...');
+    console.log('Call log error:', error);
+  }
+
+  // Update local state
+  state.callLog.unshift({ ...entry, created_at: new Date().toISOString() });
+  state.queue = state.queue.filter(c => c.id !== companyId);
+  state.expandedCard = null;
+  state.selectedOutcome = null;
+
+  showToast(`✅ Logged: ${company.company_name} — ${outcome}`);
+  render();
+}
+
+async function skipCompany(companyId) {
+  state.queue = state.queue.filter(c => c.id !== companyId);
+  state.expandedCard = null;
+  render();
+}
+
+function toggleCard(id) {
+  state.expandedCard = state.expandedCard === id ? null : id;
+  state.selectedOutcome = null;
+  render();
+}
+
+function selectOutcome(outcome) {
+  state.selectedOutcome = outcome;
+  // Re-render just the pills
+  document.querySelectorAll('.pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.outcome === outcome);
+  });
+}
+
+async function filterByState(st) {
+  state.stateFilter = st;
+  await loadQueue();
+  render();
+}
+
+async function handleSearch(q) {
+  state.searchQuery = q.toLowerCase();
+  render();
+}
+
+async function logout() {
+  await db.auth.signOut();
+  state.screen = 'login';
+  state.caller = null;
+  // Cleanup Twilio
+  if (twilioState.device) {
+    twilioState.device.destroy();
+    twilioState.device = null;
+  }
+  render();
+}
+
+// ============================================
+// RENDER
+// ============================================
+function render() {
+  const app = document.getElementById('app');
+  if (state.screen === 'login') {
+    app.innerHTML = renderLogin();
+  } else {
+    app.innerHTML = renderMain();
+  }
+}
+
+function renderLogin() {
+  return `
+    <div class="login-screen">
+      <div class="login-box">
+        <h2>🌲 CrewFinder</h2>
+        <p>Caller Portal — Log in to start calling</p>
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@email.com">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="Password" onkeydown="if(event.key==='Enter')handleLogin()">
+        <div class="login-error" id="login-error"></div>
+        <button class="btn btn-call" onclick="handleLogin()">Log In</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderMain() {
+  const todayCalls = state.callLog.filter(l => {
+    const d = new Date(l.created_at);
+    const today = new Date();
+    return d.toDateString() === today.toDateString() && l.caller_id === state.caller?.id;
+  });
+  const todaySignups = todayCalls.filter(l => l.outcome === 'Signed Up').length;
+
+  return `
+    <div class="header">
+      <div>
+        <h1>🌲 CrewFinder Caller</h1>
+        <div class="header-sub">${state.caller?.name || 'Caller'}</div>
+      </div>
+      <div class="header-right">
+        <div class="header-stat">
+          <div class="header-stat-num">${todayCalls.length}</div>
+          <div class="header-stat-label">Today</div>
+        </div>
+        <div class="header-stat">
+          <div class="header-stat-num">${todaySignups}</div>
+          <div class="header-stat-label">Signups</div>
+        </div>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:white;font-size:11px" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab ${state.tab === 'queue' ? 'active' : ''}" onclick="state.tab='queue';render()">📞 Call Queue (${state.queue.length})</div>
+      <div class="tab ${state.tab === 'log' ? 'active' : ''}" onclick="state.tab='log';render()">📋 Log (${state.callLog.length})</div>
+      <div class="tab ${state.tab === 'stats' ? 'active' : ''}" onclick="state.tab='stats';render()">📊 Stats</div>
+      <div class="tab ${state.tab === 'script' ? 'active' : ''}" onclick="state.tab='script';render()">📝 Script</div>
+    </div>
+
+    ${state.tab === 'queue' ? renderQueue() : ''}
+    ${state.tab === 'log' ? renderLog() : ''}
+    ${state.tab === 'stats' ? renderStats() : ''}
+    ${state.tab === 'script' ? renderScript() : ''}
+  `;
+}
+
+function renderQueue() {
+  let filtered = state.queue;
+  if (state.searchQuery) {
+    filtered = filtered.filter(c =>
+      (c.company_name || '').toLowerCase().includes(state.searchQuery) ||
+      (c.location_text || '').toLowerCase().includes(state.searchQuery)
+    );
+  }
+
+  const states = [...new Set(state.queue.map(c => {
+    const m = (c.location_text || '').match(/\b([A-Z]{2})\b/);
+    return m ? m[1] : null;
+  }).filter(Boolean))].sort();
+
+  return `
+    <div class="filter-bar">
+      <select onchange="filterByState(this.value)">
+        <option value="">All States</option>
+        ${states.map(s => `<option value="${s}" ${state.stateFilter === s ? 'selected' : ''}>${s}</option>`).join('')}
+      </select>
+      <input type="text" placeholder="Search companies..." style="flex:1" oninput="handleSearch(this.value)" value="${state.searchQuery}">
+      <span style="font-size:12px;color:var(--gray-500)">${filtered.length} remaining</span>
+    </div>
+
+    ${filtered.length === 0 ? `
+      <div class="empty">
+        <div class="empty-icon">✅</div>
+        <p>No companies left in queue!<br>Try a different state filter or check back later.</p>
+      </div>
+    ` : ''}
+
+    ${filtered.slice(0, 50).map(c => renderCallCard(c)).join('')}
+
+    ${filtered.length > 50 ? `<div style="padding:20px;text-align:center;color:var(--gray-500);font-size:13px">Showing 50 of ${filtered.length} — filter by state to narrow down</div>` : ''}
+  `;
+}
+
+function renderCallCard(c) {
+  const isExpanded = state.expandedCard === c.id;
+  const outcomes = ['Signed Up', 'Interested - Follow Up', 'Left Voicemail', 'No Answer', 'Not Interested', 'Wrong Number'];
+  const isCurrentCall = twilioState.currentCallCompanyId === c.id && twilioState.activeConnection;
+
+  return `
+    <div class="call-card ${isCurrentCall ? 'current-call' : ''}">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div>
+          <div class="company-name">${c.company_name}</div>
+          <div class="company-detail">${c.location_text || 'Location not set'}${c.zip_code ? ' · ' + c.zip_code : ''}</div>
+          ${c.phone ? `<div class="company-detail" style="margin-top:4px">📞 ${c.phone}</div>` : '<div class="company-detail" style="color:var(--red)">⚠️ No phone number</div>'}
+        </div>
+        <span class="claim-code">${c.claim_code || 'N/A'}</span>
+      </div>
+      ${c.company_description ? `<div style="font-size:12px;color:var(--gray-500);margin-top:6px;line-height:1.4">${c.company_description.slice(0, 120)}${c.company_description.length > 120 ? '...' : ''}</div>` : ''}
+
+      ${isCurrentCall ? `
+        <div class="call-status show connected" style="margin-top:12px">
+          📞 Call Connected - <span class="call-duration-display">0:00</span>
+        </div>
+        <div style="margin-top:8px">
+          <button class="btn btn-call" onclick="hangupCall()" style="background:var(--red);width:100%">📞 End Call</button>
+        </div>
+      ` : `
+        <div class="call-status"></div>
+        <div class="call-actions">
+          ${c.phone ? `<button class="btn btn-call" data-call-btn="${c.id}" onclick="initiateCall('${c.id}', '${c.phone}')">📞 Call Now</button>` : ''}
+          <button class="btn btn-outcome" onclick="toggleCard('${c.id}')">${isExpanded ? '✕ Cancel' : '📝 Log Outcome'}</button>
+          <button class="btn btn-outcome btn-sm" onclick="skipCompany('${c.id}')">Skip →</button>
+        </div>
+      `}
+
+      <div class="log-form ${isExpanded ? 'open' : ''}" id="form-${c.id}">
+        <label>Outcome</label>
+        <div class="outcome-pills">
+          ${outcomes.map(o => `<div class="pill ${state.selectedOutcome === o ? 'active' : ''}" data-outcome="${o}" onclick="selectOutcome('${o}')">${o}</div>`).join('')}
+        </div>
+        <label>Contact Name</label>
+        <input type="text" id="contact-${c.id}" placeholder="Who did you speak to?">
+        <label>Notes</label>
+        <textarea id="notes-${c.id}" placeholder="What happened? Any details..."></textarea>
+        <label>Follow-Up Date</label>
+        <input type="date" id="followup-${c.id}">
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-call" style="flex:1" onclick="logCall('${c.id}')">✅ Save & Next</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderLog() {
+  const outcomeClass = {
+    'Signed Up': 'outcome-signup',
+    'Interested - Follow Up': 'outcome-interested',
+    'Left Voicemail': 'outcome-voicemail',
+    'No Answer': 'outcome-noanswer',
+    'Not Interested': 'outcome-notinterested',
+    'Wrong Number': 'outcome-noanswer',
+  };
+
+  return `
+    <div style="padding:16px 16px 8px;font-size:13px;color:var(--gray-500)">${state.callLog.length} calls logged</div>
+    ${state.callLog.length === 0 ? `
+      <div class="empty">
+        <div class="empty-icon">📋</div>
+        <p>No calls logged yet.<br>Start calling from the queue!</p>
+      </div>
+    ` : ''}
+    ${state.callLog.map(l => `
+      <div class="log-entry">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="log-company">${l.company_name}</div>
+          <span class="log-outcome ${outcomeClass[l.outcome] || ''}">${l.outcome}</span>
+        </div>
+        <div class="log-meta">
+          ${l.company_location || ''} · ${l.company_phone || ''}
+          ${l.contact_name ? ' · Spoke to: ' + l.contact_name : ''}
+          ${l.caller_name && state.caller?.isAdmin ? ' · Caller: ' + l.caller_name : ''}
+          ${l.call_duration ? ' · Duration: ' + Math.floor(l.call_duration / 60) + ':' + (l.call_duration % 60).toString().padStart(2, '0') : ''}
+        </div>
+        ${l.notes ? `<div style="font-size:12px;color:var(--gray-600);margin-top:4px;background:var(--gray-100);padding:6px 10px;border-radius:6px">${l.notes}</div>` : ''}
+        <div class="log-meta" style="margin-top:4px">${new Date(l.created_at).toLocaleString()}</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderStats() {
+  const myCalls = state.caller?.isAdmin
+    ? state.callLog
+    : state.callLog.filter(l => l.caller_id === state.caller?.id);
+
+  const total = myCalls.length;
+  const signups = myCalls.filter(l => l.outcome === 'Signed Up').length;
+  const interested = myCalls.filter(l => l.outcome === 'Interested - Follow Up').length;
+  const voicemails = myCalls.filter(l => l.outcome === 'Left Voicemail').length;
+  const noAnswer = myCalls.filter(l => l.outcome === 'No Answer').length;
+  const notInterested = myCalls.filter(l => l.outcome === 'Not Interested').length;
+  const convRate = total > 0 ? ((signups / total) * 100).toFixed(1) : '0.0';
+
+  // Today's calls
+  const today = new Date().toDateString();
+  const todayCalls = myCalls.filter(l => new Date(l.created_at).toDateString() === today);
+  const todaySignups = todayCalls.filter(l => l.outcome === 'Signed Up').length;
+
+  // By state
+  const byState = {};
+  myCalls.forEach(l => {
+    const m = (l.company_location || '').match(/\b([A-Z]{2})\b/);
+    const st = m ? m[1] : 'Unknown';
+    if (!byState[st]) byState[st] = { calls: 0, signups: 0 };
+    byState[st].calls++;
+    if (l.outcome === 'Signed Up') byState[st].signups++;
+  });
+
+  // If admin, show per-caller breakdown
+  const callerStats = {};
+  if (state.caller?.isAdmin) {
+    state.callLog.forEach(l => {
+      const name = l.caller_name || 'Unknown';
+      if (!callerStats[name]) callerStats[name] = { calls: 0, signups: 0 };
+      callerStats[name].calls++;
+      if (l.outcome === 'Signed Up') callerStats[name].signups++;
+    });
+  }
+
+  return `
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num">${todayCalls.length}</div>
+        <div class="stat-label">Calls Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">${todaySignups}</div>
+        <div class="stat-label">Signups Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">${total}</div>
+        <div class="stat-label">Total Calls</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" style="color:${parseFloat(convRate) >= 5 ? 'var(--green)' : 'var(--orange)'}">${convRate}%</div>
+        <div class="stat-label">Conversion</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">${signups}</div>
+        <div class="stat-label">Total Signups</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">${interested}</div>
+        <div class="stat-label">Follow-Ups</div>
+      </div>
+    </div>
+
+    <div style="padding:0 16px 16px">
+      <h3 style="font-size:15px;margin-bottom:10px">By Outcome</h3>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${[
+          ['✅ Signed Up', signups, '#DCFCE7', '#166534'],
+          ['🔄 Interested', interested, '#FEF3C7', '#92400E'],
+          ['📞 Voicemail', voicemails, '#DBEAFE', '#1E40AF'],
+          ['⬜ No Answer', noAnswer, '#F5F5F5', '#757575'],
+          ['❌ Not Interested', notInterested, '#FEE2E2', '#991B1B'],
+        ].map(([label, count, bg, color]) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:${bg};border-radius:6px">
+            <span style="font-size:13px;color:${color}">${label}</span>
+            <span style="font-weight:700;color:${color}">${count}</span>
+          </div>
+        `).join('')}
+      </div>
+
+      ${Object.keys(byState).length > 0 ? `
+        <h3 style="font-size:15px;margin:20px 0 10px">By State</h3>
+        ${Object.entries(byState).sort((a,b) => b[1].calls - a[1].calls).map(([st, data]) => `
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gray-100);font-size:13px">
+            <span style="font-weight:600">${st}</span>
+            <span>${data.calls} calls · ${data.signups} signups · ${data.calls > 0 ? ((data.signups/data.calls)*100).toFixed(0) : 0}%</span>
+          </div>
+        `).join('')}
+      ` : ''}
+
+      ${state.caller?.isAdmin && Object.keys(callerStats).length > 0 ? `
+        <h3 style="font-size:15px;margin:20px 0 10px">By Caller</h3>
+        ${Object.entries(callerStats).sort((a,b) => b[1].calls - a[1].calls).map(([name, data]) => `
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:13px">
+            <span style="font-weight:600">${name}</span>
+            <span>${data.calls} calls · ${data.signups} signups · ${data.calls > 0 ? ((data.signups/data.calls)*100).toFixed(0) : 0}%</span>
+          </div>
+        `).join('')}
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderScript() {
+  return `
+    <div style="padding:16px">
+      <h3 style="font-size:16px;margin-bottom:12px;color:var(--green)">📞 Call Script</h3>
+
+      <div class="script-box">
+        <strong>Opening:</strong><br>
+        "Hi, this is <em>[YOUR NAME]</em> calling from CrewFinder — we're a free platform that helps tree service companies find climbers and ground crew when they need them. Is this the owner or manager?"
+      </div>
+
+      <div class="script-box" style="margin-top:8px">
+        <strong>If yes:</strong><br>
+        "Great — I'm reaching out because <em>[COMPANY NAME]</em> already has a profile page on our platform. I wanted to let you know so you can claim it for free and start getting matched with skilled workers in your area. It takes about 2 minutes."
+      </div>
+
+      <div class="script-box" style="margin-top:8px">
+        <strong>If gatekeeper:</strong><br>
+        "No worries — could I get the best email to send them the info? We have a free profile set up for <em>[COMPANY NAME]</em> that they can claim."
+      </div>
+
+      <h3 style="font-size:15px;margin:20px 0 10px;color:var(--green)">Objection Handling</h3>
+
+      <div class="script-box">
+        <strong>"What is this exactly?"</strong><br>
+        "CrewFinder is like an Indeed but specifically for the tree care industry. Companies post when they need a climber or ground guy, and workers in the area get notified. It's free to sign up."
+      </div>
+
+      <div class="script-box" style="margin-top:8px">
+        <strong>"We're not hiring right now"</strong><br>
+        "Totally understand — most companies use it for those last-minute situations. A climber calls out sick on Monday morning, you need a sub by 7 AM. That's when CrewFinder saves the day."
+      </div>
+
+      <div class="script-box" style="margin-top:8px">
+        <strong>"How much does it cost?"</strong><br>
+        "It's completely free right now. We're building up the network in <em>[STATE]</em> so there's no charge to sign up or claim your page."
+      </div>
+
+      <div class="script-box" style="margin-top:8px">
+        <strong>"Send me an email"</strong><br>
+        "Absolutely — what's the best email? I'll send over a direct link to your company page."
+      </div>
+
+      <div class="script-box" style="margin-top:8px">
+        <strong>"Not interested"</strong><br>
+        "No problem at all. If things change, your page will be there at crewfinder.pages.dev. Have a great day."
+      </div>
+
+      <h3 style="font-size:15px;margin:20px 0 10px;color:var(--green)">🎙️ Voicemail Script</h3>
+
+      <div class="script-box">
+        "Hi, this is <em>[NAME]</em> from CrewFinder. We have a free company profile set up for <em>[COMPANY NAME]</em> on our platform — it's a network for finding tree climbers and ground crew. Visit crewfinder.pages.dev to claim your page. Thanks!"
+      </div>
+
+      <h3 style="font-size:15px;margin:20px 0 10px;color:var(--green)">✅ Signup Walkthrough</h3>
+
+      <div class="script-box">
+        "Just go to <strong>crewfinder.pages.dev</strong> on your phone or computer. Click <strong>'I'm a Business'</strong>, put in your name and company name — when you type <em>[COMPANY NAME]</em> it should pop right up. Tap it to claim it. Your claim code is <strong>[CODE]</strong>. That's it — you're set up!"
+      </div>
+    </div>
+  `;
+}
+
+// ============================================
+// TOAST
+// ============================================
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// ============================================
+// BOOT
+// ============================================
 init();
 </script>
 </body>

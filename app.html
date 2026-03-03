@@ -11,6 +11,7 @@
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
 <style>
 /* ============================================
    CSS RESET & VARIABLES
@@ -1376,7 +1377,7 @@ async function loadSplashCompanies() {
     const shown = companies.slice(0, 8);
     const remaining = companies.length - shown.length;
     
-    container.innerHTML = `
+    container.innerHTML = DOMPurify.sanitize(`
       <div class="splash-companies-title">Companies on CrewFinder</div>
       <div class="splash-companies-list">
         ${shown.map(c => `
@@ -1387,10 +1388,10 @@ async function loadSplashCompanies() {
         `).join('')}
       </div>
       ${remaining > 0 ? `<div class="splash-companies-more">+ ${remaining} more</div>` : ''}
-    `;
+    `);
   } catch(e) {
     // Silently fail - this is just social proof, not critical
-    void 0;
+    console.log('Could not load splash companies:', e);
   }
 }
 
@@ -1769,7 +1770,7 @@ async function handleNextStep(btn) {
   try {
     await nextProfileStep();
   } catch (e) {
-    void 0;
+    console.error('Step error:', e);
     // Force advance anyway
     state.profileStep++;
     render();
@@ -2375,7 +2376,7 @@ async function viewJobDetail(jobId) {
       ...r,
       worker_profile: r.worker_profile,
     }));
-  } catch(e) { void 0; }
+  } catch(e) { console.error('Error loading responses:', e); }
   
   render();
 }
@@ -2922,11 +2923,11 @@ async function loadWorkerProfileData(id) {
     const grid = document.getElementById('worker-photos-grid');
     if (grid) {
       if (photos && photos.length > 0) {
-        grid.innerHTML = photos.map(p => `
+        grid.innerHTML = DOMPurify.sanitize(photos.map(p => `
           <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
             <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open('${p.photo_url}','_blank')">
           </div>
-        `).join('');
+        `).join(''));
       } else {
         grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet</div>';
       }
@@ -2939,7 +2940,7 @@ async function loadWorkerProfileData(id) {
     const el = document.getElementById('worker-reviews');
     if (el) {
       if (reviews && reviews.length > 0) {
-        el.innerHTML = reviews.map(r => `
+        el.innerHTML = DOMPurify.sanitize(reviews.map(r => `
           <div style="padding:12px 0;border-bottom:1px solid var(--gray-200)">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-weight:600;font-size:14px">${r.profiles?.company_name || r.profiles?.name || 'User'}</span>
@@ -2947,7 +2948,7 @@ async function loadWorkerProfileData(id) {
             </div>
             ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${r.comment}</p>` : ''}
           </div>
-        `).join('');
+        `).join(''));
       } else {
         el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">No reviews yet</div>';
       }
@@ -3083,11 +3084,11 @@ async function viewCompany(id) {
     const grid = document.getElementById('company-photos-grid');
     if (grid) {
       if (photos && photos.length > 0) {
-        grid.innerHTML = photos.map(p => `
+        grid.innerHTML = DOMPurify.sanitize(photos.map(p => `
           <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
             <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open('${p.photo_url}','_blank')">
           </div>
-        `).join('');
+        `).join(''));
       } else {
         grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet</div>';
       }
@@ -3100,7 +3101,7 @@ async function viewCompany(id) {
     const el = document.getElementById('company-reviews');
     if (el) {
       if (reviews && reviews.length > 0) {
-        el.innerHTML = reviews.map(r => `
+        el.innerHTML = DOMPurify.sanitize(reviews.map(r => `
           <div style="padding:12px 0;border-bottom:1px solid var(--gray-200)">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-weight:600;font-size:14px">${r.profiles?.name || 'Worker'}</span>
@@ -3108,7 +3109,7 @@ async function viewCompany(id) {
             </div>
             ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${r.comment}</p>` : ''}
           </div>
-        `).join('');
+        `).join(''));
       } else {
         el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">No reviews yet — be the first!</div>';
       }
@@ -3205,7 +3206,7 @@ async function submitRating(userId) {
           await db.from('profiles').update({ biz_rating_avg: avg, biz_rating_count: count }).eq('id', userId);
         }
       }
-    } catch(e) { void 0; }
+    } catch(e) { console.error('Error updating rating avg:', e); }
     
     // Refresh the view
     if (state.viewingCompany) {
@@ -3215,7 +3216,7 @@ async function submitRating(userId) {
     }
     
   } catch (e) {
-    void 0;
+    console.error('Review error:', e);
     if (e.message?.includes('unique') || e.code === '23505') {
       showToast("You've already reviewed this person");
     } else {
@@ -3322,7 +3323,7 @@ async function loadCrewRoster() {
     
     state.crewRoster = crewData;
   } catch(e) {
-    void 0;
+    console.error('Error loading crew:', e);
     state.crewRoster = [];
   }
 }
@@ -3529,17 +3530,17 @@ async function loadMyPhotos() {
     const grid = document.getElementById('my-photos-grid');
     if (grid) {
       if (photos && photos.length > 0) {
-        grid.innerHTML = photos.map(p => `
+        grid.innerHTML = DOMPurify.sanitize(photos.map(p => `
           <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
             <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">
           </div>
-        `).join('');
+        `).join(''));
       } else {
         grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet — add them in Edit Profile</div>';
       }
     }
   } catch (e) {
-    void 0;
+    console.error('Error loading photos:', e);
     const grid = document.getElementById('my-photos-grid');
     if (grid) grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No photos yet</div>';
   }
@@ -3589,24 +3590,24 @@ async function viewWorker(id) {
     const grid = document.getElementById('worker-photos-grid');
     if (grid) {
       if (photos && photos.length > 0) {
-        grid.innerHTML = photos.map(p => `
+        grid.innerHTML = DOMPurify.sanitize(photos.map(p => `
           <div style="aspect-ratio:1;border-radius:8px;overflow:hidden">
             <img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open('${p.photo_url}','_blank')">
           </div>
-        `).join('');
+        `).join(''));
       } else {
         grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px;grid-column:1/-1">No work photos yet</div>';
       }
     }
   } catch(e) {}
-  
+
   // Load reviews async
   try {
     const { data: reviews } = await db.from('reviews').select('*, profiles!reviewer_id(name, avatar_url, company_name)').eq('reviewed_id', id).order('created_at', { ascending: false });
     const el = document.getElementById('worker-reviews');
     if (el) {
       if (reviews && reviews.length > 0) {
-        el.innerHTML = reviews.map(r => `
+        el.innerHTML = DOMPurify.sanitize(reviews.map(r => `
           <div style="padding:12px 0;border-bottom:1px solid var(--gray-200)">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-weight:600;font-size:14px">${r.profiles?.company_name || r.profiles?.name || 'Company'}</span>
@@ -3614,7 +3615,7 @@ async function viewWorker(id) {
             </div>
             ${r.comment ? `<p style="font-size:13px;color:var(--gray-600);margin-top:4px;line-height:1.4">${r.comment}</p>` : ''}
           </div>
-        `).join('');
+        `).join(''));
       } else {
         el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:13px">No reviews yet</div>';
       }
@@ -3824,7 +3825,7 @@ async function handlePostJob(btn) {
     render();
     
   } catch (e) {
-    void 0;
+    console.error('Post job error:', e);
     showToast('Error posting: ' + (e.message || 'Try again'));
     btn.disabled = false;
     btn.textContent = 'Post Job';
@@ -4070,7 +4071,7 @@ async function loadConversations() {
     };
   });
   } catch(e) {
-    void 0;
+    console.error('loadConversations error:', e);
     state.conversations = [];
   }
 }
@@ -4139,19 +4140,19 @@ async function searchCompanySignup(query) {
         resultsDiv.style.display = 'none';
         return;
       }
-      
-      resultsDiv.innerHTML = data.map(c => `
-        <div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--gray-100);transition:background 0.15s" 
-          onmouseover="this.style.background='var(--pale-green)'" 
+
+      resultsDiv.innerHTML = DOMPurify.sanitize(data.map(c => `
+        <div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--gray-100);transition:background 0.15s"
+          onmouseover="this.style.background='var(--pale-green)'"
           onmouseout="this.style.background='#fff'"
           onclick="selectCompanyFromSearch(${JSON.stringify(c).replace(/"/g, '&quot;')})">
           <div style="font-weight:600;font-size:14px">${c.company_name}</div>
           <div style="font-size:12px;color:var(--gray-500)">${c.location_text || c.zip_code || 'Location not set'}</div>
         </div>
-      `).join('');
+      `).join(''));
       resultsDiv.style.display = 'block';
     } catch(e) {
-      void 0;
+      console.log('Company search error:', e);
       resultsDiv.style.display = 'none';
     }
   }, 300);
@@ -4335,7 +4336,7 @@ async function handleSignup() {
           }
         } catch(e) {
           // Auto-match failed silently — not critical, they just get a fresh profile
-          void 0;
+          console.log('Auto-match check:', e.message);
         }
       }
     }
@@ -4506,7 +4507,7 @@ async function nextProfileStep() {
         zip_code: zip || null,
         bio: bio 
       }).eq('id', state.user.id);
-      if (error) void 0;
+      if (error) console.error('Step 1 save error:', error);
       state.profile.name = name;
       state.profile.location_text = location;
       state.profile.zip_code = zip;
@@ -4523,7 +4524,7 @@ async function nextProfileStep() {
       }));
       await db.from('worker_skills').delete().eq('worker_id', state.user.id);
       const { error } = await db.from('worker_skills').insert(skills);
-      if (error) void 0;
+      if (error) console.error('Step 2 save error:', error);
       
     } else if (isWorker && state.profileStep === 3) {
       const minEl = document.getElementById('pay-min');
@@ -4532,13 +4533,13 @@ async function nextProfileStep() {
       const max = parseInt(maxEl ? maxEl.value : 35) * 100;
       const payType = state.profile.pay_type || 'hourly';
       const { error } = await db.from('profiles').update({ pay_min: min, pay_max: max, pay_type: payType }).eq('id', state.user.id);
-      if (error) void 0;
+      if (error) console.error('Step 3 save error:', error);
       state.profile.pay_min = min;
       state.profile.pay_max = max;
       
     } else if (isWorker && state.profileStep === 4) {
       const { error } = await db.from('profiles').update({ availability: state.profile.availability }).eq('id', state.user.id);
-      if (error) void 0;
+      if (error) console.error('Step 4 save error:', error);
       try {
         const { data: photos } = await db.from('work_photos').select('*').eq('worker_id', state.user.id).order('created_at');
         state.workPhotos = photos || [];
@@ -4553,7 +4554,7 @@ async function nextProfileStep() {
         const { error } = await db.from('profiles').update({ 
           insurance_expiry: expiry || null 
         }).eq('id', state.user.id);
-        if (error) void 0;
+        if (error) console.error('Step 6 save error:', error);
         state.profile.insurance_expiry = expiry;
       }
     }
@@ -4574,7 +4575,7 @@ async function nextProfileStep() {
         company_description: desc,
         phone: phone,
       }).eq('id', state.user.id);
-      if (error) void 0;
+      if (error) console.error('Biz save error:', error);
       state.profile.company_name = companyName;
       state.profile.location_text = location;
       state.profile.zip_code = zip;
@@ -4582,12 +4583,12 @@ async function nextProfileStep() {
       state.profile.phone = phone;
     }
   } catch (e) {
-    void 0;
+    console.error('Profile step error:', e);
     // Still advance even if save failed
   }
   
   if (state.profileStep >= totalSteps) {
-    try { await loadData(); } catch (e) { void 0; }
+    try { await loadData(); } catch (e) { console.error('loadData error:', e); }
     state.activeTab = isWorker ? 'feed' : 'search';
     state.currentScreen = 'main';
     showToast('Profile set up! You\'re ready to go.');
@@ -4640,10 +4641,10 @@ async function uploadAvatar(input) {
     
     // Update preview
     const preview = document.getElementById('avatar-preview');
-    if (preview) preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
+    if (preview) preview.innerHTML = DOMPurify.sanitize(`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`);
     
   } catch (e) {
-    void 0;
+    console.error('Avatar upload error:', e);
     if (status) status.textContent = 'Upload failed — try again';
     showToast('Photo upload failed: ' + (e.message || 'Unknown error'));
   }
@@ -4683,7 +4684,7 @@ async function uploadWorkPhoto(input) {
     render();
     
   } catch (e) {
-    void 0;
+    console.error('Work photo upload error:', e);
     if (status) status.textContent = 'Upload failed — try again';
     showToast('Photo upload failed: ' + (e.message || 'Unknown error'));
   }
@@ -4737,7 +4738,7 @@ async function uploadInsurance(input) {
     render();
     
   } catch (e) {
-    void 0;
+    console.error('Insurance upload error:', e);
     if (status) status.textContent = 'Upload failed — try again';
     showToast('Upload failed: ' + (e.message || 'Unknown error'));
   }
@@ -4824,7 +4825,7 @@ async function loadData() {
       .eq('user_type', 'worker')
       .order('rating_avg', { ascending: false });
     state.workers = workers || [];
-  } catch (e) { void 0; state.workers = []; }
+  } catch (e) { console.error('Error loading workers:', e); state.workers = []; }
   
   try {
     // Load jobs (with business info and skills)
@@ -4834,7 +4835,7 @@ async function loadData() {
       .eq('is_active', true)
       .order('created_at', { ascending: false });
     state.jobs = jobs || [];
-  } catch (e) { void 0; state.jobs = []; }
+  } catch (e) { console.error('Error loading jobs:', e); state.jobs = []; }
   
   try {
     // Load businesses
@@ -4844,7 +4845,7 @@ async function loadData() {
       .eq('user_type', 'business')
       .order('biz_rating_avg', { ascending: false });
     state.businesses = businesses || [];
-  } catch (e) { void 0; state.businesses = []; }
+  } catch (e) { console.error('Error loading businesses:', e); state.businesses = []; }
   
   try {
     // Load unclaimed businesses for browse tab
@@ -4854,7 +4855,7 @@ async function loadData() {
       .eq('claimed', false)
       .order('created_at', { ascending: false });
     state.unclaimedBusinesses = unclaimed || [];
-  } catch (e) { void 0; state.unclaimedBusinesses = []; }
+  } catch (e) { console.error('Error loading unclaimed:', e); state.unclaimedBusinesses = []; }
   
   // Load worker's own job responses (for showing applied/hired status)
   if (state.profile?.user_type === 'worker') {
@@ -4869,7 +4870,7 @@ async function loadData() {
   try {
     // Load conversations
     await loadConversations();
-  } catch (e) { void 0; state.conversations = []; }
+  } catch (e) { console.error('Error loading conversations:', e); state.conversations = []; }
 }
 
 // ============================================
@@ -4914,7 +4915,7 @@ async function init() {
       state.currentScreen = 'splash';
     }
   } catch (e) {
-    void 0;
+    console.error('Init error:', e);
     try { await db.auth.signOut(); } catch (_) {}
     state.currentScreen = 'splash';
   }
@@ -4944,13 +4945,15 @@ const VAPID_PUBLIC_KEY = 'BDKjpMxX0K3plkADCR3vVKelt08Hiv6aJo2aIvfOgyiq8lY3vSY98o
 // Register service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').then((reg) => {
-    void 0;
+    console.log('SW registered:', reg.scope);
+    // Save last sync time
+    localStorage.setItem('crewfinder-last-sync', Date.now().toString());
     // Try to subscribe to push after SW is ready
     if (state.user) {
       subscribeToPush(reg);
     }
   }).catch((err) => {
-    void 0;
+    console.log('SW registration failed:', err);
   });
 }
 
@@ -4990,7 +4993,7 @@ async function requestPushPermission() {
     render();
     
   } catch (e) {
-    void 0;
+    console.error('Push subscription error:', e);
     showToast('Could not enable notifications: ' + e.message);
   }
 }
@@ -5008,7 +5011,7 @@ async function savePushSubscription(subscription) {
       user_type: state.profile?.user_type || 'worker',
     }, { onConflict: 'user_id' });
   } catch (e) {
-    void 0;
+    console.error('Error saving push subscription:', e);
   }
 }
 
@@ -5023,7 +5026,7 @@ async function unsubscribeFromPush() {
     showToast('Notifications turned off');
     render();
   } catch (e) {
-    void 0;
+    console.error('Unsubscribe error:', e);
   }
 }
 
@@ -5061,10 +5064,10 @@ async function sendPushNotification(payload) {
     const { data, error } = await db.functions.invoke('send-push-notification', {
       body: payload,
     });
-    if (error) void 0;
-    else void 0;
+    if (error) console.error('Push function error:', error);
+    else console.log('Push sent:', data);
   } catch(e) {
-    void 0;
+    console.error('Push notification error:', e);
     // Non-blocking — don't show error to user
   }
 }
@@ -5191,7 +5194,7 @@ function showInstallGuide() {
   const modal = document.createElement('div');
   modal.id = 'install-modal';
   modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
-  modal.innerHTML = `
+  modal.innerHTML = DOMPurify.sanitize(`
     <div style="background:var(--white);border-radius:20px;padding:28px 24px;max-width:360px;width:100%;text-align:center">
       <div style="font-size:48px;margin-bottom:12px">📲</div>
       <h3 style="margin:0 0 4px;font-size:18px;color:var(--forest)">Install CrewFinder</h3>
@@ -5199,7 +5202,7 @@ function showInstallGuide() {
       ${instructions}
       <button class="btn btn-primary" style="margin-top:20px" onclick="document.getElementById('install-modal').remove()">Got it!</button>
     </div>
-  `;
+  `);
   document.body.appendChild(modal);
 }
 

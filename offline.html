@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>CrewFinder — Offline</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Outfit', -apple-system, sans-serif;
+    background: linear-gradient(170deg, #050D09 0%, #0B1F14 30%, #1A3C2A 70%, #2D7A3A 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  #app {
+    width: 100%;
+    max-width: 430px;
+    background: #F7FAF7;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .header {
+    background: #fff;
+    padding: 16px;
+    border-bottom: 1px solid #E8E8E8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .header-logo svg {
+    width: 28px;
+    height: 28px;
+  }
+  .header-logo span {
+    font-weight: 800;
+    font-size: 18px;
+    color: #1A3C2A;
+  }
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .offline-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+  }
+  .offline-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #1A3C2A;
+    margin-bottom: 12px;
+  }
+  .offline-desc {
+    font-size: 14px;
+    color: #5A6B5E;
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+  .status-box {
+    background: #E8F5E9;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border-left: 4px solid #2D7A3A;
+    text-align: left;
+  }
+  .status-title {
+    font-weight: 700;
+    color: #2D7A3A;
+    font-size: 13px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .status-item {
+    font-size: 12px;
+    color: #5A6B5E;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-item:last-child {
+    margin-bottom: 0;
+  }
+  .status-icon {
+    font-size: 14px;
+  }
+  .sync-info {
+    background: #FFF3E0;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    color: #E65100;
+    border: 1px solid #FFE0B2;
+  }
+  .sync-time {
+    font-weight: 600;
+    display: block;
+    margin-top: 4px;
+  }
+  .retry-status {
+    font-size: 12px;
+    color: #8A9B8E;
+    margin-top: 12px;
+    font-style: italic;
+  }
+  .nav-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 24px;
+  }
+  .nav-link {
+    padding: 12px;
+    background: #2D7A3A;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    border: none;
+  }
+  .nav-link:hover {
+    background: #1A3C2A;
+  }
+  .nav-link span {
+    font-size: 20px;
+  }
+  .footer {
+    background: #F7FAF7;
+    border-top: 1px solid #E2E8E4;
+    padding: 16px;
+    text-align: center;
+    font-size: 11px;
+    color: #8A9B8E;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-logo">
+      <svg viewBox="0 0 100 100" fill="none"><path d="M50 8 L30 40 L38 40 L22 65 L32 65 L18 90 L82 90 L68 65 L78 65 L62 40 L70 40 Z" fill="#2D7A3A" opacity="0.9"/><rect x="44" y="85" width="12" height="15" rx="2" fill="#5D4037"/></svg>
+      <span>CrewFinder</span>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="offline-icon">📡</div>
+    <div class="offline-title">You're Offline</div>
+    <div class="offline-desc">No internet connection. Some features are unavailable, but cached content is still accessible.</div>
+
+    <div class="status-box">
+      <div class="status-title">Available Offline</div>
+      <div class="status-item"><span class="status-icon">✓</span><span>View cached crew calendar</span></div>
+      <div class="status-item"><span class="status-icon">✓</span><span>View cached storm posts</span></div>
+      <div class="status-item"><span class="status-icon">✓</span><span>View cached equipment list</span></div>
+      <div class="status-item"><span class="status-icon">✓</span><span>Offline pages</span></div>
+    </div>
+
+    <div id="syncInfo" class="sync-info" style="display:none">
+      Last synced: <span id="lastSync">Never</span>
+      <span class="sync-time">Retrying connection...</span>
+    </div>
+
+    <div class="nav-links">
+      <a href="app.html" class="nav-link"><span>🏠</span>Home</a>
+      <a href="calendar.html" class="nav-link"><span>📅</span>Calendar</a>
+      <a href="storm.html" class="nav-link"><span>⛈️</span>Storm</a>
+      <a href="equipment.html" class="nav-link"><span>🔧</span>Equipment</a>
+    </div>
+
+    <div class="retry-status">
+      <span id="retryMessage">Checking connection...</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>CrewFinder PWA • Check back online for full functionality</span>
+  </div>
+</div>
+
+<script>
+  // Check connection status and retry
+  let retryCount = 0;
+  const maxRetries = 10;
+  const retryInterval = 30000; // 30 seconds
+
+  function updateRetryMessage() {
+    const message = document.getElementById('retryMessage');
+    if (retryCount === 0) {
+      message.textContent = 'Auto-retrying connection every 30 seconds...';
+    } else {
+      message.textContent = `Retry attempt ${retryCount}/${maxRetries} in 30 seconds...`;
+    }
+  }
+
+  function checkConnection() {
+    fetch('/app.html', { method: 'HEAD' })
+      .then(() => {
+        // Connection restored
+        document.getElementById('retryMessage').textContent = 'Connection restored! Reloading...';
+        document.getElementById('retryMessage').style.color = '#2D7A3A';
+        setTimeout(() => location.reload(), 1000);
+      })
+      .catch(() => {
+        // Still offline
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          document.getElementById('retryMessage').textContent = 'Still offline. Manual refresh to retry.';
+          return;
+        }
+        updateRetryMessage();
+        setTimeout(checkConnection, retryInterval);
+      });
+  }
+
+  // Start checking connection
+  updateRetryMessage();
+  setTimeout(checkConnection, retryInterval);
+
+  // Show last sync time from localStorage
+  const lastSync = localStorage.getItem('crewfinder-last-sync');
+  if (lastSync) {
+    document.getElementById('syncInfo').style.display = 'block';
+    const syncDate = new Date(parseInt(lastSync));
+    document.getElementById('lastSync').textContent = syncDate.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  }
+</script>
+</body>
+</html>

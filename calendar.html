@@ -7,6 +7,7 @@
 <title>CrewFinder — Crew Calendar</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Outfit', -apple-system, sans-serif; background: #E8E8E8; display: flex; justify-content: center; min-height: 100vh; }
@@ -105,7 +106,7 @@
 </div>
 <script>
 const SUPABASE_URL = 'https://mhatwlmbwikvrlcgfojt.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgxMDQ4ODYsImV4cCI6MjA1MzY4MDg4Nn0.CHiaEB4vg1qCCpnOb4cOYGP6O_-TE_0Iu21VDnORfCE';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNDUzMTQsImV4cCI6MjA4NjkyMTMxNH0.8LefO4aYzYGfmsUb4blBEBLjIoF4CtYJ7xfimdc7lBE';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const content = document.getElementById('content');
 let selectedDate = new Date().toISOString().split('T')[0];
@@ -171,7 +172,7 @@ function renderCalendar() {
               ${a.hourly_rate ? `<span class="card-rate">$${a.hourly_rate}/hr</span>` : ''}
             </div>
           </div>
-          <button class="btn-contact" onclick="alert('Contact feature coming soon!')">Contact</button>
+          <button class="btn-contact" onclick="showContactForm('${a.id}', '${a.display_name}', '${a.location || ''}', '${a.time_preference || ''}')">Contact</button>
         </div>
       </div>
     `).join('')}
@@ -216,6 +217,61 @@ async function submitAvail(e) {
 function selectDate(d) { selectedDate = d; loadEntries(); }
 function setView(v) { viewType = v; loadEntries(); }
 function toggleStorm() { statusFilter = statusFilter === 'storm_ready' ? 'all' : 'storm_ready'; loadEntries(); }
+
+function showContactForm(entryId, name, location, timePreference) {
+  const timeLabels = { morning: 'AM', afternoon: 'PM', full_day: 'Full Day', flexible: 'Flexible' };
+  const timeDisplay = timeLabels[timePreference] || timePreference;
+
+  content.innerHTML = `
+    <button class="detail-back" onclick="loadEntries()">← Back to calendar</button>
+    <div style="font-size:20px;font-weight:800;color:#1A3C2A;margin-bottom:16px">Contact ${name}</div>
+    <div style="background:#E3F2FD;border-radius:12px;padding:14px;margin-bottom:16px;border-left:4px solid #1565C0">
+      <div style="font-weight:600;color:#1565C0;font-size:14px;margin-bottom:4px">${name}</div>
+      ${location ? `<div style="font-size:12px;color:#0D47A1;margin-bottom:2px">📍 ${location}</div>` : ''}
+      ${timePreference ? `<div style="font-size:12px;color:#0D47A1">⏰ ${timeDisplay}</div>` : ''}
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:#1A3C2A;margin-bottom:8px">Quick Contact Options</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="tel:+1" style="flex:1;min-width:140px;padding:10px 12px;background:#2D7A3A;color:#fff;border-radius:10px;text-align:center;font-size:12px;font-weight:600;text-decoration:none;border:none;cursor:pointer">📞 Call</a>
+        <a href="mailto:" style="flex:1;min-width:140px;padding:10px 12px;background:#2D7A3A;color:#fff;border-radius:10px;text-align:center;font-size:12px;font-weight:600;text-decoration:none;border:none;cursor:pointer">✉️ Email</a>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:#1A3C2A;margin-bottom:8px">Or Send a Message</div>
+      <form id="contactForm" onsubmit="submitContact(event, '${entryId}')">
+        <div class="form-group"><label class="form-label">Your Name *</label><input class="form-input" name="sender_name" required></div>
+        <div class="form-group"><label class="form-label">Email *</label><input class="form-input" name="sender_email" type="email" required></div>
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-input" name="sender_phone" type="tel"></div>
+        <div class="form-group"><label class="form-label">Message *</label><textarea class="form-input form-textarea" name="message" placeholder="I'm interested in connecting..." required></textarea></div>
+        <button type="submit" class="btn-primary">Send Message</button>
+      </form>
+    </div>
+  `;
+}
+
+async function submitContact(e, entryId) {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(document.getElementById('contactForm')));
+  data.calendar_entry_id = entryId;
+
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  const { error } = await sb.from('calendar_contacts').insert([data]);
+
+  if (error) {
+    alert('Error: ' + error.message);
+    btn.disabled = false;
+    btn.textContent = 'Send Message';
+  } else {
+    alert('Message sent successfully!');
+    await loadEntries();
+  }
+}
 
 loadEntries();
 </script>

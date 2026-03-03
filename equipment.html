@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -200,7 +201,7 @@
 
 <script>
 const SUPABASE_URL = 'https://mhatwlmbwikvrlcgfojt.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgxMDQ4ODYsImV4cCI6MjA1MzY4MDg4Nn0.CHiaEB4vg1qCCpnOb4cOYGP6O_-TE_0Iu21VDnORfCE';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNDUzMTQsImV4cCI6MjA4NjkyMTMxNH0.8LefO4aYzYGfmsUb4blBEBLjIoF4CtYJ7xfimdc7lBE';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const content = document.getElementById('content');

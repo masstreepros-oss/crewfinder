@@ -1,14 +1,35 @@
 const CACHE_NAME = 'crewfinder-v2';
-const OFFLINE_URL = '/app.html';
+const OFFLINE_URL = '/offline.html';
+
+// HTML pages to cache
+const HTML_PAGES = [
+  '/app.html',
+  '/storm.html',
+  '/calendar.html',
+  '/equipment.html',
+  '/news.html',
+  '/admin.html',
+  '/index.html'
+];
+
+// Static assets to cache
+const STATIC_ASSETS = [
+  'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+  'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js'
+];
 
 // Install - cache the app shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll([
-        OFFLINE_URL,
-        'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap',
-      ]);
+      // Try to add all pages and assets, but continue even if some fail
+      const promises = [
+        ...HTML_PAGES.map(page => cache.add(page).catch(() => {})),
+        ...STATIC_ASSETS.map(asset => cache.add(asset).catch(() => {})),
+        cache.add(OFFLINE_URL).catch(() => {})
+      ];
+      return Promise.all(promises);
     })
   );
   self.skipWaiting();
@@ -26,16 +47,62 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch - network first, fall back to cache
+// Fetch - use different strategies based on content type
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests and API calls
+  // Skip non-GET requests
   if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('supabase.co')) return;
-  
+
+  const url = event.request.url;
+  const isAPI = url.includes('supabase.co') || url.includes('googleapis.com/');
+  const isStaticAsset = url.includes('.css') || url.includes('.js') || url.includes('fonts.googleapis') || url.includes('cdnjs.cloudflare');
+  const isHTML = url.endsWith('.html') || url.endsWith('/');
+
+  // Network-first strategy for API calls (but don't wait forever)
+  if (isAPI) {
+    event.respondWith(
+      Promise.race([
+        fetch(event.request)
+          .then((response) => {
+            if (response.ok) {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            }
+            return response;
+          })
+          .catch(() => caches.match(event.request)),
+        new Promise((resolve) => {
+          setTimeout(() => resolve(caches.match(event.request)), 5000);
+        })
+      ])
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first strategy for static assets
+  if (isStaticAsset) {
+    event.respondWith(
+      caches.match(event.request)
+        .then((cached) => {
+          if (cached) return cached;
+          return fetch(event.request)
+            .then((response) => {
+              if (response.ok) {
+                const clone = response.clone();
+                caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+              }
+              return response;
+            })
+            .catch(() => caches.match(OFFLINE_URL));
+        })
+    );
+    return;
+  }
+
+  // Network-first for HTML pages with offline fallback
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache successful responses
         if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
@@ -43,7 +110,6 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // Offline - try cache
         return caches.match(event.request).then((cached) => {
           return cached || caches.match(OFFLINE_URL);
         });

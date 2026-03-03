@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CrewFinder Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -475,7 +476,7 @@ async function loadDashboard() {
     const { data: fullProfiles } = await db.from('profiles').select('id, name, company_name, user_type, created_at, avatar_url, email').order('created_at', { ascending: false }).limit(10);
     const recentEl = document.getElementById('recent-signups');
     if (!fullProfiles?.length) { recentEl.innerHTML = '<div class="empty-state">No users yet</div>'; return; }
-    recentEl.innerHTML = fullProfiles.map(p => `
+    recentEl.innerHTML = DOMPurify.sanitize(fullProfiles.map(p => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-100)">
         <div style="display:flex;gap:8px;align-items:center">
           <div class="user-avatar">${p.avatar_url ? `<img src="${p.avatar_url}">` : (p.user_type === 'worker' ? '👷' : '🏢')}</div>
@@ -487,7 +488,7 @@ async function loadDashboard() {
         </div>
         <div style="font-size:11px;color:var(--gray-500)">${timeAgo(p.created_at)}</div>
       </div>
-    `).join('');
+    `).join(''));
   } catch(e) { console.error('Dashboard error:', e); }
 }
 
@@ -538,7 +539,7 @@ function filterUsers() {
 function renderUsers(users) {
   document.getElementById('user-count').textContent = `${users.length} user${users.length !== 1 ? 's' : ''}`;
   if (!users.length) { document.getElementById('users-list').innerHTML = '<div class="empty-state">No users found</div>'; return; }
-  document.getElementById('users-list').innerHTML = users.map(u => {
+  document.getElementById('users-list').innerHTML = DOMPurify.sanitize(users.map(u => {
     const displayName = (u.name || u.company_name || 'Unnamed').replace(/'/g, "\\'");
     return `
     <div class="user-item">
@@ -564,7 +565,7 @@ function renderUsers(users) {
       </div>
       <div id="delete-confirm-${u.id}" class="hidden"></div>
     </div>`;
-  }).join('');
+  }).join(''));
 }
 
 function openEditModal(userId) {
@@ -573,7 +574,7 @@ function openEditModal(userId) {
   editingUserId = userId;
   const isWorker = user.user_type === 'worker';
   document.getElementById('edit-modal-title').textContent = `Edit: ${user.name || user.company_name || 'Unnamed'}`;
-  document.getElementById('edit-modal-body').innerHTML = `
+  document.getElementById('edit-modal-body').innerHTML = DOMPurify.sanitize(`
     <div class="form-group">
       <label class="form-label">${isWorker ? 'Name' : 'Company Name'}</label>
       <input class="form-input" id="edit-name" value="${isWorker ? (user.name || '') : (user.company_name || '')}">
@@ -610,7 +611,7 @@ function openEditModal(userId) {
       <label class="form-label">Company Description</label>
       <textarea class="form-input" id="edit-bio" rows="2">${user.company_description || ''}</textarea>
     </div>`}
-  `;
+  `);
   document.getElementById('edit-modal').classList.remove('hidden');
 }
 
@@ -707,7 +708,7 @@ function filterReviews() {
 
 function renderReviews(reviews) {
   if (!reviews.length) { document.getElementById('reviews-list').innerHTML = '<div class="empty-state">No reviews found</div>'; return; }
-  document.getElementById('reviews-list').innerHTML = reviews.map(r => {
+  document.getElementById('reviews-list').innerHTML = DOMPurify.sanitize(reviews.map(r => {
     const from = r.profiles?.name || r.profiles?.company_name || 'Unknown';
     const to = r.reviewed?.name || r.reviewed?.company_name || 'Unknown';
     return `
@@ -722,7 +723,7 @@ function renderReviews(reviews) {
       ${r.comment ? `<div class="review-text">"${r.comment}"</div>` : '<div class="review-text" style="font-style:italic;color:var(--gray-500)">No comment</div>'}
       <div class="review-meta">${new Date(r.created_at).toLocaleDateString()} · ${timeAgo(r.created_at)}</div>
     </div>`;
-  }).join('');
+  }).join(''));
 }
 
 async function deleteReview(reviewId, reviewedId, reviewedType) {
@@ -748,7 +749,7 @@ function previewLogo(input) {
   const file = input.files[0]; if (!file) return;
   selectedLogoFile = file;
   const reader = new FileReader();
-  reader.onload = (e) => { document.getElementById('logo-preview').innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`; };
+  reader.onload = (e) => { document.getElementById('logo-preview').innerHTML = DOMPurify.sanitize(`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`); };
   reader.readAsDataURL(file);
 }
 
@@ -783,7 +784,7 @@ async function addCompany() {
       logo_url: logoUrl, created_by: adminUser.id,
     });
     if (error) throw error;
-    status.innerHTML = `✅ <strong>${company}</strong> added!<br>Claim code: <strong style="font-size:18px;letter-spacing:2px;color:var(--green)">${claimCode}</strong><br>Send them this code — they enter it when signing up.`;
+    status.innerHTML = DOMPurify.sanitize(`✅ <strong>${company}</strong> added!<br>Claim code: <strong style="font-size:18px;letter-spacing:2px;color:var(--green)">${claimCode}</strong><br>Send them this code — they enter it when signing up.`);
     status.className = 'status show success';
     ['add-company','add-email','add-location','add-phone','add-description','add-logo'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('logo-preview').innerHTML = '<span style="font-size:20px;color:var(--gray-500)">🏢</span>';
@@ -799,7 +800,7 @@ async function loadCompanies() {
     const { data, error } = await db.from('unclaimed_businesses').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     if (!data?.length) { container.innerHTML = '<div class="empty-state">No companies added yet</div>'; return; }
-    container.innerHTML = data.map(c => `
+    container.innerHTML = DOMPurify.sanitize(data.map(c => `
       <div class="company-item">
         <div style="display:flex;gap:10px;align-items:center;flex:1">
           <div style="width:40px;height:40px;border-radius:8px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
@@ -813,7 +814,7 @@ async function loadCompanies() {
         </div>
         <span class="badge ${c.claimed ? 'badge-claimed' : 'badge-unclaimed'}">${c.claimed ? 'Claimed ✓' : 'Unclaimed'}</span>
       </div>
-    `).join('');
+    `).join(''));
   } catch(e) { container.innerHTML = `<div style="color:var(--red)">${e.message}</div>`; }
 }
 
@@ -821,12 +822,12 @@ async function loadCompanies() {
 function previewAnnouncement() {
   const msg = document.getElementById('announce-message').value.trim(); if (!msg) return;
   const sel = document.getElementById('announce-audience');
-  document.getElementById('announce-preview').innerHTML = `
+  document.getElementById('announce-preview').innerHTML = DOMPurify.sanitize(`
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
       <div style="width:32px;height:32px;border-radius:8px;background:var(--forest-mid);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">📢</div>
       <div><strong style="font-size:13px">CrewFinder Team</strong><div style="font-size:11px;color:var(--gray-500)">To: ${sel.options[sel.selectedIndex].text}</div></div>
     </div>
-    <div style="font-size:13px;line-height:1.5">${msg}</div>`;
+    <div style="font-size:13px;line-height:1.5">${msg}</div>`);
   document.getElementById('announce-preview-box').style.display = 'block';
 }
 
@@ -850,7 +851,7 @@ async function sendAnnouncement() {
     }));
     const { error: msgErr } = await db.from('messages').insert(messages);
     if (msgErr) throw msgErr;
-    status.innerHTML = `✅ Sent to <strong>${targets.length}</strong> user${targets.length !== 1 ? 's' : ''}!`;
+    status.innerHTML = DOMPurify.sanitize(`✅ Sent to <strong>${targets.length}</strong> user${targets.length !== 1 ? 's' : ''}!`);
     status.className = 'status show success';
     document.getElementById('announce-message').value = '';
     document.getElementById('announce-preview-box').style.display = 'none';
@@ -876,12 +877,12 @@ async function loadPastAnnouncements() {
       const existing = batches.find(b => b.content === m.content && Math.abs(new Date(b.created_at) - new Date(m.created_at)) < 60000);
       if (existing) existing.count++; else batches.push({ content: m.content, created_at: m.created_at, count: 1 });
     });
-    container.innerHTML = batches.slice(0, 10).map(b => `
+    container.innerHTML = DOMPurify.sanitize(batches.slice(0, 10).map(b => `
       <div style="padding:10px 0;border-bottom:1px solid var(--gray-100)">
         <div style="font-size:13px">${b.content}</div>
         <div style="font-size:11px;color:var(--gray-500);margin-top:4px">${new Date(b.created_at).toLocaleDateString()} · Sent to ${b.count} user${b.count !== 1 ? 's' : ''}</div>
       </div>
-    `).join('');
+    `).join(''));
   } catch(e) { container.innerHTML = '<div class="empty-state">Could not load announcements</div>'; }
 }
 
@@ -993,14 +994,14 @@ function populateColumnMappings() {
 function renderCsvPreview() {
   const preview = csvData.slice(0, 5);
   const nameIdx = document.getElementById('map-name').value;
-  
+
   let html = '<table style="width:100%;border-collapse:collapse;font-size:11px">';
   html += '<tr>' + csvHeaders.map(h => `<th style="text-align:left;padding:4px 6px;border-bottom:2px solid var(--gray-200);font-weight:600;white-space:nowrap">${h}</th>`).join('') + '</tr>';
   preview.forEach(row => {
     html += '<tr>' + row.map(c => `<td style="padding:4px 6px;border-bottom:1px solid var(--gray-100);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c || '<span style="color:var(--gray-500)">—</span>'}</td>`).join('') + '</tr>';
   });
   html += '</table>';
-  document.getElementById('csv-preview-table').innerHTML = html;
+  document.getElementById('csv-preview-table').innerHTML = DOMPurify.sanitize(html);
 }
 
 function getVal(row, selectId) {
@@ -1116,8 +1117,8 @@ async function runImport() {
   }
   
   bar.style.width = '100%';
-  
-  status.innerHTML = `✅ Done! <strong>${imported}</strong> companies imported · ${skipped} skipped (dupes/empty) · ${errors} errors`;
+
+  status.innerHTML = DOMPurify.sanitize(`✅ Done! <strong>${imported}</strong> companies imported · ${skipped} skipped (dupes/empty) · ${errors} errors`);
   status.className = 'status show success';
   
   btn.disabled = false;
