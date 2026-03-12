@@ -2800,7 +2800,7 @@ function renderBrowseCompanies() {
   const totalCount = businesses.length + unclaimedFiltered.length;
 
   // Export button (only for admin — check if logged-in user is admin)
-  const ADMIN_EMAILS = ['masstp01@gmail.com', 'masstreepros@gmail.com'];
+  const ADMIN_EMAILS = ['masstreepros@gmail.com'];
   const isAdmin = ADMIN_EMAILS.includes(state.user?.email);
   const exportBtn = isAdmin ? `
     <button onclick="exportCallList()" style="font-size:12px;padding:4px 10px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;margin-left:8px">📋 Export Call List</button>

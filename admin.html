@@ -446,8 +446,8 @@ async function adminLogin() {
     adminUser = data.user;
 
     // Admin role verification - only allow designated admin email
-    const ADMIN_EMAILS = ['masstp01@gmail.com', 'masstreepros@gmail.com'];
-    if (!ADMIN_EMAILS.includes(adminUser.email)) {
+    const ADMIN_EMAILS = ['masstreepros@gmail.com'];
+    if (!ADMIN_EMAILS.some(e => e.toLowerCase() === adminUser.email.toLowerCase())) {
       await db.auth.signOut();
       adminUser = null;
       throw new Error('Access denied — your account is not authorized for admin access.');
@@ -952,7 +952,7 @@ function timeAgo(dateStr) {
 // Auto-login with admin email whitelist check
 db.auth.getSession().then(({ data }) => {
   if (data.session) {
-    const ADMIN_EMAILS = ['masstp01@gmail.com', 'masstreepros@gmail.com'];
+    const ADMIN_EMAILS = ['masstreepros@gmail.com'];
     if (!ADMIN_EMAILS.includes(data.session.user.email)) {
       db.auth.signOut();
       return;
