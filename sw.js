@@ -33,7 +33,7 @@ const STATIC_ASSETS = [
 // CDN assets to cache
 const CDN_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js'
 ];
 
