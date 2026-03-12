@@ -154,7 +154,7 @@
 <div id="login-section" class="login-section">
   <div class="login-card">
     <div class="card" style="text-align:center">
-      <h1 style="margin-bottom:4px">🔒 CrewFinder Admin</h1>
+      <h1 style="margin-bottom:4px">ð CrewFinder Admin</h1>
       <p style="color:var(--gray-500);font-size:14px;margin-bottom:20px">Log in with your admin account</p>
       <div class="form-group" style="text-align:left">
         <label class="form-label">Email</label>
@@ -162,7 +162,7 @@
       </div>
       <div class="form-group" style="text-align:left">
         <label class="form-label">Password</label>
-        <input class="form-input" id="admin-password" type="password" placeholder="••••••" onkeydown="if(event.key==='Enter')adminLogin()">
+        <input class="form-input" id="admin-password" type="password" placeholder="â¢â¢â¢â¢â¢â¢" onkeydown="if(event.key==='Enter')adminLogin()">
       </div>
       <button class="btn btn-primary btn-block" onclick="adminLogin()">Log In</button>
       <div class="status" id="login-status"></div>
@@ -173,17 +173,17 @@
 <!-- ADMIN PANEL -->
 <div id="admin-panel" class="hidden">
   <div class="admin-header">
-    <h1>⚙️ CrewFinder Admin</h1>
+    <h1>âï¸ CrewFinder Admin</h1>
     <button class="logout-btn" onclick="adminLogout()">Log Out</button>
   </div>
   
   <div class="admin-tabs">
-    <div class="admin-tab active" onclick="switchAdminTab('dashboard', this)">📊 Dashboard</div>
-    <div class="admin-tab" onclick="switchAdminTab('users', this)">👥 Users</div>
-    <div class="admin-tab" onclick="switchAdminTab('reviews', this)">⭐ Reviews</div>
-    <div class="admin-tab" onclick="switchAdminTab('companies', this)">🏢 Companies</div>
-    <div class="admin-tab" onclick="switchAdminTab('announce', this)">📢 Announce</div>
-    <div class="admin-tab" onclick="switchAdminTab('import', this)">📥 Import</div>
+    <div class="admin-tab active" onclick="switchAdminTab('dashboard', this)">ð Dashboard</div>
+    <div class="admin-tab" onclick="switchAdminTab('users', this)">ð¥ Users</div>
+    <div class="admin-tab" onclick="switchAdminTab('reviews', this)">â­ Reviews</div>
+    <div class="admin-tab" onclick="switchAdminTab('companies', this)">ð¢ Companies</div>
+    <div class="admin-tab" onclick="switchAdminTab('announce', this)">ð¢ Announce</div>
+    <div class="admin-tab" onclick="switchAdminTab('import', this)">ð¥ Import</div>
   </div>
 
   <!-- DASHBOARD -->
@@ -199,12 +199,12 @@
         <div class="stat-card"><div class="stat-num" id="stat-referrals">-</div><div class="stat-label">Referrals</div><div class="stat-sub" id="stat-referrals-sub"></div></div>
       </div>
       <div class="card">
-        <h3>📈 Signups (Last 14 Days)</h3>
+        <h3>ð Signups (Last 14 Days)</h3>
         <div class="chart-bar" id="signup-chart"></div>
         <div class="chart-labels" id="signup-labels"></div>
       </div>
       <div class="card">
-        <h3>🆕 Recent Signups</h3>
+        <h3>ð Recent Signups</h3>
         <div id="recent-signups">Loading...</div>
       </div>
     </div>
@@ -256,7 +256,7 @@
           <label class="form-label">Company Logo <span style="font-weight:400;color:var(--gray-500)">(optional)</span></label>
           <div style="display:flex;align-items:center;gap:12px">
             <div id="logo-preview" style="width:50px;height:50px;border-radius:10px;background:var(--gray-100);border:2px dashed var(--gray-200);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
-              <span style="font-size:20px;color:var(--gray-500)">🏢</span>
+              <span style="font-size:20px;color:var(--gray-500)">ð¢</span>
             </div>
             <div>
               <input type="file" id="add-logo" accept="image/*" style="display:none" onchange="previewLogo(this)">
@@ -290,7 +290,7 @@
   <div class="tab-content" id="tab-announce">
     <div class="container">
       <div class="card">
-        <h3>📢 Send Announcement</h3>
+        <h3>ð¢ Send Announcement</h3>
         <p style="font-size:13px;color:var(--gray-500);margin-bottom:14px">Send a message to users via in-app message from your account.</p>
         <div class="form-group">
           <label class="form-label">Send To</label>
@@ -323,7 +323,7 @@
   <div class="tab-content" id="tab-import">
     <div class="container">
       <div class="card">
-        <h3>📥 Bulk Import Companies</h3>
+        <h3>ð¥ Bulk Import Companies</h3>
         <p style="font-size:13px;color:var(--gray-500);margin-bottom:14px">Upload a CSV from Outscraper, Google Maps, or any source. Map columns to CrewFinder fields and import in bulk.</p>
         
         <div class="form-group">
@@ -333,7 +333,7 @@
         
         <div id="csv-preview-section" style="display:none">
           <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:14px;margin-bottom:14px">
-            <div style="font-weight:600;font-size:13px;margin-bottom:8px">📋 Found <span id="csv-row-count">0</span> rows · <span id="csv-col-count">0</span> columns</div>
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px">ð Found <span id="csv-row-count">0</span> rows Â· <span id="csv-col-count">0</span> columns</div>
             <div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Map your CSV columns to CrewFinder fields:</div>
             
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -398,12 +398,12 @@
       </div>
       
       <div class="card">
-        <h3>📖 CSV Format Guide</h3>
+        <h3>ð CSV Format Guide</h3>
         <p style="font-size:13px;color:var(--gray-500);line-height:1.6">
           Works with any CSV. Common sources:<br><br>
-          <strong>Outscraper (Google Maps)</strong> — Export as CSV. Map "name" → Company Name, "phone" → Phone, "city" → Location, "state" → State, "postal_code" → Zip.<br><br>
-          <strong>Yelp / BBB</strong> — Similar format, just map the right columns.<br><br>
-          <strong>Custom spreadsheet</strong> — Just needs a "Company Name" column at minimum. Add phone, city, state, zip, email for richer listings.<br><br>
+          <strong>Outscraper (Google Maps)</strong> â Export as CSV. Map "name" â Company Name, "phone" â Phone, "city" â Location, "state" â State, "postal_code" â Zip.<br><br>
+          <strong>Yelp / BBB</strong> â Similar format, just map the right columns.<br><br>
+          <strong>Custom spreadsheet</strong> â Just needs a "Company Name" column at minimum. Add phone, city, state, zip, email for richer listings.<br><br>
           The importer auto-detects common column names and will skip companies already in the system (by name + zip match).
         </p>
       </div>
@@ -446,11 +446,11 @@ async function adminLogin() {
     adminUser = data.user;
 
     // Admin role verification - only allow designated admin email
-    const ADMIN_EMAILS = ['masstreepros@gmail.com'];
+    const ADMIN_EMAILS = ['masstreepros@gmail.com', 'michaelrabasco@gmail.com'];
     if (!ADMIN_EMAILS.some(e => e.toLowerCase() === adminUser.email.toLowerCase())) {
       await db.auth.signOut();
       adminUser = null;
-      throw new Error('Access denied — your account is not authorized for admin access.');
+      throw new Error('Access denied â your account is not authorized for admin access.');
     }
 
     document.getElementById('login-section').classList.add('hidden');
@@ -511,7 +511,7 @@ async function loadDashboard() {
     document.getElementById('stat-businesses').textContent = businesses.length;
     document.getElementById('stat-biz-sub').textContent = '';
     document.getElementById('stat-jobs').textContent = jobs.length;
-    document.getElementById('stat-jobs-sub').textContent = `${activeJobs.length} active` + (todayJobs ? ` · +${todayJobs} today` : '');
+    document.getElementById('stat-jobs-sub').textContent = `${activeJobs.length} active` + (todayJobs ? ` Â· +${todayJobs} today` : '');
     document.getElementById('stat-messages').textContent = messages.length;
     document.getElementById('stat-msg-sub').textContent = todayMessages ? `+${todayMessages} today` : '';
     document.getElementById('stat-reviews').textContent = reviews.length;
@@ -529,7 +529,7 @@ async function loadDashboard() {
     recentEl.innerHTML = DOMPurify.sanitize(fullProfiles.map(p => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-100)">
         <div style="display:flex;gap:8px;align-items:center">
-          <div class="user-avatar">${p.avatar_url ? `<img src="${DOMPurify.sanitize(p.avatar_url)}">` : (p.user_type === 'worker' ? '👷' : '🏢')}</div>
+          <div class="user-avatar">${p.avatar_url ? `<img src="${DOMPurify.sanitize(p.avatar_url)}">` : (p.user_type === 'worker' ? 'ð·' : 'ð¢')}</div>
           <div>
             <div style="font-weight:600;font-size:13px">${p.name || p.company_name || 'Unnamed'}</div>
             <div style="font-size:11px;color:var(--gray-500)">${p.email || ''}</div>
@@ -595,17 +595,17 @@ function renderUsers(users) {
     <div class="user-item">
       <div class="user-item-header">
         <div class="user-info">
-          <div class="user-avatar">${u.avatar_url ? `<img src="${DOMPurify.sanitize(u.avatar_url)}">` : (u.user_type === 'worker' ? '👷' : '🏢')}</div>
+          <div class="user-avatar">${u.avatar_url ? `<img src="${DOMPurify.sanitize(u.avatar_url)}">` : (u.user_type === 'worker' ? 'ð·' : 'ð¢')}</div>
           <div style="min-width:0">
             <div class="user-name">${u.name || u.company_name || 'Unnamed'}</div>
-            <div class="user-meta">${u.email || 'No email'} · ${u.location_text || 'No location'}${u.phone ? ' · ' + u.phone : ''}</div>
+            <div class="user-meta">${u.email || 'No email'} Â· ${u.location_text || 'No location'}${u.phone ? ' Â· ' + u.phone : ''}</div>
             <div style="margin-top:3px">
               <span class="badge ${u.user_type === 'worker' ? 'badge-worker' : 'badge-business'}">${u.user_type}</span>
               ${u.user_type === 'worker' && u.availability ? ` <span class="badge" style="background:${u.availability === 'available' ? '#D4EDDA' : '#F5F5F5'};color:${u.availability === 'available' ? '#155724' : '#888'}">${u.availability}</span>` : ''}
-              ${u.rating_avg ? ` <span class="badge" style="background:#FFF8E1;color:#F57F17">⭐ ${Number(u.rating_avg).toFixed(1)} (${u.rating_count || 0})</span>` : ''}
-              ${u.biz_rating_avg ? ` <span class="badge" style="background:#FFF8E1;color:#F57F17">⭐ ${Number(u.biz_rating_avg).toFixed(1)} (${u.biz_rating_count || 0})</span>` : ''}
+              ${u.rating_avg ? ` <span class="badge" style="background:#FFF8E1;color:#F57F17">â­ ${Number(u.rating_avg).toFixed(1)} (${u.rating_count || 0})</span>` : ''}
+              ${u.biz_rating_avg ? ` <span class="badge" style="background:#FFF8E1;color:#F57F17">â­ ${Number(u.biz_rating_avg).toFixed(1)} (${u.biz_rating_count || 0})</span>` : ''}
             </div>
-            <div class="user-meta" style="margin-top:2px">Joined ${new Date(u.created_at).toLocaleDateString()}${u.referral_code ? ` · Code: <strong style="color:var(--green)">${u.referral_code}</strong>` : ''}${u.referred_by ? ' · 🔗 Referred' : ''}</div>
+            <div class="user-meta" style="margin-top:2px">Joined ${new Date(u.created_at).toLocaleDateString()}${u.referral_code ? ` Â· Code: <strong style="color:var(--green)">${u.referral_code}</strong>` : ''}${u.referred_by ? ' Â· ð Referred' : ''}</div>
           </div>
         </div>
         <div class="user-actions">
@@ -703,7 +703,7 @@ function confirmDeleteUser(userId, name) {
   el.classList.remove('hidden');
   el.innerHTML = `
     <div class="confirm-delete">
-      <p>⚠️ Permanently delete <strong>${name}</strong>? This removes their profile, messages, reviews, and all data. Cannot be undone.</p>
+      <p>â ï¸ Permanently delete <strong>${name}</strong>? This removes their profile, messages, reviews, and all data. Cannot be undone.</p>
       <div style="display:flex;gap:8px">
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('delete-confirm-${userId}').classList.add('hidden')">Cancel</button>
         <button class="btn btn-danger btn-sm" onclick="deleteUser('${userId}')">Yes, Delete</button>
@@ -765,13 +765,13 @@ function renderReviews(reviews) {
     <div class="review-item">
       <div class="review-header">
         <div>
-          <div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
-          <div style="font-size:13px;margin-top:3px"><strong>${from}</strong> → <strong>${to}</strong></div>
+          <div class="review-stars">${'â'.repeat(r.rating)}${'â'.repeat(5 - r.rating)}</div>
+          <div style="font-size:13px;margin-top:3px"><strong>${from}</strong> â <strong>${to}</strong></div>
         </div>
         <button class="btn btn-danger btn-sm" onclick="deleteReview('${r.id}', '${r.reviewed_id}', '${r.reviewed?.user_type || 'worker'}')">Remove</button>
       </div>
       ${r.comment ? `<div class="review-text">"${r.comment}"</div>` : '<div class="review-text" style="font-style:italic;color:var(--gray-500)">No comment</div>'}
-      <div class="review-meta">${new Date(r.created_at).toLocaleDateString()} · ${timeAgo(r.created_at)}</div>
+      <div class="review-meta">${new Date(r.created_at).toLocaleDateString()} Â· ${timeAgo(r.created_at)}</div>
     </div>`;
   }).join(''));
 }
@@ -834,10 +834,10 @@ async function addCompany() {
       logo_url: logoUrl, created_by: adminUser.id,
     });
     if (error) throw error;
-    status.innerHTML = DOMPurify.sanitize(`✅ <strong>${company}</strong> added!<br>Claim code: <strong style="font-size:18px;letter-spacing:2px;color:var(--green)">${claimCode}</strong><br>Send them this code — they enter it when signing up.`);
+    status.innerHTML = DOMPurify.sanitize(`â <strong>${company}</strong> added!<br>Claim code: <strong style="font-size:18px;letter-spacing:2px;color:var(--green)">${claimCode}</strong><br>Send them this code â they enter it when signing up.`);
     status.className = 'status show success';
     ['add-company','add-email','add-location','add-phone','add-description','add-logo'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('logo-preview').innerHTML = '<span style="font-size:20px;color:var(--gray-500)">🏢</span>';
+    document.getElementById('logo-preview').innerHTML = '<span style="font-size:20px;color:var(--gray-500)">ð¢</span>';
     selectedLogoFile = null;
     loadCompanies();
   } catch(e) { status.textContent = e.message || 'Error adding company'; status.className = 'status show error'; }
@@ -854,15 +854,15 @@ async function loadCompanies() {
       <div class="company-item">
         <div style="display:flex;gap:10px;align-items:center;flex:1">
           <div style="width:40px;height:40px;border-radius:8px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
-            ${c.logo_url ? `<img src="${DOMPurify.sanitize(c.logo_url)}" style="width:100%;height:100%;object-fit:cover">` : '<span style="font-size:18px">🏢</span>'}
+            ${c.logo_url ? `<img src="${DOMPurify.sanitize(c.logo_url)}" style="width:100%;height:100%;object-fit:cover">` : '<span style="font-size:18px">ð¢</span>'}
           </div>
           <div>
             <div class="name">${c.company_name}</div>
-            <div class="meta">${c.phone || c.email || ''} · ${c.location_text || 'No location'}</div>
+            <div class="meta">${c.phone || c.email || ''} Â· ${c.location_text || 'No location'}</div>
             ${!c.claimed ? `<div class="meta" style="margin-top:2px">Code: <strong style="color:var(--green);letter-spacing:1px">${c.claim_code}</strong></div>` : ''}
           </div>
         </div>
-        <span class="badge ${c.claimed ? 'badge-claimed' : 'badge-unclaimed'}">${c.claimed ? 'Claimed ✓' : 'Unclaimed'}</span>
+        <span class="badge ${c.claimed ? 'badge-claimed' : 'badge-unclaimed'}">${c.claimed ? 'Claimed â' : 'Unclaimed'}</span>
       </div>
     `).join(''));
   } catch(e) { container.innerHTML = `<div style="color:var(--red)">${DOMPurify.sanitize(e.message)}</div>`; }
@@ -874,7 +874,7 @@ function previewAnnouncement() {
   const sel = document.getElementById('announce-audience');
   document.getElementById('announce-preview').innerHTML = DOMPurify.sanitize(`
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-      <div style="width:32px;height:32px;border-radius:8px;background:var(--forest-mid);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">📢</div>
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--forest-mid);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">ð¢</div>
       <div><strong style="font-size:13px">CrewFinder Team</strong><div style="font-size:11px;color:var(--gray-500)">To: ${sel.options[sel.selectedIndex].text}</div></div>
     </div>
     <div style="font-size:13px;line-height:1.5">${msg}</div>`);
@@ -897,11 +897,11 @@ async function sendAnnouncement() {
     if (!targets?.length) throw new Error('No users to send to');
     const messages = targets.map(t => ({
       sender_id: adminUser.id, receiver_id: t.id,
-      content: `📢 ${msg}`, is_read: false,
+      content: `ð¢ ${msg}`, is_read: false,
     }));
     const { error: msgErr } = await db.from('messages').insert(messages);
     if (msgErr) throw msgErr;
-    status.innerHTML = DOMPurify.sanitize(`✅ Sent to <strong>${targets.length}</strong> user${targets.length !== 1 ? 's' : ''}!`);
+    status.innerHTML = DOMPurify.sanitize(`â Sent to <strong>${targets.length}</strong> user${targets.length !== 1 ? 's' : ''}!`);
     status.className = 'status show success';
     document.getElementById('announce-message').value = '';
     document.getElementById('announce-preview-box').style.display = 'none';
@@ -917,7 +917,7 @@ async function loadPastAnnouncements() {
     const { data, error } = await db.from('messages')
       .select('content, created_at, receiver_id')
       .eq('sender_id', adminUser.id)
-      .like('content', '📢%')
+      .like('content', 'ð¢%')
       .order('created_at', { ascending: false })
       .limit(50);
     if (error) throw error;
@@ -930,7 +930,7 @@ async function loadPastAnnouncements() {
     container.innerHTML = DOMPurify.sanitize(batches.slice(0, 10).map(b => `
       <div style="padding:10px 0;border-bottom:1px solid var(--gray-100)">
         <div style="font-size:13px">${b.content}</div>
-        <div style="font-size:11px;color:var(--gray-500);margin-top:4px">${new Date(b.created_at).toLocaleDateString()} · Sent to ${b.count} user${b.count !== 1 ? 's' : ''}</div>
+        <div style="font-size:11px;color:var(--gray-500);margin-top:4px">${new Date(b.created_at).toLocaleDateString()} Â· Sent to ${b.count} user${b.count !== 1 ? 's' : ''}</div>
       </div>
     `).join(''));
   } catch(e) { container.innerHTML = '<div class="empty-state">Could not load announcements</div>'; }
@@ -1034,7 +1034,7 @@ function populateColumnMappings() {
   
   fields.forEach(fieldId => {
     const select = document.getElementById(fieldId);
-    select.innerHTML = '<option value="">— Skip —</option>' + 
+    select.innerHTML = '<option value="">â Skip â</option>' + 
       csvHeaders.map((h, i) => `<option value="${i}">${h}</option>`).join('');
     
     // Auto-detect
@@ -1053,7 +1053,7 @@ function renderCsvPreview() {
   let html = '<table style="width:100%;border-collapse:collapse;font-size:11px">';
   html += '<tr>' + csvHeaders.map(h => `<th style="text-align:left;padding:4px 6px;border-bottom:2px solid var(--gray-200);font-weight:600;white-space:nowrap">${h}</th>`).join('') + '</tr>';
   preview.forEach(row => {
-    html += '<tr>' + row.map(c => `<td style="padding:4px 6px;border-bottom:1px solid var(--gray-100);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c || '<span style="color:var(--gray-500)">—</span>'}</td>`).join('') + '</tr>';
+    html += '<tr>' + row.map(c => `<td style="padding:4px 6px;border-bottom:1px solid var(--gray-100);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c || '<span style="color:var(--gray-500)">â</span>'}</td>`).join('') + '</tr>';
   });
   html += '</table>';
   document.getElementById('csv-preview-table').innerHTML = DOMPurify.sanitize(html);
@@ -1165,7 +1165,7 @@ async function runImport() {
     
     const progress = Math.min(((i + batch.length) / records.length) * 100, 100);
     bar.style.width = progress + '%';
-    progressText.textContent = `${imported} imported · ${skipped} skipped · ${errors} errors — ${Math.round(progress)}%`;
+    progressText.textContent = `${imported} imported Â· ${skipped} skipped Â· ${errors} errors â ${Math.round(progress)}%`;
     
     // Small delay to not overwhelm Supabase
     if (i + batchSize < records.length) await new Promise(r => setTimeout(r, 200));
@@ -1173,7 +1173,7 @@ async function runImport() {
   
   bar.style.width = '100%';
 
-  status.innerHTML = DOMPurify.sanitize(`✅ Done! <strong>${imported}</strong> companies imported · ${skipped} skipped (dupes/empty) · ${errors} errors`);
+  status.innerHTML = DOMPurify.sanitize(`â Done! <strong>${imported}</strong> companies imported Â· ${skipped} skipped (dupes/empty) Â· ${errors} errors`);
   status.className = 'status show success';
   
   btn.disabled = false;
