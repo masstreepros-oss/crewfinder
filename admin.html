@@ -423,19 +423,11 @@
   </div>
 </div>
 
-<script src="https://unpkg.com/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = 'https://mhatwlmbwikvrlcgfojt.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oYXR3bG1id2lrdnJsY2dmb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzNDUzMTQsImV4cCI6MjA4NjkyMTMxNH0.8LefO4aYzYGfmsUb4blBEBLjIoF4CtYJ7xfimdc7lBE';
-var db;
-if (typeof supabase !== 'undefined') {
-  db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-} else {
-  document.addEventListener('DOMContentLoaded', function() {
-    if (typeof supabase !== 'undefined') { db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
-    else { document.querySelector('.login-err, #login-error, [style*="color"]').textContent = 'Page failed to load properly. Please refresh.'; }
-  });
-}
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let adminUser = null;
 let allUsers = [];
@@ -960,8 +952,8 @@ function timeAgo(dateStr) {
 // Auto-login with admin email whitelist check
 db.auth.getSession().then(({ data }) => {
   if (data.session) {
-    const ADMIN_EMAILS = ['masstreepros@gmail.com'];
-    if (!ADMIN_EMAILS.includes(data.session.user.email)) {
+    const ADMIN_EMAILS = ['masstreepros@gmail.com', 'michaelrabasco@gmail.com'];
+    if (!ADMIN_EMAILS.some(e => e.toLowerCase() === data.session.user.email.toLowerCase())) {
       db.auth.signOut();
       return;
     }
