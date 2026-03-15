@@ -16,9 +16,7 @@
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
     Permissions-Policy = "camera=(), microphone=(self), geolocation=(self)"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' unpkg.com cdnjs.cloudflare.com cdn.jsdelivr.net mhatwlmbwikvrlcgfojt.supabase.co; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://mhatwlmbwikvrlcgfojt.supabase.co wss://mhatwlmbwikvrlcgfojt.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com wss://*.twilio.com https://sdk.twilio.com https://media.twiliocdn.com https://eventgw.twilio.com; media-src 'self' https://sdk.twilio.com https://media.twiliocdn.com mediastream: blob:; frame-ancestors 'none'"
 
 # Cache static assets
 [[headers]]
